@@ -1,7 +1,7 @@
 import boto3
 import time
 import json
-import textracting2
+import textshowing
 
 
 def startJob(s3BucketName, objectName):
@@ -32,7 +32,6 @@ def isJobComplete(jobId):
 
     while (status == "IN_PROGRESS"):
         time.sleep(5)
-        response = client.get_document_analysis(JobId=jobId)
         response = client.get_document_analysis(JobId=jobId)
         status = response["JobStatus"]
         print("Job status: {}".format(status))
@@ -83,8 +82,9 @@ if __name__ == "__main__":
         for pages in response:
             all_blocks.extend(pages['Blocks'])
         short_res = {'Blocks': all_blocks}
-        textracting2.save_lines(short_res, outfile=doc_path+"text.txt", mode='a')
-        textracting2.save_kv_pairs(short_res, outfile=doc_path+"tables.csv", mode='a')
+        textshowing.save_tables(short_res, outfile=doc_path+"_tables.csv", mode='w')
+        textshowing.save_lines(short_res, outfile=doc_path+"_text.txt", mode='w')
+        textshowing.save_kv_pairs(short_res, outfile=doc_path+"_kvs.csv", mode='w')
 
         for item in all_blocks:
             if item["BlockType"] == "LINE":

@@ -1,310 +1,4 @@
 
-KANIVA 2 WELL COMPLETION AND ABANDONMENT REPORT
-EPOCH
-LITHOSTRATIGRAPHIC UNITS
-PERIOD
-SURAT BASIN
-SPRINGBOK
-Walloon
-w
-F
-Coal Measures
-SANDSTONE
-Seam Packages
-LATE
-0
-German Creek Group,
-Kogan
-Surat Siltstone
-Coreena Member
-Wulumbilla
-Formation
-Doncaster
-Member
-MIDDLE
-Macalister
-Bungi Formation
-Mooga Sandstone
-100
-Orallo Formation
-Gubberamunda Sandstone
-2
-Wambo
-Westbourne Formation
-LATE
-U
-Birkhead
-Springbok
-Formation
-Sandstone
-Juandat Coal Measures
-Tangalooma Sst
-L
-Iaroom Coal Measures
-Eurombah
-Argyle
-Formation
-MIDDLE
-Hutton Sandstone
-200
-Boxvale
-Westgrove
-Sandstone
-Ironstone
-Member
-Member
-Tangalooma
-Sandstone
-Evergreen
-"Formation
-EARLY
-Precipice
-Sandstone
-Taroom Beds
-Upper
-Eddystone Beds
-Taroom
-2
-300
-LATE
-Unconformity
-Condamine
-MIDDLE
-Moolayember Fm.
-Clematis Group
-EARLY
-Rewan Group
-Baralaba CM
-Burunga Fm.
-LATE
-Scotia Coa Mbr
-Banana Fm.
-400
-Flat Top Fm.
-Barfield Fm.
-HUTTON
-Unconformity
-SANDSTONE
-EARLY
-? Buffel Formation
-STRATIGRAPHY OF
-THE SURAT BASIN AND
-? Cambon Volcanics
-WALLOON COAL MEASURES
-arrowenergy
-energy
-go further
-Figure 3: Stratigraphy of the Surat Basin and Walloon Coal Measures
-17/24
-
-KANIVA 2 WELL COMPLETION AND ABANDONMENT REPORT
-5 REFERENCES
-DAY, R.W., WHITAKER, W.G., MURRAY, C.G., WILSON, I.H., & GRIMES, K.G., 1983. Queensland
-Geology. Geological Survey of Queensland Publication, 383
-EXON, N.F., 1976 Geology of the Surat Basin Queensland. Bureau of Mineral Resources, Geology
-and Geophysics, 166.
-EXON, N.F. AND BURGER, D., 1981. Sedimentary cycles in the Surat Basin and global changes of sea
-level. BMR Journal of Australian Geology and Geophysics, Vol 6, pp. 153-159.
-FIELDING, C. R., 1993. The Middle Jurassic Walloon Coal Measures in the type area, the Rosewood-
-Walloon coa field, southeast Queensland. Australian Coal Geology, 9: 4-16.
-GOULD, R. E., 1968. The Walloon Coa Measures: a compilation. Queensland Government Mining
-Journal, 69: 509-515.
-GREEN, P.M., HOFFMANN, K.L., BRAIN, T.J., & GRAY, A.R.G., 1997. Project aims and activities,
-exploration history and geological investigations in the Bowen and overlying Surat Basins,
-Queensland. In, GREEN, P.M. (ed.), The Surat and Bowen Basins, south-east Queensland.
-Queensland Minerals and Energy Review Series, Queensland Department of Mines and Energy,
-pp1-11.
-McKELLAR, J.L., 1999. Late Early to Late Jurassic palynology, biostratigraphy and palaeogeography of
-the Roma Shelf area northwestern Surat Basin, Queensland, Australia. Department of Geology
-and Mineralogy, University of Queensland, PhD thesis, (1-3).
-NGUYEN, D.L., & DEWHIRST, N.H., 2002. ATP 471P, MNL Barker -1 Well Completion Report.
-YAGO, J. V. R., FIELDING, C. R. and KASSAN, J., 1994. Depositional styles of channe & overbank
-deposits in the middle Jurassic Walloon Coal measures, Clarence-Moreton basin, NSW.,
-Advances in the study of the Sydney Basin. Proceedings of the twenty eighth symposium.
-University of Newcastle, Newcastle.
-YAGO, J. V. R. and FIELDING, C. R., 1996. Sedimentology of the middle Jurassic Walloon Coal
-Measures in the Great Artesian Basin, Eastern Australia, Mesozoic geology of the Eastern
-Australia Plate conference. Geological Society of Australia, Brisbane, Queensland, pp. 574-575.
-18/24
-
-KANIVA 2 WELL COMPLETION AND ABANDONMENT REPORT
-APPENDIX 1. LOCATION MAP
-19/24
-
-KANIVA 2 WELL COMPLETION AND ABANDONMENT REPORT
-APPENDIX 2. DAILY DRILLING REPORTS
-20/24
-
-KANIVA 2 WELL COMPLETION AND ABANDONMENT REPORT
-APPENDIX 3. CEMENTING REPORTS
-21/24
-
-KANIVA 2 WELL COMPLETION AND ABANDONMENT REPORT
-APPENDIX 4. WELL HEAD LOCATION
-SURVEY REPORT
-22/24
-
-KANIVA 2 WELL COMPLETION AND ABANDONMENT REPORT
-APPENDIX 5. LITHOLOGY LOG
-23/24
-
-KANIVA 2 WELL COMPLETION AND ABANDONMENT REPORT
-APPENDIX 6. ANALYTICAL REPORTS
-24/24
-
-KANIVA 2 WELL COMPLETION AND ABANDONMENT REPORT
-EPOCH
-LITHOSTRATIGRAPHIC UNITS
-PERIOD
-Walloon
-SURAT BASIN
-SPRINGBOK
-w
-F
-Coal Measures
-SANDSTONE
-Seam Packages
-LATE
-0
-German Creek Group,
-Kogan
-Surat Siltstone
-Coreena Member
-Wulumbilla
-Formation
-Doncaster
-Member
-MIDDLE
-Macalister
-Bungi Formation
-Mooga Sandstone
-100
-Orallo Formation
-Gubberamunda Sandstone
-2
-Wambo
-Westbourne Formation
-LATE
-U
-Birkhead
-Springbok
-Formation
-Sandstone
-Juandat Coal Measures
-Tangalooma Sst
-L
-Iaroom Coal Measures
-Eurombah
-Argyle
-Formation
-MIDDLE
-Hutton Sandstone
-200
-Boxvale
-Westgrove
-Sandstone
-Ironstone
-Member
-Member
-Tangalooma
-Sandstone
-Evergreen
-"Formation
-EARLY
-Precipice
-Sandstone
-Taroom Beds
-Upper
-Eddystone Beds
-Taroom
-2
-300
-LATE
-Unconformity
-Condamine
-MIDDLE
-Moolayember Fm.
-Clematis Group
-EARLY
-Rewan Group
-Baralaba CM
-Burunga Fm.
-LATE
-Scotia Coa Mbr
-Banana Fm.
-400
-Flat Top Fm.
-Barfield Fm.
-HUTTON
-Unconformity
-SANDSTONE
-EARLY
-? Buffel Formation
-STRATIGRAPHY OF
-THE SURAT BASIN AND
-? Cambon Volcanics
-WALLOON COAL MEASURES
-arrowenergy
-energy
-go further
-Figure 3: Stratigraphy of the Surat Basin and Walloon Coal Measures
-17/24
-
-KANIVA 2 WELL COMPLETION AND ABANDONMENT REPORT
-5 REFERENCES
-DAY, R.W., WHITAKER, W.G., MURRAY, C.G., WILSON, I.H., & GRIMES, K.G., 1983. Queensland
-Geology. Geological Survey of Queensland Publication, 383
-EXON, N.F., 1976 Geology of the Surat Basin Queensland. Bureau of Mineral Resources, Geology
-and Geophysics, 166.
-EXON, N.F. AND BURGER, D., 1981. Sedimentary cycles in the Surat Basin and global changes of sea
-level. BMR Journal of Australian Geology and Geophysics, Vol 6, pp. 153-159.
-FIELDING, C. R., 1993. The Middle Jurassic Walloon Coal Measures in the type area, the Rosewood-
-Walloon coa field, southeast Queensland. Australian Coal Geology, 9: 4-16.
-GOULD, R. E., 1968. The Walloon Coa Measures: a compilation. Queensland Government Mining
-Journal, 69: 509-515.
-GREEN, P.M., HOFFMANN, K.L., BRAIN, T.J., & GRAY, A.R.G., 1997. Project aims and activities,
-exploration history and geological investigations in the Bowen and overlying Surat Basins,
-Queensland. In, GREEN, P.M. (ed.), The Surat and Bowen Basins, south-east Queensland.
-Queensland Minerals and Energy Review Series, Queensland Department of Mines and Energy,
-pp1-11.
-McKELLAR, J.L., 1999. Late Early to Late Jurassic palynology, biostratigraphy and palaeogeography of
-the Roma Shelf area northwestern Surat Basin, Queensland, Australia. Department of Geology
-and Mineralogy, University of Queensland, PhD thesis, (1-3).
-NGUYEN, D.L., & DEWHIRST, N.H., 2002. ATP 471P, MNL Barker -1 Well Completion Report.
-YAGO, J. V. R., FIELDING, C. R. and KASSAN, J., 1994. Depositional styles of channe & overbank
-deposits in the middle Jurassic Walloon Coal measures, Clarence-Moreton basin, NSW.,
-Advances in the study of the Sydney Basin. Proceedings of the twenty eighth symposium.
-University of Newcastle, Newcastle.
-YAGO, J. V. R. and FIELDING, C. R., 1996. Sedimentology of the middle Jurassic Walloon Coal
-Measures in the Great Artesian Basin, Eastern Australia, Mesozoic geology of the Eastern
-Australia Plate conference. Geological Society of Australia, Brisbane, Queensland, pp. 574-575.
-18/24
-
-KANIVA 2 WELL COMPLETION AND ABANDONMENT REPORT
-APPENDIX 1. LOCATION MAP
-19/24
-
-KANIVA 2 WELL COMPLETION AND ABANDONMENT REPORT
-APPENDIX 2. DAILY DRILLING REPORTS
-20/24
-
-KANIVA 2 WELL COMPLETION AND ABANDONMENT REPORT
-APPENDIX 3. CEMENTING REPORTS
-21/24
-
-KANIVA 2 WELL COMPLETION AND ABANDONMENT REPORT
-APPENDIX 4. WELL HEAD LOCATION
-SURVEY REPORT
-22/24
-
-KANIVA 2 WELL COMPLETION AND ABANDONMENT REPORT
-APPENDIX 5. LITHOLOGY LOG
-23/24
-
-KANIVA 2 WELL COMPLETION AND ABANDONMENT REPORT
-APPENDIX 6. ANALYTICAL REPORTS
-24/24
-
 >)
 arrOWenergy
 go further
@@ -663,42 +357,42 @@ Not Recorded
 72.22
 4.00
 18.10
+2
 57.45 - 466.15
 6 1/8"
-2
-(156 mm)
 PDC
 Varel
 VDT419D
+(156 mm)
 GX
 6011262
 408.70
 31.75
 12.87
-3
 450.35 - 486.35
 3 7/8"
+3
+HQ3
 Boart
 Not
+188122
 36.00
 9.75
 (96 mm)
-HQ3
-Recorded
-188122
 3.69
 Longyear
+Recorded
 4
 486.35 - 750.85
 3 3/8"
 HQ3
 ASAHI
 1372527
+3.90
 (96 mm)
 7 Step
 264.50
 67.75
-3.90
 Note dril bit details were obtained from the daily drilling reports (APPENDIX 2) and internal databases.
 2.4 DRILL FLUIDS
 Interval
@@ -749,12 +443,12 @@ KANIVA 2 WELL COMPLETION AND ABANDONMENT REPORT
 2.5 CASING
 Interval
 Casing
+(from/to)
 Outside
 API Grade
 Thread
 Weight
 Section
-(from/to)
 Diameter OD
 (m MD GL)
 (Ib/ft)
@@ -781,15 +475,15 @@ Slurry
 Slurry
 Displacement
 Returns
-(from/to)
 Volume
-Weight
 Volume
 To
 Section
+(from/to)
 Additives
-(m MD GL)
 Type
+Weight
+(m MD GL)
 (Barrels)
 (ppg)
 (Barrels)
@@ -810,13 +504,13 @@ Powder), 1 ga
 Defoamer (NF-6)
 74 lbs Fluid Loss
 Additive
-Intermediate
-1.49 - 466.15
 Class A
 39.00
 13.51
 22.80
 Yes -
+Intermediate
+1.49 - 466.15
 (Halad 344),
 6.80 bbls
 105 lbs (Econolite
@@ -829,9 +523,9 @@ Interval (from/to)
 Type
 Slurry Volume
 Slurry Weight
+Additives
 (m MD GL)
 (Barrels)
-Additives
 (ppg)
 1.50 - 147.50
 Class A
@@ -975,10 +669,10 @@ assess stratigraphic and structural controls; appraise local reservoir variabili
 static reservoir parameters in the area.
 4.2 LITHOSTRATIGRAPHIC UNITS
 Net Coal
+Top
 Base
 Thickness
 Formation
-Top
 Thickness
 (m MD GL)
 (m MD GL)
@@ -1005,21 +699,21 @@ Recorded
 Total Depth
 750.85
 -
-Net Coal
 Top
 Base
 Thickness
+Net Coal
 Member
 Thickness
 (m MD GL)
 (m MD GL)
 (m MD)
 (m MD)
-466.09
-25.82
 Not
 Kogan
 440.27
+466.09
+25.82
 Recorded
 Not
 Macalister

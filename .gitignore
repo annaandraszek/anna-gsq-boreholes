@@ -1,3 +1,4 @@
 **/.idea/
+**/__pycache__/
 **/venv/
 scipy_testing/entity-annotated-corpus/ner.csv 

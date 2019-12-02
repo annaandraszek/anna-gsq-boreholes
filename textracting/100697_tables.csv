@@ -1,0 +1,126 @@
+Table: Table_1
+
+21/02/2017 ,WELL COMPLETION AND ABANDONMENT ,IVAN MCCARTHY ,ANT WHITTLE ,
+,REPORT FOR KANIVA 2 ,20/02/2017 ,21/02/2017 ,
+DATE ,DESCRIPTION ,PREPARED ,CHECKED ,
+
+
+
+
+
+Table: Table_2
+
+APPENDIX 1. ,LOCATION MAP 19 ,
+APPENDIX 2. ,DAILY DRILLING REPORTS 20 ,
+APPENDIX 3. ,CEMENTING REPORTS 21 ,
+APPENDIX 4. ,WELL HEAD LOCATION SURVEY REPORT 22 ,
+APPENDIX 5. ,LITHOLOGY LOG 23 ,
+APPENDIX 6. ,ANALYTICAL REPORTS 24 ,
+
+
+
+
+
+Table: Table_3
+
+Bit Number ,Interval (from/to) (m MD GL) ,Hole Size ,Bit Type ,Bit Make ,Bit Model ,Bit Serial Number ,Bit Metres ,Bit Hours ,ROP m/hr ,
+1 ,1.50 73.72 ,8 1/2" (216 mm) ,PDC ,Not ,Recorded ,7142396 ,72.22 ,4.00 ,18.10 ,
+2 ,57.45 - 466.15 ,6 1/8" (156 mm) ,PDC ,Varel ,VDT419D GX ,6011262 ,408.70 ,31.75 ,12.87 ,
+3 ,450.35 - 486.35 ,3 7/8" (96 mm) ,HQ3 ,Boart Longyear ,Not Recorded ,188122 ,36.00 ,9.75 ,3.69 ,
+4 ,486.35 - 750.85 ,3 3/8" (96 mm) ,HQ3 ,ASAHI ,7 Step ,1372527 ,264.50 ,67.75 ,3.90 ,
+
+
+
+
+
+Table: Table_4
+
+Drill Section ,Interval (from/to) (m MD GL) ,Hole Size ,
+Cellar ,0.00 - 1.50 ,Dimensions Approximately 1.50 m X 1.50 m ,
+Surface ,1.50 - 73.72 ,8 1/2" (216 mm) ,
+Intermediate ,73.72 - 466.15 ,6 1/8" (156 mm) ,
+Production ,466.15 - 750.85 ,3 3/4" (96 mm) ,
+
+
+
+
+
+Table: Table_5
+
+Drill Section ,Interval (from/to) (m MD GL) ,Hole Size ,Drill Fluid Type ,Drill Fluid Parameters ,Drill Fluid Additives ,
+Surface ,1.50 - 73.72 ,8 1/2" (216 mm) ,Mud ,MW 8.5 - 8.7ppg Vis 28 - 30sec/qt ,150 kg Viscosifier (Ausgel), 6.25 kg (Soda Ash) ,
+Intermediate ,57.45 - 466.15 ,6 1/8" (156 mm) ,Mud ,MW 8.5 - 9.4ppg Vis 29 - 36sec/qt ,675 kg Viscosifier (Ausgel), 50 kg (Soda Ash), 50 kg (Citric Acid) 25 kg Viscosifier (Xantham Gum), 5 gal (Biocide), 5 gal (Floc DD) ,
+Production ,450.35 - 750.85 ,3 3/4" (96 mm) ,Mud ,MW 8.7ppg Vis 27-28sec/q ,2925 kg (Potassium Acetate), 50 L (EP Bit Lube) ,
+
+
+
+
+
+Table: Table_6
+
+Casing Section ,Interval (from/to) (m MD GL) ,Outside Diameter OD ,API Grade ,Thread ,Weight (Ib/ft) ,
+Surface ,1.49 - 73.22 ,7" (178 mm) ,API 5CT K55 ,BTC ,23.00 ,
+Intermediate ,1.17 - 462.33 ,4 1/2" (114 mm) ,API 5CT K55 ,BTC ,11.60 ,
+
+
+
+
+
+Table: Table_7
+
+Interval (from/to) (m MD GL) ,Type ,Slurry Volume (Barrels) ,Slurry Weight (ppg) ,Additives ,
+1.50 - 147.50 ,Class A ,7.60 ,15.60 ,17 lbs Friction Reducer (CFR-3), 1 gal Defoamer (D-Air 3000L) ,
+
+
+
+
+
+Table: Table_8
+
+Casing Section ,Interval (from/to) (m MD GL) ,Cement Type ,Slurry Volume (Barrels) ,Slurry Weight (ppg) ,Displacement Volume (Barrels) ,Returns To Surface ,Additives ,
+,,,,,,,32 lbs Fluid Loss Additive ,
+Surface ,1.50 - 73.72 ,Class A ,16.70 ,13.50 ,9.00 ,Yes - 10.70 bbls ,(Halad 344) 46 lbs (Econolite Powder), 1 ga Defoamer (NF-6) ,
+,,,,,,,74 lbs Fluid Loss ,
+,,,,,,,Additive ,
+Intermediate ,1.49 - 466.15 ,Class A ,39.00 ,13.51 ,22.80 ,Yes - 6.80 bbls ,(Halad 344), 105 lbs (Econolite Powder), 1 gal ,
+,,,,,,,Defoamer (NF-6) ,
+
+
+
+
+
+Table: Table_9
+
+Interval From (m MD GL*) ,Interval to (m MD GL) ,Cut Length (m) ,Recovered Length (m) ,
+466.15 ,750.85 ,284.70 ,282.76 ,
+
+
+
+
+
+Table: Table_10
+
+Member ,Top (m MD GL) ,Base (m MD GL) ,Thickness (m MD) ,Net Coal Thickness (m MD) ,
+Kogan ,440.27 ,466.09 ,25.82 ,Not Recorded ,
+Macalister ,466.09 ,532.77 ,66.68 ,Not Recorded ,
+Wambo ,532.77 ,583.77 ,51.00 ,Not Recorded ,
+Argyle ,583.77 ,668.62 ,84.85 ,Not Recorded ,
+Upper Taroom ,690.02 ,750.85 ,60.40 ,Not Recorded ,
+Total Depth ,,750.85 ,- ,,
+
+
+
+
+
+Table: Table_11
+
+Formation ,Top (m MD GL) ,Base (m MD GL) ,Thickness (m MD) ,Net Coal Thickness (m MD) ,
+Juandah Coal Measures ,440.27 ,668.62 ,228.35 ,Not Recorded ,
+Tangalooma Sandstone ,668.62 ,690.02 ,21.40 ,Not Recorded ,
+Taroom Coal Measures ,690.02 ,750.85 ,60.40 ,Not Recorded ,
+Total Depth ,,750.85 ,- ,,
+
+
+
+
+
