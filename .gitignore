@@ -2,3 +2,6 @@
 **/__pycache__/
 **/venv/
 scipy_testing/entity-annotated-corpus/ner.csv 
+textracting/*.json
+textracting/*.csv
+textracting/*.txt
