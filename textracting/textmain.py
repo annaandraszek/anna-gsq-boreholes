@@ -4,7 +4,7 @@ import json
 import textshowing
 
 
-def startJob(s3BucketName, objectName):
+def startJob(s3BucketName, objectName, features=None):
     response = None
     client = boto3.client('textract')
     response = client.start_document_analysis(
@@ -15,9 +15,7 @@ def startJob(s3BucketName, objectName):
             }
 
         },
-        FeatureTypes=[
-            'TABLES', 'FORMS',
-        ],
+        FeatureTypes=features,
     )
 
     return response["JobId"]
@@ -41,9 +39,7 @@ def isJobComplete(jobId):
 
 def getJobResults(jobId):
     pages = []
-
     time.sleep(5)
-
     client = boto3.client('textract')
     response = client.get_document_analysis(JobId=jobId)
 
@@ -55,9 +51,7 @@ def getJobResults(jobId):
 
     while (nextToken):
         time.sleep(5)
-
         response = client.get_document_analysis(JobId=jobId, NextToken=nextToken)
-
         pages.append(response)
         print("Resultset page recieved: {}".format(len(pages)))
         nextToken = None
@@ -68,23 +62,27 @@ def getJobResults(jobId):
 
 if __name__ == "__main__":
     s3BucketName = 'gsq-ml'
-    doc_path = '100697'
-    documentName = 'cr_' + doc_path + '_1.pdf'
-
-    jobId = startJob(s3BucketName, documentName)
+    pre = 'cr_' # 'smaller_'
+    doc_path = '107039' #'89100' #'100697'
+    docid = pre + doc_path
+    documentName = pre + doc_path + '_1.pdf' #'.pdf'
+    features=['TABLES', 'FORMS']
+    jobId = startJob(s3BucketName, documentName, features=features)
     print("Started job with id: {}".format(jobId))
     if (isJobComplete(jobId)):
         response = getJobResults(jobId)
-        fp = open('textract_result.json', 'w')
+        fp = open(docid + '.json', 'w')
         json.dump(response, fp)
         # instead of sending page info individually, concatenate data across them because ids may cross reference and cause errors?
         all_blocks = []
         for pages in response:
             all_blocks.extend(pages['Blocks'])
         short_res = {'Blocks': all_blocks}
-        textshowing.save_tables(short_res, outfile=doc_path+"_tables.csv", mode='w')
-        textshowing.save_lines(short_res, outfile=doc_path+"_text.txt", mode='w')
-        textshowing.save_kv_pairs(short_res, outfile=doc_path+"_kvs.csv", mode='w')
+        textshowing.save_lines(short_res, outfile=docid+"_text.txt", mode='w')
+        if 'TABLES' in features:
+            textshowing.save_tables(short_res, outfile=docid+"_tables.csv", mode='w')
+        if 'FORMS' in features:
+            textshowing.save_kv_pairs(short_res, outfile=docid+"_kvs.csv", mode='w')
 
         for item in all_blocks:
             if item["BlockType"] == "LINE":
