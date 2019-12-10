@@ -1,12 +1,4 @@
 import re
-import webbrowser, os
-import json
-import boto3
-import io
-from io import BytesIO
-import sys
-from pprint import pprint
-
 
 def get_rows_columns_map(table_result, blocks_map):
     rows = {}
@@ -80,6 +72,34 @@ def get_table_csv(doc):
     return csv
 
 
+def get_pageline_map(doc):
+    blocks = doc['Blocks']
+    page_child_map = {}
+    page_lines = {}
+
+    for block in blocks:
+        if block['BlockType'] == "PAGE":
+            if 'CHILD' in block['Relationships'][0]['Type']:
+                page_child_map[block['Page']] = block['Relationships'][0]['Ids']
+        if block['BlockType'] == "LINE":
+            if block['Id'] in page_child_map[block['Page']]:
+                if block['Page'] in page_lines:
+                    page_lines[block['Page']].append(block['Text'])
+                else:
+                    page_lines[block['Page']] = [block['Text']]
+    #print(page_lines)
+    return page_lines
+
+
+def get_pageinfo(doc):
+    blocks = doc['Blocks']
+    pages = {}
+    for block in blocks:
+        if block['BlockType'] == "PAGE":
+            pages[block['Page']] = block
+    return pages
+
+
 def get_kv_map(doc):
     blocks = doc['Blocks']
     # get key and value maps
@@ -118,9 +138,6 @@ def find_value_block(key_block, value_map):
 def print_kvs(kvs):
     for key, value in kvs.items():
         print(key, ":", value)
-
-
-
 
 
 def get_kv_pairs(result, display=False):

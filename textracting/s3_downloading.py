@@ -2,14 +2,13 @@ import boto3
 import os
 
 
-def download_dir(client, resource, dist, local='/tmp', bucket='your_bucket'):
+def list2strs(lst):
+    return [str(e) for e in lst]
+
+
+def download_dir(client, resource, dist, reports, local='/tmp', bucket='your_bucket', ):
     paginator = client.get_paginator('list_objects')
-    reports = ['25843', '25814', '26255', '26446'] # 6mth
-            #['64145', '62591', '62764', '57883', '57954', '57956'] # more annual
-            #['45644', '69624', '76007'] #hfacr
-            #['83636', '83636'] #other
-            #['57520', '17706', '22067', '30946', '30941', '77193'] #welcom
-            #['127', '103323', '89031', '69056'] # annual
+
     for report in reports:
         for result in paginator.paginate(Bucket=bucket, Delimiter='/', Prefix=dist+report+'/'):
             if result.get('CommonPrefixes') is not None:
@@ -22,7 +21,16 @@ def download_dir(client, resource, dist, local='/tmp', bucket='your_bucket'):
                 resource.meta.client.download_file(bucket, file.get('Key'), dest_pathname)
 
 
-if __name__ == "__main__":
+def download_reports(reports, local_location='tmp/'):
+    reports = list2strs(reports)
     client = boto3.client('s3', region_name='ap-southeast-2')
     resource = boto3.resource('s3')
-    download_dir(client, resource, 'QDEX/', '/tmp', bucket='gsq-staging')
+    download_dir(client, resource, 'QDEX/', reports, local_location, bucket='gsq-staging')
+
+
+if __name__ == "__main__":
+   reports = [2394, 458, 32422]
+   download_reports(reports)
+
+
+

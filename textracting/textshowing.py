@@ -1,12 +1,12 @@
 import boto3
 import json
 import re
-from PIL import Image, ImageDraw, ImageFont
+from PIL import ImageDraw,Image, ImageFont
 import psutil
 import io
 from pdf2image import convert_from_path, convert_from_bytes
 import textracting
-
+import settings
 
 textract = boto3.client('textract')
 comprehend = boto3.client('comprehend')
@@ -92,9 +92,9 @@ def save_annotated_doc(doc, pdf):
     # display image for 10 seconds
 
 
-def save_lines(doc, outfile="doc_lines.txt", mode='w'):
+def save_lines(doc, file_id):
     blocks = doc['Blocks']
-    with open(outfile, mode) as o:
+    with open(settings.get_text_file(file_id), "w") as o:
         for block in blocks:
             if block['BlockType'] == "LINE":
                 o.write(block['Text'] + '\n')
@@ -102,17 +102,29 @@ def save_lines(doc, outfile="doc_lines.txt", mode='w'):
                 o.write('\n')
 
 
-def save_tables(doc, outfile="doc_tables.csv", mode="w"):
+def save_tables(doc, file_id):
     table_csv = textracting.get_table_csv(doc)
-
-    with open(outfile, mode) as fout:
+    with open(settings.get_tables_file(file_id), "w") as fout:
         fout.write(table_csv)
+    #print('CSV OUTPUT FILE: ', settings.get_tables_file(file_id))
 
-    print('CSV OUTPUT FILE: ', outfile)
 
-
-def save_kv_pairs(result, outfile="doc_kv_pairs.csv", mode="w"):
+def save_kv_pairs(result, file_id):
     kvs = textracting.get_kv_pairs(result)
-    o = open(outfile, mode)
+    o = open(settings.get_kvs_file(file_id), "w")
     for key, value in kvs.items():
         o.write(str(key + ',' + value + '\n'))
+
+
+def save_pageinfo(doc, file_id):
+    pageinfo = textracting.get_pageinfo(doc)
+    o = open(settings.get_pageinfo_file(file_id), "w")
+    json.dump(pageinfo, o)
+    return pageinfo
+
+
+def save_pagelines(doc, file_id):
+    pagelines = textracting.get_pageline_map(doc)
+    o = open(settings.get_pagelines_file(file_id), "w")
+    json.dump(pagelines, o)
+    return pagelines
