@@ -1,6 +1,6 @@
 
 report_local_path = 'training/QDEX/'
-
+tree_model_file = 'tree_model.pkl'
 
 def get_report_name(file_id, local_path=False, file_extension=False):
     file = ''

@@ -36,6 +36,12 @@ import boto3
 import glob
 import img2pdf
 import settings
+import json
+from sklearn import tree
+import sklearn
+import pickle
+import sys
+import os
 
 
 def get_reportid_sample():
@@ -55,6 +61,8 @@ def doc2data(file_id):
 def upload_to_my_bucket(file_id):
     s3 = boto3.client('s3')
     bucketname = 'gsq-ml'
+    if check_if_obj_exists(s3, settings.get_report_name(file_id, file_extension=True), bucketname):
+        return -1
     fpath = settings.get_report_name(file_id, local_path=True)
     report = glob.glob(fpath + ".*")[0]
     if ".tif" in report:
@@ -67,16 +75,95 @@ def upload_to_my_bucket(file_id):
     with open(pdf_report, "rb") as f:
         objname = settings.get_report_name(file_id, file_extension=True)
         s3.upload_fileobj(f, bucketname, objname)
+    return 0
+
+
+def check_if_obj_exists(client, key, bucket):
+    response = client.list_objects_v2(
+        Bucket=bucket,
+        Prefix=key,
+    )
+    for obj in response.get('Contents', []):
+        if obj['Key'] == key:
+            return True
+        else:
+            return False
+
+
+def create_dataset():
+    df = pd.DataFrame(columns=['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'TOCPage'])
+    pageinfos = sorted(glob.glob('training/pageinfo/*'))
+    pagelines = sorted(glob.glob('training/pagelines/*'))
+
+    for pagesinfo, pageslines, i in zip(pageinfos, pagelines, range(len(pageinfos))):
+        pi = json.load(open(pagesinfo))
+        pl = json.load(open(pageslines))
+        docset = np.zeros((len(pi.items()), 6))
+        docid = pagesinfo.split('\\')[-1].replace('_1_pageinfo.json', '')
+
+        for info, lines, j, in zip(pi.items(), pl.items(), range(len(pi.items()))):
+            toc = 0
+            c = 0
+            for line in lines[1]:
+                if 'contents' in line.lower():
+                    c = 1
+                    if 'table of contents' in line.lower():
+                        toc = 1
+
+            docset[j] = np.array([docid.strip('cr_'), info[1]['Page'], len(lines[1]), toc, c, 0])
+        pgdf = pd.DataFrame(data=docset, columns=['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'TOCPage'])
+        df = df.append(pgdf, ignore_index=True)
+        # df.PageNum = df.PageNum.append(pd.Series(docset[:, 0]), ignore_index=True)
+        # df.NumChildren = df.NumChildren.append(pd.Series(docset[:, 1]), ignore_index=True)
+        # df.ContainsTOCPhrase = df.ContainsTOCPhrase.append(pd.Series(docset[:, 2]), ignore_index=True)
+        # df.TOCPage = df.TOCPage.append(pd.Series(docset[:, 3]), ignore_index=True)
+
+        #df = df.append(dict(zip(df.columns, docset)), ignore_index=True)
+
+    return df
+
+
+def train(data):
+    data = data.dropna()
+    X = data.drop(['DocID', 'TOCPage', 'Comments'], axis=1)
+    Y = data.TOCPage
+    X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.33)
+    clf = tree.DecisionTreeClassifier()
+    clf = clf.fit(X_train, y_train)
+    y_pred = clf.predict(X_test)
+    accuracy = sklearn.metrics.accuracy_score(y_test, y_pred)
+    print(accuracy)
+    #tree.plot_tree(clf, feature_names=['PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord'], class_names=True, filled=True)
+    #plt.show()
+    with open(settings.tree_model_file, "wb") as file:
+        pickle.dump(clf, file)
+
+
+def classify_page(data):
+    if not os.path.exists(settings.tree_model_file):
+        train(data)
+    with open(settings.tree_model_file, "rb") as file:
+        model = pickle.load(file)
+    pred = model.predict(data)
+    return pred
 
 
 if __name__ == "__main__":
     #reports = get_reportid_sample()
-    rfs = glob.glob('training/QDEX/*')
-    report_ids = set([r.rsplit('\\')[-1] for r in rfs])
-    #reports = []
-    #download_reports(reports, 'training/')
+    # rfs = glob.glob('training/QDEX/*')
+    # report_ids = set([r.rsplit('\\')[-1] for r in rfs])
+    # #reports = []
+    # #download_reports(reports, 'training/')
+    #
+    # for report in report_ids:
+    #     res = upload_to_my_bucket(report)
+    #     if res != 0:
+    #         continue
+    #     doc2data(report)
 
-    for report in report_ids:
-        upload_to_my_bucket(report)
-        doc2data(report)
+    # dataset = create_dataset()
+    # dataset.to_csv('toc_dataset.csv', index=False)
+    # print(dataset)
 
+    # df = pd.read_csv('toc_dataset.csv')
+    # train(df)
