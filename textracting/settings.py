@@ -16,8 +16,11 @@ def get_file_from_training(folder, file_id, local_path, extension='.json'):
     file = ''
     if local_path:
         file = 'training/' + folder + '/'
-    file += str(file_id) + "_" + folder + extension
-    return file
+    if not 'cr_' in file_id:
+        if not extension in file_id:
+            file += get_report_name(file_id)
+            return file + "_" + folder + extension
+    return file + str(file_id) + "_" + folder + extension
 
 
 def get_pageinfo_file(file_id, local_path=True):
@@ -45,4 +48,4 @@ def get_text_file(file_id, local_path=True):
 
 
 def get_full_json_file(file_id, local_path=True):
-    return get_file_from_training('full_json', file_id, local_path)
+    return get_file_from_training('fulljson', file_id, local_path)

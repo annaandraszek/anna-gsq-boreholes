@@ -70,32 +70,36 @@ def file2doc(fname, bucket, features, pageinfo=False, ret=False):
     print("Started job with id: {}".format(jobId))
     if isJobComplete(jobId):
         response = getJobResults(jobId)
-        fp = open(settings.get_full_json_file(docid), 'w')
-        json.dump(response, fp)
-        # instead of sending page info individually, concatenate data across them because ids may cross reference and cause errors?
-        short_res = textshowing.json2res(response)
-        textshowing.save_lines(short_res, docid)
-        if pageinfo:
-            pginfo = textshowing.save_pageinfo(short_res, docid)
-            pglines = textshowing.save_pagelines(short_res,docid)
-        if 'TABLES' in features:
-            textshowing.save_tables(short_res, docid)
-        if 'FORMS' in features:
-            textshowing.save_kv_pairs(short_res, docid)
+        if response[0]['JobStatus'] == 'FAILED':
+            print(docid + ' failed, status message: ', response[0]['StatusMessage'])
+        else:
+            fp = open(settings.get_full_json_file(docid), 'w')
+            json.dump(response, fp)
+            # instead of sending page info individually, concatenate data across them because ids may cross reference and cause errors?
+            short_res = textshowing.json2res(response)
+            textshowing.save_lines(short_res, docid)
+            if pageinfo:
+                pginfo = textshowing.save_pageinfo(short_res, docid)
+                pglines = textshowing.save_pagelines(short_res,docid)
+            if 'TABLES' in features:
+                textshowing.save_tables(short_res, docid)
+            if 'FORMS' in features:
+                textshowing.save_kv_pairs(short_res, docid)
 
-        # for item in all_blocks:
-        #     if item["BlockType"] == "LINE":
-        #         print('\033[94m' + item["Text"] + '\033[0m')
-        print('Completed ' + docid)
-        if pageinfo and ret:
-            return pginfo, pglines
+            # for item in all_blocks:
+            #     if item["BlockType"] == "LINE":
+            #         print('\033[94m' + item["Text"] + '\033[0m')
+            print('Completed ' + docid)
+            if pageinfo and ret:
+                return pginfo, pglines
 
 
 if __name__ == "__main__":
     s3BucketName = 'gsq-ml'
     pre = 'cr_' # 'smaller_'
-    doc_path = '103323' #'89100' #'100697'
-    docid = pre + doc_path
-    documentName = pre + doc_path + '_1.pdf' #'.pdf'
-    features=['TABLES', 'FORMS']
-    file2doc(documentName, s3BucketName, features)
+    docs = ['30281', '31069', '33412', '37414', '37838', '38865', '44387', '45470', '47884', '56500', '57048']
+    for doc_path in docs:
+        docid = pre + doc_path
+        documentName = pre + doc_path + '_1.pdf' #'.pdf'
+        features=['TABLES', 'FORMS']
+        file2doc(documentName, s3BucketName, features)

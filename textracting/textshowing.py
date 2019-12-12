@@ -7,6 +7,7 @@ import io
 from pdf2image import convert_from_path, convert_from_bytes
 import textracting
 import settings
+import glob
 
 textract = boto3.client('textract')
 comprehend = boto3.client('comprehend')
@@ -147,9 +148,16 @@ def json2res(jsondoc):
 
 
 if __name__ == "__main__":
-    file_id = '67792'
-    fname = settings.get_full_json_file(file_id)
-    with open(fname, "rb") as f:
-        j = json.load(f)
-        doc = json2res(j)
-        print(save_pagelineinfo(doc, file_id))
+    #file_id = '67792'
+    files = glob.glob('training/fulljson/*')
+    #fname = settings.get_full_json_file(file_id)
+    for fname in files:
+        with open(fname, "r") as f:
+            try:
+                j = json.load(f)
+                doc = json2res(j)
+                file_id = fname.rsplit('_')[-3]
+                save_pagelineinfo(doc, file_id)
+                print(file_id + ' successful')
+            except json.decoder.JSONDecodeError:
+                print(fname)
