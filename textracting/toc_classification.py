@@ -40,7 +40,6 @@ import json
 from sklearn import tree
 import sklearn
 import pickle
-import sys
 import os
 
 
@@ -113,20 +112,21 @@ def create_dataset():
             docset[j] = np.array([docid.strip('cr_'), info[1]['Page'], len(lines[1]), toc, c, 0])
         pgdf = pd.DataFrame(data=docset, columns=['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'TOCPage'])
         df = df.append(pgdf, ignore_index=True)
-        # df.PageNum = df.PageNum.append(pd.Series(docset[:, 0]), ignore_index=True)
-        # df.NumChildren = df.NumChildren.append(pd.Series(docset[:, 1]), ignore_index=True)
-        # df.ContainsTOCPhrase = df.ContainsTOCPhrase.append(pd.Series(docset[:, 2]), ignore_index=True)
-        # df.TOCPage = df.TOCPage.append(pd.Series(docset[:, 3]), ignore_index=True)
-
-        #df = df.append(dict(zip(df.columns, docset)), ignore_index=True)
-
     return df
 
 
-def train(data):
+def data_prep(data, y=False):
+    data = data.drop(['Comments'], axis=1)
     data = data.dropna()
-    X = data.drop(['DocID', 'TOCPage', 'Comments'], axis=1)
-    Y = data.TOCPage
+    X = data.drop(['DocID', 'TOCPage'], axis=1)
+    if y:
+        Y = data.TOCPage
+        return X, Y
+    return X
+
+
+def train(data):
+    X, Y = data_prep(data, y=True)
     X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.33)
     clf = tree.DecisionTreeClassifier()
     clf = clf.fit(X_train, y_train)
@@ -144,8 +144,17 @@ def classify_page(data):
         train(data)
     with open(settings.tree_model_file, "rb") as file:
         model = pickle.load(file)
+    data = data_prep(data)
     pred = model.predict(data)
     return pred
+
+
+def get_toc_pages(data_file='toc_dataset.csv'):
+    df = pd.read_csv(data_file)
+    classes = classify_page(df)
+    mask = np.array([True if i==1 else False for i in classes])
+    toc_pages = df[mask]
+    return toc_pages
 
 
 if __name__ == "__main__":
@@ -165,5 +174,5 @@ if __name__ == "__main__":
     # dataset.to_csv('toc_dataset.csv', index=False)
     # print(dataset)
 
-    # df = pd.read_csv('toc_dataset.csv')
-    # train(df)
+    toc_pages = get_toc_pages()
+    print(toc_pages)
