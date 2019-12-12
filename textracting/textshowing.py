@@ -128,3 +128,28 @@ def save_pagelines(doc, file_id):
     o = open(settings.get_pagelines_file(file_id), "w")
     json.dump(pagelines, o)
     return pagelines
+
+
+def save_pagelineinfo(doc, file_id):
+    pagelineinfo = textracting.get_pagelineinfo_map(doc)
+    o = open(settings.get_pagelineinfo_file(file_id), "w")
+    json.dump(pagelineinfo, o)
+    return pagelineinfo
+
+
+# helps when want to use textshowing functions with existing json files instead of the textract response
+def json2res(jsondoc):
+    all_blocks = []
+    for pages in jsondoc:
+        all_blocks.extend(pages['Blocks'])
+    res = {'Blocks': all_blocks}
+    return res
+
+
+if __name__ == "__main__":
+    file_id = '67792'
+    fname = settings.get_full_json_file(file_id)
+    with open(fname, "rb") as f:
+        j = json.load(f)
+        doc = json2res(j)
+        print(save_pagelineinfo(doc, file_id))

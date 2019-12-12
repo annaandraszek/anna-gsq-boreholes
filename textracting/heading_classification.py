@@ -61,10 +61,35 @@ def pre_process_dataset(df=pd.read_csv("heading_dataset.csv")):
     # drill
     #
 
+def reconstruct_page():
+    file = 'training/pagelineinfo/cr_67792_1_pagelineinfo.json'
+    f = open(file, "rb")
+    info = json.load(f)
+    pages = []
+    for page in info.items():
+        prev_y = None
+        lines = []
+        ln = ''
+        for line in page[1]:
+            text = line[0]['Text']
+            y = line[0]['BoundingBox']['Top']
+            if len(ln) == 0:
+                ln = text
+            elif prev_y - 0.001 <= y <= prev_y + 0.001:
+                ln += " " + text
+            elif len(ln) != 0:
+                lines.append(ln)
+                ln = text
+            else:
+                lines.append(text)
+            prev_y = y
+        pages.append(lines)
+    return pages
 
 
 if __name__ == "__main__":
-    df = create_dataset()
-    df = pre_process_dataset()
-    df.to_csv('processed_heading_dataset.csv', index=False)
-    print(df)
+    # df = create_dataset()
+    # df = pre_process_dataset()
+    # df.to_csv('processed_heading_dataset.csv', index=False)
+    # print(df)
+    print(reconstruct_page())

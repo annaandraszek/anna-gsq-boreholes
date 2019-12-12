@@ -87,8 +87,28 @@ def get_pageline_map(doc):
                     page_lines[block['Page']].append(block['Text'])
                 else:
                     page_lines[block['Page']] = [block['Text']]
-    #print(page_lines)
     return page_lines
+
+
+def get_pagelineinfo_map(doc):
+    blocks = doc['Blocks']
+    page_child_map = {}
+    pagelineinfo = {}
+
+    for block in blocks:
+        if block['BlockType'] == "PAGE":
+            if 'CHILD' in block['Relationships'][0]['Type']:
+                page_child_map[block['Page']] = block['Relationships'][0]['Ids']
+        if block['BlockType'] == "LINE":
+            if block['Id'] in page_child_map[block['Page']]:
+                if block['Page'] in pagelineinfo:
+                    pagelineinfo[block['Page']].append([{'LineNum':len(pagelineinfo[block['Page']])+1,
+                                                        'Text': block['Text'],
+                                                       'BoundingBox': block['Geometry']['BoundingBox']}])
+                else:
+                    pagelineinfo[block['Page']] = [[{'LineNum': 1, 'Text': block['Text'],
+                                                        'BoundingBox': block['Geometry']['BoundingBox']}]]
+    return pagelineinfo
 
 
 def get_pageinfo(doc):

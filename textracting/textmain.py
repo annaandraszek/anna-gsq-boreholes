@@ -60,6 +60,7 @@ def getJobResults(jobId):
     return pages
 
 
+
 def file2doc(fname, bucket, features, pageinfo=False, ret=False):
     if '.pdf' in fname:
         docid = fname.rstrip('.pdf')
@@ -72,10 +73,7 @@ def file2doc(fname, bucket, features, pageinfo=False, ret=False):
         fp = open(settings.get_full_json_file(docid), 'w')
         json.dump(response, fp)
         # instead of sending page info individually, concatenate data across them because ids may cross reference and cause errors?
-        all_blocks = []
-        for pages in response:
-            all_blocks.extend(pages['Blocks'])
-        short_res = {'Blocks': all_blocks}
+        short_res = textshowing.json2res(response)
         textshowing.save_lines(short_res, docid)
         if pageinfo:
             pginfo = textshowing.save_pageinfo(short_res, docid)
