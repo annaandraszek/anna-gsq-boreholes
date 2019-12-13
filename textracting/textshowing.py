@@ -124,6 +124,13 @@ def save_pageinfo(doc, file_id):
     return pageinfo
 
 
+def save_restructpagelines(doc, file_id):
+    restructpagelines = textracting.get_restructpagelines(doc)
+    o = open(settings.get_restructpagelines_file(file_id), "w")
+    json.dump(restructpagelines, o)
+    return restructpagelines
+
+
 def save_pagelines(doc, file_id):
     pagelines = textracting.get_pageline_map(doc)
     o = open(settings.get_pagelines_file(file_id), "w")
@@ -149,15 +156,15 @@ def json2res(jsondoc):
 
 if __name__ == "__main__":
     #file_id = '67792'
-    files = glob.glob('training/fulljson/*')
+    files = glob.glob('training/pagelineinfo/*')
     #fname = settings.get_full_json_file(file_id)
     for fname in files:
         with open(fname, "r") as f:
             try:
-                j = json.load(f)
-                doc = json2res(j)
+                doc = json.load(f)
+                #doc = json2res(j)
                 file_id = fname.rsplit('_')[-3]
-                save_pagelineinfo(doc, file_id)
+                save_restructpagelines(doc, file_id)
                 print(file_id + ' successful')
             except json.decoder.JSONDecodeError:
                 print(fname)

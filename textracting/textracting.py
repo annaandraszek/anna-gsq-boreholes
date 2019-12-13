@@ -90,6 +90,30 @@ def get_pageline_map(doc):
     return page_lines
 
 
+def get_restructpagelines(doc):
+    pages = {}
+    for page in doc.items():
+        prev_y = None
+        lines = []
+        ln = ''
+        for line in page[1]:
+            text = line[0]['Text']
+            y = line[0]['BoundingBox']['Top']
+            if len(ln) == 0:
+                ln = text
+            elif prev_y - 0.005 <= y <= prev_y + 0.005:
+                ln += "\t" + text
+            elif len(ln) != 0:
+                lines.append(ln)
+                ln = text
+            else:
+                lines.append(text)
+            prev_y = y
+        lines.append(ln)
+        pages[page[0]] = lines
+    return pages
+
+
 def get_pagelineinfo_map(doc):
     blocks = doc['Blocks']
     page_child_map = {}

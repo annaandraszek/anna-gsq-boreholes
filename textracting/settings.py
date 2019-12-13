@@ -35,6 +35,10 @@ def get_pagelines_file(file_id, local_path=True):
     return get_file_from_training('pagelines', file_id, local_path)
 
 
+def get_restructpagelines_file(file_id, local_path=True):
+    return get_file_from_training('restructpagelines', file_id, local_path)
+
+
 def get_kvs_file(file_id, local_path=True):
     return get_file_from_training('kvs', file_id, local_path, extension='.csv')
 
