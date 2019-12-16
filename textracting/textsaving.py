@@ -124,9 +124,13 @@ def save_pageinfo(doc, file_id):
 
 
 def save_restructpagelines(doc, file_id):
-    restructpagelines = textracting.get_restructpagelines(doc)
+    restructpagelines, restructpageinfo = textracting.get_restructpagelines(doc)
     o = open(settings.get_restructpagelines_file(file_id), "w")
     json.dump(restructpagelines, o)
+
+    o2 = open(settings.get_restructpageinfo_file(file_id), "w")
+    json.dump(restructpageinfo, o2)
+
     return restructpagelines
 
 

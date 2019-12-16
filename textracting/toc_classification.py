@@ -135,14 +135,14 @@ def train(data):
     print(accuracy)
     #tree.plot_tree(clf, feature_names=['PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord'], class_names=True, filled=True)
     #plt.show()
-    with open(settings.tree_model_file, "wb") as file:
+    with open(settings.toc_tree_model_file, "wb") as file:
         pickle.dump(clf, file)
 
 
 def classify_page(data):
-    if not os.path.exists(settings.tree_model_file):
+    if not os.path.exists(settings.toc_tree_model_file):
         train(data)
-    with open(settings.tree_model_file, "rb") as file:
+    with open(settings.toc_tree_model_file, "rb") as file:
         model = pickle.load(file)
     data = data_prep(data)
     pred = model.predict(data)

@@ -1,4 +1,6 @@
 import re
+import numpy as np
+
 
 def get_rows_columns_map(table_result, blocks_map):
     rows = {}
@@ -91,27 +93,71 @@ def get_pageline_map(doc):
 
 
 def get_restructpagelines(doc):
-    pages = {}
+    pagelines = {}
+    pageinfo = {}
     for page in doc.items():
         prev_y = None
         lines = []
         ln = ''
+        conf = []
+        bb = {'width':0, 'height': [], 'left': [], 'top': []}
+        lnnum = 0
         for line in page[1]:
             text = line['Text']
             y = line['BoundingBox']['Top']
-            if len(ln) == 0:
+
+            if len(ln) == 0:  # empty line has text added to
                 ln = text
-            elif prev_y - 0.0075 <= y <= prev_y + 0.0075:
+                conf.append(line['Confidence'])
+                bb['width'] += line['BoundingBox']['Width']
+                bb['height'].append(line['BoundingBox']['Height'])
+                bb['left'].append(line['BoundingBox']['Left'])
+                bb['top'].append(line['BoundingBox']['Top'])
+
+            elif prev_y - 0.0075 <= y <= prev_y + 0.0075: # filled line has text added to
                 ln += " \t" + text
-            elif len(ln) != 0:
+                conf.append(line['Confidence'])
+                bb['width'] += line['BoundingBox']['Width']
+                bb['height'].append(line['BoundingBox']['Height'])
+                bb['left'].append(line['BoundingBox']['Left'])
+                bb['top'].append(line['BoundingBox']['Top'])
+
+            elif len(ln) != 0: # line is emptied, new text is added
+                avgconf = np.average(np.array(conf))
+                sumwidth = bb['width']
+                maxheight = np.max(np.array(bb['height']))
+                minleft = np.min(np.array(bb['left']))
+                avgtop = np.average(np.array(bb['top']))
+                lnnum += 1
+
+                if page[0] in pageinfo:
+                    pageinfo[page[0]].append({'LineNum': lnnum, 'Text': ln, 'Confidence': avgconf, 'BoundingBox': {
+                    'Width': sumwidth, 'Height': maxheight, 'Left': minleft, 'Top': avgtop}})
+                else:
+                    pageinfo[page[0]] = [{'LineNum': lnnum, 'Text': ln, 'Confidence': avgconf, 'BoundingBox': {
+                    'Width': sumwidth, 'Height': maxheight, 'Left': minleft, 'Top': avgtop}}]
+
                 lines.append(ln)
+
                 ln = text
-            else:
+                conf = [line['Confidence']]
+                bb = {'width': line['BoundingBox']['Width'], 'height': [line['BoundingBox']['Height']],
+                      'left': [line['BoundingBox']['Left']], 'top': [line['BoundingBox']['Top']]}
+
+            else: # text is added straight to lines (case: last line in the document)
                 lines.append(text)
+                if page[0] in pageinfo:
+                    pageinfo[page[0]].append(line)
+                else:
+                    pageinfo[page[0]] = line
+                pageinfo[page[0]][lnnum]['LineNum'] = lnnum
+
             prev_y = y
+
         lines.append(ln)
-        pages[page[0]] = lines
-    return pages
+        pagelines[page[0]] = lines
+
+    return pagelines, pageinfo
 
 
 def get_pagelineinfo_map(doc):

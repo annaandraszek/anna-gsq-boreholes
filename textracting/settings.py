@@ -1,6 +1,7 @@
 
 report_local_path = 'training/QDEX/'
-tree_model_file = 'tree_model.pkl'
+toc_tree_model_file = 'toc_tree_model.pkl'
+fig_tree_model_file = 'fig_tree_model.pkl'
 
 def get_report_name(file_id, local_path=False, file_extension=False):
     file = ''
@@ -37,6 +38,10 @@ def get_pagelines_file(file_id, local_path=True):
 
 def get_restructpagelines_file(file_id, local_path=True):
     return get_file_from_training('restructpagelines', file_id, local_path)
+
+
+def get_restructpageinfo_file(file_id, local_path=True):
+    return get_file_from_training('restructpageinfo', file_id, local_path)
 
 
 def get_kvs_file(file_id, local_path=True):
