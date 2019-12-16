@@ -1,10 +1,10 @@
 import json
-import textshowing
+import textsaving
 
 def map_word_confidence(blocks):
     confidences = {}
     positions = {}
-    i = 0
+    #i = 0
     prevPage = 0
     for block in blocks:
         if block['BlockType'] == 'WORD':
@@ -12,8 +12,8 @@ def map_word_confidence(blocks):
             confidence = block['Confidence']
             if block['Page'] > prevPage:
                 prevPage = block['Page']
-                i = 0
-            position = (block['Page'], i)
+                #i = 0
+            position = (block['Page'], block['Geometry']['BoundingBox'])
             if word not in confidences.keys():
                 confidences[word] = [confidence]
                 positions[word] = [position]
@@ -24,7 +24,7 @@ def map_word_confidence(blocks):
                 pos = positions[word]
                 pos.append(position)
                 positions[word] = pos
-            i+=1
+            #i+=1
 
     #print(confidences.items())
     #print(positions.items())
@@ -33,8 +33,10 @@ def map_word_confidence(blocks):
 def remove_noise():
     file = 'training/fulljson/cr_24362_1_fulljson.json'
     f = json.load(open(file, "rb"))
-    blocks = textshowing.json2res(f)['Blocks']
+    blocks = textsaving.json2res(f)['Blocks']
     conf_map, pos_map = map_word_confidence(blocks)
+
+
     return conf_map, pos_map
 
 if __name__ == "__main__":

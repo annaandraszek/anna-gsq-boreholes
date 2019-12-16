@@ -1,7 +1,7 @@
 import boto3
 import time
 import json
-import textshowing
+import textsaving
 import textracting
 import settings
 
@@ -76,17 +76,17 @@ def file2doc(fname, bucket, features, pageinfo=False, ret=False):
             fp = open(settings.get_full_json_file(docid), 'w')
             json.dump(response, fp)
             # instead of sending page info individually, concatenate data across them because ids may cross reference and cause errors?
-            short_res = textshowing.json2res(response)
-            textshowing.save_lines(short_res, docid)
+            short_res = textsaving.json2res(response)
+            textsaving.save_lines(short_res, docid)
             if pageinfo:
-                pginfo = textshowing.save_pageinfo(short_res, docid)
-                pglines = textshowing.save_pagelines(short_res,docid)
-                textshowing.save_pagelineinfo(short_res, docid)
-                textshowing.save_restructpagelines(short_res, docid)
+                pginfo = textsaving.save_pageinfo(short_res, docid)
+                pglines = textsaving.save_pagelines(short_res, docid)
+                textsaving.save_pagelineinfo(short_res, docid)
+                textsaving.save_restructpagelines(short_res, docid)
             if 'TABLES' in features:
-                textshowing.save_tables(short_res, docid)
+                textsaving.save_tables(short_res, docid)
             if 'FORMS' in features:
-                textshowing.save_kv_pairs(short_res, docid)
+                textsaving.save_kv_pairs(short_res, docid)
 
             print('Completed ' + docid)
             if pageinfo and ret:

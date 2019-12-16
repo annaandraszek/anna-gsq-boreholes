@@ -24,7 +24,6 @@ def print_doc_lines(doc):
     return text
 
 
-
 def detect_entities(text):
     # Detect entities
     entities = comprehend.detect_entities(LanguageCode="en", Text=text)
@@ -155,7 +154,7 @@ def json2res(jsondoc):
 
 
 def restructpagelines():
-    files = glob.glob('training/pagelineinfo/*')
+    files = glob.glob('training/cleanpage/*')
     for fname in files:
         with open(fname, "r") as f:
             try:
@@ -181,6 +180,44 @@ def pagelineinfo():
                 print(fname)
 
 
+def save_cleanpage(doc, file_id):
+    cleaned = {}
+    for page in doc.items():
+        pagenum = page[0]
+        info = page[1]
+        for line in info:
+            lmargin = line['BoundingBox']['Left']
+            if lmargin < 0.04:  #and line['Confidence'] < 90
+                if line['BoundingBox']['Width'] < 0.02:
+                    print(line['Text'])
+                    continue
+            if pagenum in cleaned:
+                cleaned[pagenum].append(line)
+            else:
+                cleaned[pagenum] = [line]
+
+    o = open(settings.get_cleanpage_file(file_id), "w")
+    json.dump(cleaned, o)
+
+
+# Removes OCR noise from left page margins. Has been tuned for current set of reports, also catches some map/table
+# lines but these are minimal and extreme and would not be desired in the text anyway. The exception to this is
+# removing "Hole" from an appendix table in report 36198.
+def clean_page():
+    files = glob.glob('training/pagelineinfo/*')
+    for fname in files:
+        with open(fname, "r") as f:
+            try:
+                doc = json.load(f)
+                file_id = fname.rsplit('_')[-3]
+                save_cleanpage(doc, file_id)
+                print(file_id + ' successful')
+            except json.decoder.JSONDecodeError:
+                print(fname)
+
+
+
 if __name__ == "__main__":
-    restructpagelines()
     #pagelineinfo()
+    #clean_page()
+    restructpagelines()

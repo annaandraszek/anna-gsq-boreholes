@@ -97,11 +97,11 @@ def get_restructpagelines(doc):
         lines = []
         ln = ''
         for line in page[1]:
-            text = line[0]['Text']
-            y = line[0]['BoundingBox']['Top']
+            text = line['Text']
+            y = line['BoundingBox']['Top']
             if len(ln) == 0:
                 ln = text
-            elif prev_y - 0.005 <= y <= prev_y + 0.005:
+            elif prev_y - 0.0075 <= y <= prev_y + 0.0075:
                 ln += " \t" + text
             elif len(ln) != 0:
                 lines.append(ln)
@@ -126,12 +126,12 @@ def get_pagelineinfo_map(doc):
         if block['BlockType'] == "LINE":
             if block['Id'] in page_child_map[block['Page']]:
                 if block['Page'] in pagelineinfo:
-                    pagelineinfo[block['Page']].append([{'LineNum':len(pagelineinfo[block['Page']])+1,
+                    pagelineinfo[block['Page']].append({'LineNum':len(pagelineinfo[block['Page']])+1,
                                                         'Text': block['Text'], 'Confidence': block['Confidence'],
-                                                       'BoundingBox': block['Geometry']['BoundingBox']}])
+                                                       'BoundingBox': block['Geometry']['BoundingBox']})
                 else:
-                    pagelineinfo[block['Page']] = [[{'LineNum': 1, 'Text': block['Text'], 'Confidence': block['Confidence'],
-                                                        'BoundingBox': block['Geometry']['BoundingBox']}]]
+                    pagelineinfo[block['Page']] = [{'LineNum': 1, 'Text': block['Text'], 'Confidence': block['Confidence'],
+                                                        'BoundingBox': block['Geometry']['BoundingBox']}]
     return pagelineinfo
 
 
