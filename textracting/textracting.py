@@ -102,7 +102,7 @@ def get_restructpagelines(doc):
             if len(ln) == 0:
                 ln = text
             elif prev_y - 0.005 <= y <= prev_y + 0.005:
-                ln += "\t" + text
+                ln += " \t" + text
             elif len(ln) != 0:
                 lines.append(ln)
                 ln = text
@@ -127,10 +127,10 @@ def get_pagelineinfo_map(doc):
             if block['Id'] in page_child_map[block['Page']]:
                 if block['Page'] in pagelineinfo:
                     pagelineinfo[block['Page']].append([{'LineNum':len(pagelineinfo[block['Page']])+1,
-                                                        'Text': block['Text'],
+                                                        'Text': block['Text'], 'Confidence': block['Confidence'],
                                                        'BoundingBox': block['Geometry']['BoundingBox']}])
                 else:
-                    pagelineinfo[block['Page']] = [[{'LineNum': 1, 'Text': block['Text'],
+                    pagelineinfo[block['Page']] = [[{'LineNum': 1, 'Text': block['Text'], 'Confidence': block['Confidence'],
                                                         'BoundingBox': block['Geometry']['BoundingBox']}]]
     return pagelineinfo
 

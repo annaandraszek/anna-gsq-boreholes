@@ -5,6 +5,7 @@ import json
 import numpy as np
 import re
 
+
 def create_dataset():
     df = pd.DataFrame(columns=['DocID', 'LineNum', 'LineText', 'Heading', 'HeadingType'])
     lines_docs = sorted(glob.glob('training/restructpagelines/*'))
@@ -20,18 +21,28 @@ def create_dataset():
                     docset = []
                     for line, i in zip(lines[1], range(len(lines[1]))):
                         heading = 'None'
-                        if 'introduction' in line.lower() and i < 15:  # heuristic to help tagging
-                            heading = 'Intro'
-                        elif 'summary' in line.lower() and i < 10:  # heuristic to help tagging
-                            heading = 'Summ'
-                        elif 'work' in line.lower():
-                            heading = 'Work'
-                        docset.append([docid, i, line, heading])
-                    pgdf = pd.DataFrame(data=docset, columns=['DocID', 'LineNum', 'LineText', 'HeadingType'])
+                        headingType = 'None'
+                        if re.match(r'^([0-9]+\.[0-9]+\s+\w+)', line):
+                            heading = 'Sub'
+                        elif re.match(r'^[0-9]+\.*\s+\w+', line):
+                            heading = 'Head'
+
+                        if 'summary' in line.lower() and i < 10:  # heuristic to help tagging
+                            headingType = 'Summ'
+
+                        if heading == 'Head' or heading == 'Sub':
+                            if 'introduction' in line.lower() and i < 15:  # heuristic to help tagging
+                                headingType = 'Intro'
+
+                            elif 'work' in line.lower() or 'exploration' in line.lower() or 'drill' in line.lower():
+                                headingType = 'Work'
+
+                        docset.append([docid, i, line, heading, headingType])
+                    pgdf = pd.DataFrame(data=docset, columns=['DocID', 'LineNum', 'LineText', 'Heading', 'HeadingType'])
                     df = df.append(pgdf, ignore_index=True)
         except IndexError:
             print("IndexError ", tocpg, docid)
-    df.to_csv("heading_dataset.csv", index=False)
+    df.to_csv("heading_datasetv2.csv", index=False)
     return df
 
 
@@ -47,7 +58,8 @@ def strip_all_but_words_spaces(str):
     return re.sub(r"[^\w\s]", "", str)
 
 
-def pre_process_dataset(df=pd.read_csv("heading_dataset.csv")):
+def pre_process_dataset():
+    df = pd.read_csv("heading_datasetv2.csv")
     df.LineText = df.LineText.apply(lambda x: strip_all_but_words_spaces(x))
     df.LineText = df.LineText.apply(lambda x: strip_numbers(x))
     #df.LineText = df.LineText.apply(lambda x: strip_punctuation(x))
@@ -65,6 +77,6 @@ def pre_process_dataset(df=pd.read_csv("heading_dataset.csv")):
 
 if __name__ == "__main__":
     df = create_dataset()
-    df = pre_process_dataset()
-    df.to_csv('processed_heading_dataset.csv', index=False)
-    print(df)
+    #df = pre_process_dataset()
+    #df.to_csv('processed_heading_datasetv2.csv', index=False)
+    #print(df)

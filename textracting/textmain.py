@@ -81,14 +81,13 @@ def file2doc(fname, bucket, features, pageinfo=False, ret=False):
             if pageinfo:
                 pginfo = textshowing.save_pageinfo(short_res, docid)
                 pglines = textshowing.save_pagelines(short_res,docid)
+                textshowing.save_pagelineinfo(short_res, docid)
+                textshowing.save_restructpagelines(short_res, docid)
             if 'TABLES' in features:
                 textshowing.save_tables(short_res, docid)
             if 'FORMS' in features:
                 textshowing.save_kv_pairs(short_res, docid)
 
-            # for item in all_blocks:
-            #     if item["BlockType"] == "LINE":
-            #         print('\033[94m' + item["Text"] + '\033[0m')
             print('Completed ' + docid)
             if pageinfo and ret:
                 return pginfo, pglines

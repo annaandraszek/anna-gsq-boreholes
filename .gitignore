@@ -5,3 +5,4 @@ scipy_testing/entity-annotated-corpus/ner.csv
 textracting/*.json
 textracting/*.csv
 textracting/*.txt
+**/.ipynb_checkpoints/

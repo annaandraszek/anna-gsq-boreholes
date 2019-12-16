@@ -154,17 +154,33 @@ def json2res(jsondoc):
     return res
 
 
-if __name__ == "__main__":
-    #file_id = '67792'
+def restructpagelines():
     files = glob.glob('training/pagelineinfo/*')
-    #fname = settings.get_full_json_file(file_id)
     for fname in files:
         with open(fname, "r") as f:
             try:
                 doc = json.load(f)
-                #doc = json2res(j)
                 file_id = fname.rsplit('_')[-3]
                 save_restructpagelines(doc, file_id)
                 print(file_id + ' successful')
             except json.decoder.JSONDecodeError:
                 print(fname)
+
+
+def pagelineinfo():
+    files = glob.glob('training/fulljson/*')
+    for fname in files:
+        with open(fname, "r") as f:
+            try:
+                j = json.load(f)
+                doc = json2res(j)
+                file_id = fname.rsplit('_')[-3]
+                save_pagelineinfo(doc, file_id)
+                print(file_id + ' successful')
+            except json.decoder.JSONDecodeError:
+                print(fname)
+
+
+if __name__ == "__main__":
+    restructpagelines()
+    #pagelineinfo()
