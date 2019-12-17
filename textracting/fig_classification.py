@@ -11,35 +11,44 @@ import os
 
 
 def create_dataset():
-    df = pd.DataFrame(columns=['DocID', 'PageNum', 'MedConfidence', 'MedLineLen', 'ContainsFigWord', 'ContainsFigLn', 'FigPos', 'FigPage', 'Comments'])
-    pageinfos = sorted(glob.glob('training/restructpagelineinfo/*'))
+    df = pd.DataFrame(columns=['DocID', 'PageNum', 'MedConfidence', 'AvgConfidence', 'RangeConfidence', 'IQRConfidence','MedLineLen', 'ContainsFigWord', 'ContainsFigLn', 'FigPos', 'FigPage'])
+    pageinfos = sorted(glob.glob('training/restructpageinfo/*'))
     pagelines = sorted(glob.glob('training/restructpagelines/*'))
 
     for pagesinfo, pageslines in zip(pageinfos, pagelines):
+        #pagesinfo = 'training\\restructpageinfo\\cr_26114_1_restructpageinfo.json'
+        #pageslines = 'training\\restructpagelines\\cr_26114_1_restructpagelines.json'
         pi = json.load(open(pagesinfo))
         pl = json.load(open(pageslines))
-        docset = np.zeros((len(pi.items()), 8))
-        docid = pagesinfo.split('\\')[-1].replace('_1_pageinfo.json', '')
+        docset = np.zeros((len(pi.items()), 11))
+        docid = pagesinfo.split('\\')[-1].replace('_1_restructpageinfo.json', '')
 
-        for info, lines, j, in zip(pi.items(), pl.items(), range(len(pi.items()))):
+        for info, lines, i in zip(pi.items(), pl.items(), range(len(pi))):
             fig = 0
             figln = 0
             figlnpos = -1
             confs = []
             linelens = []
-            for line in lines[1]:
-                confs.append(info[1]['Confidence'])
+            for line, inf, j in zip(lines[1], info[1], range(len(lines[1]))):
+                confs.append(inf['Confidence'])
                 linelens.append(len(line))
                 if 'figure' in line.lower():
                     fig = 1
-                    if re.search(r'Figure\s\d+\.*\s\w', line):
+                    if figlnpos == -1:
+                        figlnpos = j / len(lines[1])
+                    if re.search(r'Figure\s\d+\.*\s*\w*', line) or re.search(r'FIGURE\s\d+\.*\s*\w*', line):
                         figln = 1
                         figlnpos = j / len(lines[1])
             medconf = np.median(np.array(confs))
+            avgconf = np.average(np.array(confs))
+            rangeconf = np.max(np.array(confs)) - np.min(np.array(confs))
             medlineln = np.median(np.array(linelens))
 
-            docset[j] = np.array([docid.strip('cr_'), info[1]['Page'], medconf, medlineln, fig, figln, figlnpos, 0])
-        pgdf = pd.DataFrame(data=docset, columns=['DocID', 'PageNum', 'MedConfidence', 'MedLineLen', 'ContainsFigWord', 'ContainsFigLn', 'FigPos', 'FigPage'])
+            q75, q25 = np.percentile(np.array(confs), [75, 25])
+            iqr = q75 - q25
+
+            docset[i] = np.array([docid.strip('cr_'), info[0], medconf, avgconf, rangeconf, iqr, medlineln, fig, figln, figlnpos, 0])
+        pgdf = pd.DataFrame(data=docset, columns=['DocID', 'PageNum', 'MedConfidence', 'AvgConfidence', 'RangeConfidence', 'IQRConfidence','MedLineLen', 'ContainsFigWord', 'ContainsFigLn', 'FigPos', 'FigPage'])
         df = df.append(pgdf, ignore_index=True)
     return df
 

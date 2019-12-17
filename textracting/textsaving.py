@@ -225,3 +225,5 @@ if __name__ == "__main__":
     #pagelineinfo()
     #clean_page()
     restructpagelines()
+    #doc = json.load(open('training/cleanpage/cr_26114_1_cleanpage.json', "r"))
+    #textracting.get_restructpagelines(doc)

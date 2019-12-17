@@ -144,7 +144,7 @@ def get_restructpagelines(doc):
                 bb = {'width': line['BoundingBox']['Width'], 'height': [line['BoundingBox']['Height']],
                       'left': [line['BoundingBox']['Left']], 'top': [line['BoundingBox']['Top']]}
 
-            else: # text is added straight to lines (case: last line in the document)
+            else: # text is added straight to lines (last non-restructed text in the doc)
                 lines.append(text)
                 if page[0] in pageinfo:
                     pageinfo[page[0]].append(line)
@@ -154,8 +154,19 @@ def get_restructpagelines(doc):
 
             prev_y = y
 
+        #  (case: last line in the document)
         lines.append(ln)
         pagelines[page[0]] = lines
+
+        avgconf = np.average(np.array(conf))
+        sumwidth = bb['width']
+        maxheight = np.max(np.array(bb['height']))
+        minleft = np.min(np.array(bb['left']))
+        avgtop = np.average(np.array(bb['top']))
+        lnnum += 1
+        if page[0] in pageinfo:
+            pageinfo[page[0]].append({'LineNum': lnnum, 'Text': ln, 'Confidence': avgconf, 'BoundingBox': {
+                'Width': sumwidth, 'Height': maxheight, 'Left': minleft, 'Top': avgtop}})
 
     return pagelines, pageinfo
 
