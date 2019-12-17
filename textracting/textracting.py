@@ -167,6 +167,9 @@ def get_restructpagelines(doc):
         if page[0] in pageinfo:
             pageinfo[page[0]].append({'LineNum': lnnum, 'Text': ln, 'Confidence': avgconf, 'BoundingBox': {
                 'Width': sumwidth, 'Height': maxheight, 'Left': minleft, 'Top': avgtop}})
+        else: # in the case a page has only one line
+            pageinfo[page[0]] = [{'LineNum': lnnum, 'Text': ln, 'Confidence': avgconf, 'BoundingBox': {
+                'Width': sumwidth, 'Height': maxheight, 'Left': minleft, 'Top': avgtop}}]
 
     return pagelines, pageinfo
 
