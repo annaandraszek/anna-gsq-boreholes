@@ -8,7 +8,8 @@ import sklearn
 from sklearn import tree
 import pickle
 import os
-
+import matplotlib.pyplot as plt
+import matplotlib
 
 def create_dataset():
     df = pd.DataFrame(columns=['DocID', 'PageNum', 'MedConfidence', 'AvgConfidence', 'RangeConfidence', 'IQRConfidence','MedLineLen', 'ContainsFigWord', 'ContainsFigLn', 'FigPos', 'FigPage'])
@@ -53,18 +54,20 @@ def create_dataset():
     return df
 
 
-def data_prep(data, y=False):
-    data = data.drop(['Comments'], axis=1)
-    data = data.dropna()
+def data_prep(data, y=False, limited_cols=None):
     X = data.drop(['DocID', 'FigPage'], axis=1)
+
+    if limited_cols:
+        X = X.drop(limited_cols, axis=1)
+
     if y:
-        Y = data.TOCPage
+        Y = data['FigPage']
         return X, Y
     return X
 
 
-def train(data):
-    X, Y = data_prep(data, y=True)
+def train(data, model_file=settings.fig_tree_model_file, limited_cols=None):
+    X, Y = data_prep(data, y=True, limited_cols=limited_cols)
     X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.33)
     clf = tree.DecisionTreeClassifier()
     clf = clf.fit(X_train, y_train)
@@ -73,8 +76,37 @@ def train(data):
     print(accuracy)
     #tree.plot_tree(clf, feature_names=['PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord'], class_names=True, filled=True)
     #plt.show()
-    with open(settings.fig_tree_model_file, "wb") as file:
+    with open(model_file, "wb") as file:
         pickle.dump(clf, file)
+
+
+def train_several(X_train, X_test, y_train, y_test, limited_col=None):
+    if limited_col:
+        col = limited_col
+        xtra = X_train.drop([col], axis=1)
+        xtes = X_test.drop([col], axis=1)
+
+        clf = tree.DecisionTreeClassifier()
+        clf = clf.fit(xtra, y_train)
+        y_pred = clf.predict(xtes)
+        accuracy = sklearn.metrics.accuracy_score(y_test, y_pred)
+        print(accuracy)
+        tree.plot_tree(clf, feature_names=xtra.columns, class_names=['Not figure', 'Figure'], filled=True)
+        plt.savefig('fig_tree_' + limited_col + '.png')
+        with open("-" + col + '_' + settings.fig_tree_model_file, "wb") as file:
+            pickle.dump(clf, file)
+    else:
+        # control
+        clf = tree.DecisionTreeClassifier()
+        clf = clf.fit(X_train, y_train)
+        y_pred = clf.predict(X_test)
+        accuracy = sklearn.metrics.accuracy_score(y_test, y_pred)
+        print(accuracy)
+        tree.plot_tree(clf, feature_names=X_train.columns, class_names=['Not figure', 'Figure'], filled=True)
+        plt.savefig('fig_tree_1.png')
+        model_file = settings.fig_tree_model_file
+        with open(model_file, "wb") as file:
+            pickle.dump(clf, file)
 
 
 def classify_page(data):
@@ -96,9 +128,19 @@ def get_fig_pages(data_file='fig_dataset.csv'):
 
 
 if __name__ == "__main__":
-    dataset = create_dataset()
-    dataset.to_csv('fig_dataset.csv', index=False)
-    print(dataset)
-    #train(dataset)
+    #dataset = create_dataset()
+    #dataset.to_csv('fig_dataset.csv', index=False)
+    #print(dataset)
+    matplotlib.rcParams['figure.figsize'] = (20, 20)
+    data = 'fig_dataset.csv'
+    data = pd.read_csv(data)
+    X = data.drop(['DocID', 'FigPage'], axis=1)
+    Y = data['FigPage']
+    X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.33)
+
+    train_several(X_train, X_test, y_train, y_test)
+    train_several(X_train, X_test, y_train, y_test, limited_col='MedConfidence')
+    train_several(X_train, X_test, y_train, y_test, limited_col='AvgConfidence')
+
     #fig_pages = get_fig_pages()
     #print(fig_pages)
