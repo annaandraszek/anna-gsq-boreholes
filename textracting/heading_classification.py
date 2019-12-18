@@ -5,46 +5,13 @@ import json
 import numpy as np
 import re
 import sklearn
-
-def create_class_dataset():
-    df = pd.DataFrame(columns=['DocID', 'LineNum', 'LineText', 'Heading', 'HeadingType'])
-    lines_docs = sorted(glob.glob('training/restructpagelines/*'))
-    toc_pages = get_toc_pages()
-    for lines_doc in lines_docs:
-        pages = json.load(open(lines_doc))
-        docid = int(lines_doc.split('\\')[-1].replace('_1_restructpagelines.json', '').strip('cr_'))
-        tocpg = toc_pages.loc[toc_pages['DocID'] == docid]
-        try:
-            page = tocpg.PageNum.values[0]
-            for lines in pages.items():
-                if lines[0] == str(page):
-                    docset = []
-                    for line, i in zip(lines[1], range(len(lines[1]))):
-                        heading = 'None'
-                        headingType = 'None'
-                        if re.match(r'^([0-9]+\.[0-9]+\s+\w+)', line):
-                            heading = 'Sub'
-                        elif re.match(r'^[0-9]+\.*\s+\w+', line):
-                            heading = 'Head'
-
-                        if 'summary' in line.lower() and i < 10:  # heuristic to help tagging
-                            headingType = 'Summ'
-
-                        if heading == 'Head' or heading == 'Sub':
-                            if 'introduction' in line.lower() and i < 15:  # heuristic to help tagging
-                                headingType = 'Intro'
-
-                            elif 'work' in line.lower() or 'exploration' in line.lower() or 'drill' in line.lower():
-                                headingType = 'Work'
-
-                        docset.append([docid, i, line, heading, headingType])
-                    pgdf = pd.DataFrame(data=docset, columns=['DocID', 'LineNum', 'LineText', 'Heading', 'HeadingType'])
-                    df = df.append(pgdf, ignore_index=True)
-        except IndexError:
-            print("IndexError ", tocpg, docid)
-    df.to_csv("heading_datasetv2.csv", index=False)
-    return df
-
+import pickle
+import settings
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import TfidfTransformer
+from sklearn.naive_bayes import ComplementNB
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import classification_report
 
 def strip_numbers(string):
     return re.sub(r'[0-9]', '', string)
@@ -140,11 +107,43 @@ def create_identification_dataset():
     return df
 
 
+def data_prep(df, y=False):
+    X = df.SectionText
+    if y:
+        Y = df.Heading
+        return X, Y
+    else:
+        return X
 
+
+def train(data, model_file=settings.headid_nb_model_file):
+    X, Y = data_prep(data, y=True)
+    X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.33)
+    clf = Pipeline([('vect', CountVectorizer()),
+                              ('tfidf', TfidfTransformer()),
+                              ('clf', ComplementNB(norm=True))])  # pipeline of fit/transforms
+
+    clf = clf.fit(X_train, y_train)
+    y_pred = clf.predict(X_test)
+    accuracy = sklearn.metrics.accuracy_score(y_test, y_pred)
+    print(accuracy)
+    print(classification_report(y_train, clf.predict(X_train)))
+    with open(model_file, "wb") as file:
+        pickle.dump(clf, file)
+
+
+def predict(string):
+    with open(settings.fig_tree_model_file, "rb") as file:
+        model = pickle.load(file)
+    pred = model.predict([string])
+    return pred
 
 
 if __name__ == "__main__":
     #df = create_identification_dataset()
-    df = pre_process_id_dataset()
-    df.to_csv('processed_heading_id_datasetv2.csv', index=False)
-    #print(df)
+    #df = pre_process_id_dataset()
+    #df.to_csv('processed_heading_id_datasetv2.csv', index=False)
+    #df = pd.read_csv('processed_heading_id_datasetv2.csv')
+    #train(df)
+    #p = predict('cyfra geology cyfra')
+    #print(p)
