@@ -13,17 +13,6 @@ from sklearn.naive_bayes import ComplementNB
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import classification_report
 
-def strip_numbers(string):
-    return re.sub(r'[0-9]', '', string)
-
-
-def strip_punctuation(string):
-    return str.strip('.')
-
-
-def strip_all_but_words_spaces(string):
-    return re.sub(r"[^\w\s]", "", string)
-
 
 def split_prefix(string):
     s = re.split(r'(^[0-9]+\.*[0-9]*\.*[0-9]*)', string, 1)
@@ -42,6 +31,23 @@ def split_pagenum(string):
         s = [s[0], s[1]]
     return s
 
+
+def num2cyfra1(string):
+    s = ''
+    prev_c = ''
+    i = 1
+    for c in string:
+        if re.match(r'[0-9]', c):
+            if prev_c != 'num':
+                s += 'cyfra' + str(i) + ' '
+                i += 1
+                prev_c = 'num'
+        elif c == '.':
+            s += 'punkt '
+            prev_c = '.'
+    return s
+
+
 def num2cyfra(string):
     s = ''
     prev_c = ''
@@ -55,7 +61,7 @@ def num2cyfra(string):
             prev_c = '.'
     return s
 
-def pre_process_id_dataset():
+def pre_process_id_dataset(pre='cyfra'):
     df = pd.read_csv("heading_id_dataset.csv")
     # break up the LineText column into SectionPrefix, SectionText, and SectionPage
     newdf = pd.DataFrame(columns=['DocID', 'LineNum', 'SectionPrefix', 'SectionText', 'SectionPage', 'Heading'])
@@ -66,8 +72,12 @@ def pre_process_id_dataset():
     newdf.SectionPrefix, newdf.SectionText = zip(*df.LineText.map(split_prefix))
     newdf.SectionText, newdf.SectionPage = zip(*newdf.SectionText.map(split_pagenum))
 
-    newdf.SectionPrefix = newdf.SectionPrefix.apply(lambda x: num2cyfra(x))
-    newdf.SectionPage = newdf.SectionPage.apply(lambda x: num2cyfra(x))
+    if pre == 'cyfra1':
+        newdf.SectionPrefix = newdf.SectionPrefix.apply(lambda x: num2cyfra1(x))
+        newdf.SectionPage = newdf.SectionPage.apply(lambda x: num2cyfra1(x))
+    else:
+        newdf.SectionPrefix = newdf.SectionPrefix.apply(lambda x: num2cyfra(x))
+        newdf.SectionPage = newdf.SectionPage.apply(lambda x: num2cyfra(x))
 
     newdf.replace('', np.nan, inplace=True)
     newdf.dropna(inplace=True, subset=['SectionText'])
@@ -116,7 +126,7 @@ def data_prep(df, y=False):
         return X
 
 
-def train(data, model_file=settings.headid_nb_model_file):
+def train(data, pre='cyfra', model_file=settings.headid_nb_model_file):
     X, Y = data_prep(data, y=True)
     X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.33)
     clf = Pipeline([('vect', CountVectorizer()),
@@ -125,25 +135,34 @@ def train(data, model_file=settings.headid_nb_model_file):
 
     clf = clf.fit(X_train, y_train)
     y_pred = clf.predict(X_test)
+
     accuracy = sklearn.metrics.accuracy_score(y_test, y_pred)
     print(accuracy)
-    print(classification_report(y_train, clf.predict(X_train)))
-    with open(model_file, "wb") as file:
+    report = classification_report(y_train, clf.predict(X_train))
+    print(report)
+    with open(pre + '_CNBreport.txt', "w") as r:
+        r.write(report)
+    with open(pre + model_file, "wb") as file:
         pickle.dump(clf, file)
 
 
-def predict(string):
-    with open(settings.fig_tree_model_file, "rb") as file:
+def predict(inputs):
+    if isinstance(inputs, str):
+        inputs = [inputs]
+    with open(settings.headid_nb_model_file, "rb") as file:
         model = pickle.load(file)
-    pred = model.predict([string])
+    pred = model.predict(inputs)
     return pred
 
 
 if __name__ == "__main__":
     #df = create_identification_dataset()
-    #df = pre_process_id_dataset()
-    #df.to_csv('processed_heading_id_datasetv2.csv', index=False)
-    #df = pd.read_csv('processed_heading_id_datasetv2.csv')
-    #train(df)
-    #p = predict('cyfra geology cyfra')
-    #print(p)
+    pre = 'cyfra'
+    df = pre_process_id_dataset(pre)
+    df.to_csv('processed_heading_id_dataset_' + pre + '.csv', index=False)
+    #df = pd.read_csv('processed_heading_id_dataset_cyfra1.csv')
+    train(df, pre)
+    #to_predict = df.SectionText
+    #p = predict(to_predict)
+    #for i, j in zip(to_predict, p):
+    #    print(i, j)

@@ -2,6 +2,7 @@
 report_local_path = 'training/QDEX/'
 toc_tree_model_file = 'toc_tree_model.pkl'
 fig_tree_model_file = 'fig_tree_model.pkl'
+headid_nb_model_file = 'cnb_head_id_model.pkl'
 
 def get_report_name(file_id, local_path=False, file_extension=False):
     file = ''
