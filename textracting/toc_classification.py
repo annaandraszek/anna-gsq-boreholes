@@ -116,9 +116,9 @@ def create_dataset():
 
 
 def data_prep(data, y=False):
-    data = data.drop(['Comments'], axis=1)
+    #data = data.drop(['Comments'], axis=1)
     data = data.dropna()
-    X = data.drop(['DocID', 'TOCPage'], axis=1)
+    X = data[['PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord']]
     if y:
         Y = data.TOCPage
         return X, Y
@@ -149,7 +149,8 @@ def classify_page(data):
     return pred
 
 
-def get_toc_pages(data_file='toc_dataset.csv'):
+def get_toc_pages(docid):
+    data_file = settings.production_path + docid + '_toc_dataset.csv'
     df = pd.read_csv(data_file)
     classes = classify_page(df)
     mask = np.array([True if i==1 else False for i in classes])
