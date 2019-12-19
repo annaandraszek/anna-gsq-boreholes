@@ -61,6 +61,18 @@ def num2cyfra(string):
             prev_c = '.'
     return s
 
+
+def num2strona(string):
+    s = ''
+    prev_c = ''
+    for c in string:
+        if re.match(r'[0-9]', c):
+            if prev_c != 'num':
+                s += 'strona '
+                prev_c = 'num'
+    return s
+
+
 def pre_process_id_dataset(pre='cyfra'):
     df = pd.read_csv("heading_id_dataset.csv")
     # break up the LineText column into SectionPrefix, SectionText, and SectionPage
@@ -72,12 +84,15 @@ def pre_process_id_dataset(pre='cyfra'):
     newdf.SectionPrefix, newdf.SectionText = zip(*df.LineText.map(split_prefix))
     newdf.SectionText, newdf.SectionPage = zip(*newdf.SectionText.map(split_pagenum))
 
-    if pre == 'cyfra1':
+    if 'cyfra1' in pre:
         newdf.SectionPrefix = newdf.SectionPrefix.apply(lambda x: num2cyfra1(x))
         newdf.SectionPage = newdf.SectionPage.apply(lambda x: num2cyfra1(x))
     else:
         newdf.SectionPrefix = newdf.SectionPrefix.apply(lambda x: num2cyfra(x))
         newdf.SectionPage = newdf.SectionPage.apply(lambda x: num2cyfra(x))
+
+    if 'strona' in pre:
+        newdf.SectionPage = newdf.SectionPage.apply(lambda x: num2strona(x))
 
     newdf.replace('', np.nan, inplace=True)
     newdf.dropna(inplace=True, subset=['SectionText'])
@@ -157,11 +172,11 @@ def predict(inputs):
 
 if __name__ == "__main__":
     #df = create_identification_dataset()
-    pre = 'cyfra'
+    pre = 'cyfra1strona'
     df = pre_process_id_dataset(pre)
     df.to_csv('processed_heading_id_dataset_' + pre + '.csv', index=False)
     #df = pd.read_csv('processed_heading_id_dataset_cyfra1.csv')
-    train(df, pre)
+    #train(df, pre)
     #to_predict = df.SectionText
     #p = predict(to_predict)
     #for i, j in zip(to_predict, p):

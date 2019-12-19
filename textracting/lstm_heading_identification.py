@@ -14,7 +14,7 @@ from keras.layers import LSTM, Dense
 from keras.utils import to_categorical
 import numpy as np
 import pandas as pd
-
+import re
 
 class NeuralNetwork(): #give this arguments like: model type, train/test file
     #max_words = 900
@@ -32,9 +32,6 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
         #df.reset_index(drop=True, inplace=True)
         self.X = df['SectionText']
         Y = df['Heading']
-        #le = LabelEncoder()
-        #Y = le.fit_transform(Y)
-        #Y = Y.reshape(-1, 1)
         self.Y = Y
         self.max_words, self.max_len = check_maxlens(df)
         self.tok = Tokenizer(num_words=self.max_words)
@@ -61,18 +58,6 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
 
 
     def StackedLSTM(self):
-        # hidden_size = 256
-        # inputs = Input(name='inputs',shape=[self.max_len])
-        # layer = Embedding(self.max_words,hidden_size,input_length=self.max_len)(inputs)
-        # layer =
-        # layer = LSTM(hidden_size, return_sequences=True)(layer)
-        # layer = Dropout(0.5)(layer)
-        # layer = TimeDistributed(Dense(1, name='out_layer'))(inputs)
-        # layer = Activation('softmax')(layer)
-        # model = Model(inputs=inputs,outputs=layer)
-        # return model
-        #
-
         # Stacked LSTM for sequence classification from https://keras.io/getting-started/sequential-model-guide/
         model = Sequential()
         model.add(LSTM(32, return_sequences=True, input_shape=self.max_len))
@@ -102,13 +87,29 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
 
 
     def predict(self, strings):
-        encoded = [heading_identification.num2cyfra1(s) for s in strings]
+        encoded = [num2cyfra1(s) for s in strings]
         sequences = self.tok.texts_to_sequences(encoded)
         sequences_matrix = sequence.pad_sequences(sequences, maxlen=self.max_len)
         predictions = self.model.predict(sequences_matrix)
-        #classification = ['unit' if p > 0.5 else 'property'for p in predictions]
-        #return predictions#, classification
         return predictions, np.argmax(predictions, axis=1)
+
+
+def num2cyfra1(string):
+    s = ''
+    prev_c = ''
+    i = 1
+    for c in string:
+        if re.match(r'[0-9]', c):
+            if prev_c != 'num':
+                s += 'cyfra' + str(i) + ' '
+                i += 1
+                prev_c = 'num'
+        elif c == '.':
+            s += 'punkt '
+            prev_c = '.'
+        else:
+            s+= c
+    return s
 
 
 def check_maxlens(df):
@@ -125,7 +126,8 @@ if __name__ == '__main__':
     nn = NeuralNetwork(data)
     #nn.train()
     nn.load_model_from_file()
-    p, r = nn.predict(['4.3 drilling', 'Introduction 2', 'lirowjls', 'figure drilling', '5 . 9 . geology of culture 6', '1 . introduction', '8 . 1 introduction 9'])
+    p, r = nn.predict(['4.3 drilling', 'Introduction 1', 'lirowjls', 'figure drilling', '5 . 9 . geology of culture 5', '1 . introduction', '8 . 1 introduction 7'])
+        #['4.3 drilling', 'Introduction strona', 'lirowjls', 'figure drilling', '5 . 9 . geology of culture strona', '1 . introduction', '8 . 1 introduction strona'])
     print(p)
     print('------------------')
     print(r)
