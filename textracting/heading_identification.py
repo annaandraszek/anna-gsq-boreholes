@@ -73,13 +73,14 @@ def num2strona(string):
     return s
 
 
-def pre_process_id_dataset(pre='cyfra'):
-    df = pd.read_csv("heading_id_dataset.csv")
+def pre_process_id_dataset(pre='cyfra', datafile=settings.dataset_path + "heading_id_dataset.csv", training=True):
+    df = pd.read_csv(datafile)
     # break up the LineText column into SectionPrefix, SectionText, and SectionPage
-    newdf = pd.DataFrame(columns=['DocID', 'LineNum', 'SectionPrefix', 'SectionText', 'SectionPage', 'Heading'])
+    newdf = pd.DataFrame(columns=['DocID', 'LineNum', 'SectionPrefix', 'SectionText', 'SectionPage'])
     newdf.DocID = df.DocID
     newdf.LineNum = df.LineNum
-    newdf.Heading = df.Heading
+    if training:
+        newdf['Heading'] = df.Heading
 
     newdf.SectionPrefix, newdf.SectionText = zip(*df.LineText.map(split_prefix))
     newdf.SectionText, newdf.SectionPage = zip(*newdf.SectionText.map(split_pagenum))
