@@ -102,6 +102,9 @@ def get_restructpagelines(doc):
         conf = []
         bb = {'width':0, 'height': [], 'left': [], 'top': []}
         lnnum = 0
+        L1 = None
+        Llast = None
+        Wlast = None
         for line in page[1]:
             text = line['Text']
             y = line['BoundingBox']['Top']
@@ -113,6 +116,9 @@ def get_restructpagelines(doc):
                 bb['height'].append(line['BoundingBox']['Height'])
                 bb['left'].append(line['BoundingBox']['Left'])
                 bb['top'].append(line['BoundingBox']['Top'])
+                L1 = line['BoundingBox']['Left']
+                Llast = L1
+                Wlast = line['BoundingBox']['Width']
 
             elif prev_y - 0.0075 <= y <= prev_y + 0.0075: # filled line has text added to
                 ln += " \t" + text
@@ -121,26 +127,31 @@ def get_restructpagelines(doc):
                 bb['height'].append(line['BoundingBox']['Height'])
                 bb['left'].append(line['BoundingBox']['Left'])
                 bb['top'].append(line['BoundingBox']['Top'])
+                Llast = line['BoundingBox']['Left']
+                Wlast = line['BoundingBox']['Width']
 
             elif len(ln) != 0: # line is emptied, new text is added
                 avgconf = np.average(np.array(conf))
-                sumwidth = bb['width']
+                wordswidth = bb['width']
+                totalwidth = Llast + Wlast - L1
                 maxheight = np.max(np.array(bb['height']))
                 minleft = np.min(np.array(bb['left']))
                 avgtop = np.average(np.array(bb['top']))
                 lnnum += 1
+                new_entry = {'LineNum': lnnum, 'Text': ln, 'Confidence': avgconf, 'WordsWidth': wordswidth, 'BoundingBox': {
+                    'Width': totalwidth, 'Height': maxheight, 'Left': minleft, 'Top': avgtop}}
 
                 if page[0] in pageinfo:
-                    pageinfo[page[0]].append({'LineNum': lnnum, 'Text': ln, 'Confidence': avgconf, 'BoundingBox': {
-                    'Width': sumwidth, 'Height': maxheight, 'Left': minleft, 'Top': avgtop}})
+                    pageinfo[page[0]].append(new_entry)
                 else:
-                    pageinfo[page[0]] = [{'LineNum': lnnum, 'Text': ln, 'Confidence': avgconf, 'BoundingBox': {
-                    'Width': sumwidth, 'Height': maxheight, 'Left': minleft, 'Top': avgtop}}]
+                    pageinfo[page[0]] = [new_entry]
 
                 lines.append(ln)
-
                 ln = text
                 conf = [line['Confidence']]
+                L1 = line['BoundingBox']['Left']
+                Llast = L1
+                Wlast = line['BoundingBox']['Width']
                 bb = {'width': line['BoundingBox']['Width'], 'height': [line['BoundingBox']['Height']],
                       'left': [line['BoundingBox']['Left']], 'top': [line['BoundingBox']['Top']]}
 
@@ -151,6 +162,7 @@ def get_restructpagelines(doc):
                 else:
                     pageinfo[page[0]] = line
                 pageinfo[page[0]][lnnum]['LineNum'] = lnnum
+                pageinfo[page[0]][lnnum]['WordsWidth'] = pageinfo[page[0]][lnnum]['BoundingBox']['Width']
 
             prev_y = y
 
@@ -159,17 +171,19 @@ def get_restructpagelines(doc):
         pagelines[page[0]] = lines
 
         avgconf = np.average(np.array(conf))
-        sumwidth = bb['width']
+        wordswidth = bb['width']
+        totalwidth = Llast + Wlast - L1
         maxheight = np.max(np.array(bb['height']))
         minleft = np.min(np.array(bb['left']))
         avgtop = np.average(np.array(bb['top']))
         lnnum += 1
+        new_entry = {'LineNum': lnnum, 'Text': ln, 'Confidence': avgconf, 'WordsWidth': wordswidth, 'BoundingBox': {
+            'Width': totalwidth, 'Height': maxheight, 'Left': minleft, 'Top': avgtop}}
+
         if page[0] in pageinfo:
-            pageinfo[page[0]].append({'LineNum': lnnum, 'Text': ln, 'Confidence': avgconf, 'BoundingBox': {
-                'Width': sumwidth, 'Height': maxheight, 'Left': minleft, 'Top': avgtop}})
+            pageinfo[page[0]].append(new_entry)
         else: # in the case a page has only one line
-            pageinfo[page[0]] = [{'LineNum': lnnum, 'Text': ln, 'Confidence': avgconf, 'BoundingBox': {
-                'Width': sumwidth, 'Height': maxheight, 'Left': minleft, 'Top': avgtop}}]
+            pageinfo[page[0]] = [new_entry]
 
     return pagelines, pageinfo
 
