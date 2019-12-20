@@ -17,19 +17,28 @@ class Report():
         self.toc_dataset_path = settings.production_path + docid + '_toc_dataset.csv'
         self.head_id_dataset_path = settings.production_path + docid + '_headid_dataset.csv'
         self.head_id_dataset_path_proc = settings.production_path +  docid + '_proc_headid_dataset.csv'
+        self.docinfo = self.get_doc_info()
+        self.doclines = self.get_doc_lines()
         self.toc_page = self.get_toc_page()
         self.headings, self.subheadings = self.get_headings()
+        self.pagenum_pos = None # header or footer if pagenumbers
+        self.section_ptrs = self.get_sections()  # section_ptrs = [{HeadingText: , PageNum: , LineNum: }]
+
+    def get_doc_lines(self):
+        pagelines = settings.get_restructpagelines_file(self.docid)
+        pl = json.load(open(pagelines, "r"))
+        return pl
+
+    def get_doc_info(self):
+        pageinfo = settings.get_restructpageinfo_file(self.docid)
+        pi = json.load(open(pageinfo, "r"))
+        return pi
 
     def create_toc_dataset(self):
-        pageinfo = settings.get_restructpageinfo_file(self.docid)
-        pagelines = settings.get_restructpagelines_file(self.docid)
-        pi = json.load(open(pageinfo, "r"))
-        pl = json.load(open(pagelines, "r"))
+        docset = np.zeros((len(self.docinfo.items()), 5))
+        #docid = pageinfo.split('/')[-1].replace('_1_restructpageinfo.json', '').strip('cr_')
 
-        docset = np.zeros((len(pi.items()), 5))
-        docid = pageinfo.split('/')[-1].replace('_1_restructpageinfo.json', '').strip('cr_')
-
-        for info, lines, j, in zip(pi.items(), pl.items(), range(len(pi.items()))):
+        for info, lines, j, in zip(self.docinfo.items(), self.doclines.items(), range(len(self.docinfo.items()))):
             toc = 0
             c = 0
             for line in lines[1]:
@@ -38,7 +47,7 @@ class Report():
                     if 'table of contents' in line.lower():
                         toc = 1
 
-            docset[j] = np.array([docid, info[0], len(lines[1]), toc, c])
+            docset[j] = np.array([self.docid, info[0], len(lines[1]), toc, c])
         pgdf = pd.DataFrame(data=docset, columns=['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord'])
         pgdf.to_csv(self.toc_dataset_path, index=False)
         return pgdf
@@ -60,18 +69,19 @@ class Report():
         refdf = pd.read_csv(settings.dataset_path + 'processed_heading_id_dataset.csv')
         refdf = refdf.loc[refdf['DocID'] == float(self.docid)]
         x_labels = refdf[['SectionPrefix', 'SectionText', 'SectionPage']]
+        x_labels.reset_index(drop=True, inplace=True)
         x = pd.read_csv(self.head_id_dataset_path_proc)['SectionText']
         _, res = model.predict(x)
         headings = pd.DataFrame(columns=['SectionPrefix', 'SectionText', 'SectionPage'])
         subheadings = pd.DataFrame(columns=['SectionPrefix', 'SectionText', 'SectionPage'])
-        neither= []
-        for line, pred in zip(x_labels, res):
-            if pred == 0:
-                neither.append(line)
-            elif pred == 1:
-                headings.append(line, ignore_index=True)
+        #neither = []
+        for i, pred in zip(range(len(res)), res):
+            #if pred == 0:
+            #print(x_labels.iloc[i])
+            if pred == 1:
+                headings = headings.append(x_labels.iloc[i], ignore_index=True)
             elif pred == 2:
-                subheadings.append(line, ignore_index=True)
+                subheadings = subheadings.append(x_labels.iloc[i], ignore_index=True)
         return headings, subheadings
 
     def create_identification_dataset(self):
@@ -87,15 +97,61 @@ class Report():
         df.to_csv(self.head_id_dataset_path, index=False)
         return df
 
+    def get_pagenum(self, page):
+        if self.pagenum_pos == 'Header':
+            if re.search(r'\t\d+', page[1][0]['Text']):
+                pagenum = re.search(r'\t\d+', page[1][0]['Text']).group(0)
+        else:
+            if re.search(r'\t\d+', page[1][-1]['Text']):
+                pagenum = re.search(r'\t\d+', page[1][-1]['Text']).group(0)
+        return pagenum.strip()
 
-def get_pagenum(pos, page):
-    if pos == 'Header':
-        if re.search(r'\t\d+', page[0]):
-            pagenum = re.search(r'\d+', first_line).group(0)
-    else:
-        if re.search(r'\t\d+', page[-1]):
-            pagenum = re.search(r'\d+', last_line).group(0)
-    return pagenum
+    def get_sections(self):
+        h = 0
+        sections_ptrs = []
+        doc = self.docinfo
+        hpage = self.headings['SectionPage']
+        hnum = self.headings['SectionPrefix']
+        htext = self.headings['SectionText']
+
+        for page in doc.items():
+            if int(page[0]) != self.toc_page:
+                first_line = page[1][0]
+                last_line = page[1][-1]
+                pagenum = False
+
+                if re.search(r'\t\d+', first_line['Text']):
+                    pagenum = re.search(r'\t\d+', first_line['Text']).group(0)
+                    self.pagenum_pos = 'Header'
+                elif re.search(r'\t\d+', last_line['Text']):
+                    pagenum = re.search(r'\t\d+', last_line['Text']).group(0)
+                    self.pagenum_pos = 'Footer'
+
+                for line in page[1]:
+                    if h >= len(htext):
+                        break
+                    hstr = re.sub('\t', '', htext[h]).strip()
+                    if hstr in line['Text']:
+                        try:
+                            if str(hnum[h]) in line['Text']:
+                                if pagenum:
+                                    pg = self.get_pagenum(page)
+                                    if int(pg) == int(hpage[h]):
+                                        sections_ptrs.append({'HeadingText': str(hnum[h]) + " " + hstr + " " + str(hpage[h]),
+                                                              'PageNum': page[0], 'LineNum': line['LineNum']})
+                                    else:
+                                        print("Pagenum in TOC doesn't match pagenum on page for heading: ", str(hnum[h]), hstr, str(hpage[h]))
+                                        print("actual page: ", pagenum)
+                        except TypeError:
+                            print('Nan page')
+                        else:
+                            sections_ptrs.append({'HeadingText': str(hnum[h]) + " " + hstr + " " + str(hpage[h]),
+                                                          'PageNum': page[0], 'LineNum': line['LineNum']})
+                        h += 1
+        return sections_ptrs
+        # once have all header positions, can return the text in between them
+
+
 
 
 if __name__ == '__main__':
@@ -103,45 +159,6 @@ if __name__ == '__main__':
     # from toc page, transform content into dataset of headings for heading identification, identify headings, and return headings and subheadings
 
     r = Report('26525')
-    print("Headings: \n", r.headings)
-    print("Subheadings: \n", r.subheadings)
-    heading = r.headings
-    pagenum_pos = False # does the document have page numbers, and if so, where
-    h = 0
-    found_headings = []
-    # working with restructpageinfo and restructpagelines
-    for page in doc:
-        first_line = page[0]
-        last_line = page[-1]
-        pagenum = False
-
-        # look for page numbers in the header or footer
-        if re.search(r'\t\d+', first_line):
-            pagenum = re.search(r'\d+', first_line).group(0)
-            pagenum_pos = 'Header'
-        elif re.search(r'\t\d+', last_line):
-            pagenum = re.search(r'\d+', last_line).group(0)
-            pagenum_pos = 'Footer'
-
-        # go through each page looking for lines that may fit heading heuristics or just match the heading
-        for line in page:
-            # headings can be a distance of X different....figure this out
-            hpage = heading['SectionPage']
-            hnum = heading['SectionPrefix']
-            htext = heading['SectionText']
-
-            if htext[h] in line and hnum[h] in line:
-                # if find a match, increment heading counter to next look for next heading
-                h += 1
-                # if have page numbers, should be able to confirm heading pagenum vs current pagenum
-                if pagenum:
-                    pg = get_pagenum(pagenum_pos, page)
-                    if pg == hpage[h]:
-                    # create a pointer to that section in the text
-                    # found_headings.append([page_number, line_number])
-                    else:
-                        print("Pagenum in TOC doesn't match pagenum on page for heading: ", hnum, htext, hpage)
-                        print("actual page: ", pagenum)
-
-        # once have all header positions, can return the text in between them
-
+    #print("Headings: \n", r.headings)
+    #print("Subheadings: \n", r.subheadings)
+    print("Sections at: \n", r.section_ptrs)
