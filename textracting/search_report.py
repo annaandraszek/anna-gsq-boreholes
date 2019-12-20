@@ -131,22 +131,22 @@ class Report():
                     if h >= len(htext):
                         break
                     hstr = re.sub('\t', '', htext[h]).strip()
+                    if hnum[h] != hnum[h]:
+                        hnum[h] = ''
+                    if hpage[h] != hpage[h]:
+                        hpage[h] = ''
+
                     if hstr in line['Text']:
-                        try:
-                            if str(hnum[h]) in line['Text']:
-                                if pagenum:
-                                    pg = self.get_pagenum(page)
-                                    if int(pg) == int(hpage[h]):
-                                        sections_ptrs.append({'HeadingText': str(hnum[h]) + " " + hstr + " " + str(hpage[h]),
+                        if str(hnum[h]) in line['Text']:
+                            if pagenum:
+                                pg = self.get_pagenum(page)
+                                if int(pg) == hpage[h]:
+                                    sections_ptrs.append({'HeadingText': str(hnum[h]) + " " + hstr + " " + str(hpage[h]),
                                                               'PageNum': page[0], 'LineNum': line['LineNum']})
-                                    else:
-                                        print("Pagenum in TOC doesn't match pagenum on page for heading: ", str(hnum[h]), hstr, str(hpage[h]))
-                                        print("actual page: ", pagenum)
                                 else:
-                                    sections_ptrs.append(
-                                        {'HeadingText': str(hnum[h]) + " " + hstr + " " + str(hpage[h]),
-                                         'PageNum': page[0], 'LineNum': line['LineNum']})
-                        except TypeError:
+                                    print("Pagenum in TOC doesn't match pagenum on page for heading: ", str(hnum[h]), hstr, str(hpage[h]))
+                                    print("actual page: ", pagenum)
+                        else:
                             sections_ptrs.append({'HeadingText': str(hnum[h]) + " " + hstr + " " + str(hpage[h]),
                                                           'PageNum': page[0], 'LineNum': line['LineNum']})
                         h += 1
@@ -160,7 +160,7 @@ if __name__ == '__main__':
     # transform document pages into dataset of pages for toc classification, classify pages, and isolate toc
     # from toc page, transform content into dataset of headings for heading identification, identify headings, and return headings and subheadings
 
-    r = Report('26525')
-    #print("Headings: \n", r.headings)
-    #print("Subheadings: \n", r.subheadings)
+    r = Report('27972')
+    print("Headings: \n", r.headings)
+    print("Subheadings: \n", r.subheadings)
     print("Sections at: \n", r.section_ptrs)
