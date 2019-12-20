@@ -142,9 +142,11 @@ class Report():
                                     else:
                                         print("Pagenum in TOC doesn't match pagenum on page for heading: ", str(hnum[h]), hstr, str(hpage[h]))
                                         print("actual page: ", pagenum)
+                                else:
+                                    sections_ptrs.append(
+                                        {'HeadingText': str(hnum[h]) + " " + hstr + " " + str(hpage[h]),
+                                         'PageNum': page[0], 'LineNum': line['LineNum']})
                         except TypeError:
-                            print('Nan page')
-                        else:
                             sections_ptrs.append({'HeadingText': str(hnum[h]) + " " + hstr + " " + str(hpage[h]),
                                                           'PageNum': page[0], 'LineNum': line['LineNum']})
                         h += 1
