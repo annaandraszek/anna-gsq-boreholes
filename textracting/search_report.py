@@ -208,26 +208,27 @@ class Report():
 
         content = []
         sections = []
+        end = False
         for page in range(start_page, len(self.doclines.items()) +2): # +1 because index starts at 1, +1 to include last element
             try:
                 for linenum in range(len(self.doclines[str(page)])):
-
-                    if linenum == 0 and self.marginals_type == 'Header':  # don't include header/footer in the section content
-                        continue  # AND store header/footer bounding box (assuming will be the same on each page, or
-                        # very close) and only delete if line within it - stops removing figure/table pages without header/footer
+                    line = self.doclines[str(page)][linenum]
+                    line_info = self.docinfo[str(page)][linenum]
+                    if linenum == 0 and self.marginals_type == 'Header':
+                        if self.check_if_line_is_marginal(line_info):
+                            continue
                     if linenum == len(self.doclines[str(page)]) and self.marginals_type == 'Footer':
-                        continue
+                        if self.check_if_line_is_marginal(line_info):
+                            continue
 
                     if page == end_page and linenum == end_line:  # if end of section
                         section = {'Heading': name, 'Content': content}
                         sections.append(section)
 
                         if section_num != len(self.section_ptrs) - 1: # if there is a next section
-                            section_num +=1
                             content = []
-                            line = self.doclines[str(page)][linenum]
                             content.append(line)
-
+                            section_num +=1
                             ptr = self.section_ptrs[section_num]
                             name = ptr['HeadingText']
 
@@ -238,8 +239,13 @@ class Report():
 
                         else:   # if next section is last section
                             end_page = len(self.doclines.items())+1
-                            end_line = len(self.doclines[str(end_page)])-1
+                            end_line = len(self.doclines[str(end_page)])
+                            end = True
 
+                    elif end and page == end_page and linenum == end_line-1: # if current section is last section, current line is last line in whole doc
+                        content.append(line)
+                        section = {'Heading': name, 'Content': content}
+                        sections.append(section)
 
                     elif page == start_page and linenum < start_line:  # if before start line on start page
                         continue
@@ -248,7 +254,7 @@ class Report():
                         continue
 
                     else:  # add line to content
-                        line = self.doclines[str(page)][linenum]
+                        #line = self.doclines[str(page)][linenum]
                         content.append(line)
             except KeyError:
                 print('Page ' + str(page) + ' is missing')
@@ -264,7 +270,7 @@ if __name__ == '__main__':
     #print("Subheadings: \n", r.subheadings)
     print("Sections at: \n", r.section_ptrs)
     json.dump(r.section_content, open('sections.json', 'w'))
-    #for section in r.section_content:
-    #    print(section['Heading'])
-    #    for line in section['Content']:
-    #        print(line)
+    for section in r.section_content:
+        print(section['Heading'])
+        for line in section['Content']:
+            print(line)
