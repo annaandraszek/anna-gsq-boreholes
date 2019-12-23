@@ -141,7 +141,7 @@ class Report():
                         if str(hnum[h]) in line['Text']:
                             if pagenum:
                                 pg = self.get_pagenum(page)
-                                if int(pg) == hpage[h]:
+                                if int(pg) == hpage[h] or hpage[h] == '':
                                     sections_ptrs.append({'HeadingText': str(hnum[h]) + " " + hstr + " " + str(hpage[h]),
                                                               'PageNum': int(page[0]), 'LineNum': int(line['LineNum'])})
                                 else:
@@ -178,6 +178,9 @@ class Report():
                         if section_num != len(self.section_ptrs) - 1: # if there is a next section
                             section_num +=1
                             content = []
+                            line = self.doclines[str(page)][linenum]
+                            content.append(line)
+
                             ptr = self.section_ptrs[section_num]
                             name = ptr['HeadingText']
 
@@ -189,6 +192,7 @@ class Report():
                         else:   # if next section is last section
                             end_page = len(self.doclines.items())+1
                             end_line = len(self.doclines[str(end_page)])-1
+
 
                     elif page == start_page and linenum < start_line:  # if before start line on start page
                         continue
