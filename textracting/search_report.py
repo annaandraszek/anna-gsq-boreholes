@@ -22,7 +22,8 @@ class Report():
         self.toc_page = self.get_toc_page()
         self.headings, self.subheadings = self.get_headings()
         self.pagenum_pos = None # header or footer if pagenumbers
-        self.section_ptrs = self.get_sections()  # section_ptrs = [{HeadingText: , PageNum: , LineNum: }]
+        self.section_ptrs = self.get_section_ptrs()  # section_ptrs = [{HeadingText: , PageNum: , LineNum: }]
+        self.section_content = self.get_sections()
 
     def get_doc_lines(self):
         pagelines = settings.get_restructpagelines_file(self.docid)
@@ -106,7 +107,7 @@ class Report():
                 pagenum = re.search(r'\t\d+', page[1][-1]['Text']).group(0)
         return pagenum.strip()
 
-    def get_sections(self):
+    def get_section_ptrs(self):
         h = 0
         sections_ptrs = []
         doc = self.docinfo
@@ -142,18 +143,65 @@ class Report():
                                 pg = self.get_pagenum(page)
                                 if int(pg) == hpage[h]:
                                     sections_ptrs.append({'HeadingText': str(hnum[h]) + " " + hstr + " " + str(hpage[h]),
-                                                              'PageNum': page[0], 'LineNum': line['LineNum']})
+                                                              'PageNum': int(page[0]), 'LineNum': int(line['LineNum'])})
                                 else:
                                     print("Pagenum in TOC doesn't match pagenum on page for heading: ", str(hnum[h]), hstr, str(hpage[h]))
                                     print("actual page: ", pagenum)
                         else:
                             sections_ptrs.append({'HeadingText': str(hnum[h]) + " " + hstr + " " + str(hpage[h]),
-                                                          'PageNum': page[0], 'LineNum': line['LineNum']})
+                                                          'PageNum': int(page[0]), 'LineNum': int(line['LineNum'])})
                         h += 1
         return sections_ptrs
         # once have all header positions, can return the text in between them
 
+    def get_sections(self):
+        # from section ptrs, section = section ptr, reading until the start of the next section
+        #for ptr in self.section_ptrs:
+        section_num = 0
+        ptr = self.section_ptrs[section_num]
+        name = ptr['HeadingText']
+        start_page = ptr['PageNum']
+        start_line = ptr['LineNum']
+        next_section = self.section_ptrs[section_num+1]
+        end_page = next_section['PageNum']
+        end_line = next_section['LineNum']
 
+        content = []
+        sections = []
+        for page in range(start_page, len(self.doclines.items()) +2): # +1 because index starts at 1, +1 to include last element
+            try:
+                for linenum in range(len(self.doclines[str(page)])):
+                    if page == end_page and linenum == end_line:  # if end of section
+                        section = {'Heading': name, 'Content': content}
+                        sections.append(section)
+
+                        if section_num != len(self.section_ptrs) - 1: # if there is a next section
+                            section_num +=1
+                            content = []
+                            ptr = self.section_ptrs[section_num]
+                            name = ptr['HeadingText']
+
+                        if section_num != len(self.section_ptrs) - 1: # if next section is not last section
+                            next_section = self.section_ptrs[section_num + 1]
+                            end_page = next_section['PageNum']
+                            end_line = next_section['LineNum']
+
+                        else:   # if next section is last section
+                            end_page = len(self.doclines.items())+1
+                            end_line = len(self.doclines[str(end_page)])-1
+
+                    elif page == start_page and linenum < start_line:  # if before start line on start page
+                        continue
+
+                    elif page == end_page and linenum+1 == end_line:  # stop the heading line being added to the end of the previous section
+                        continue
+
+                    else:  # add line to content
+                        line = self.doclines[str(page)][linenum]
+                        content.append(line)
+            except KeyError:
+                print('Page ' + str(page) + ' is missing')
+        return sections
 
 
 if __name__ == '__main__':
@@ -161,6 +209,8 @@ if __name__ == '__main__':
     # from toc page, transform content into dataset of headings for heading identification, identify headings, and return headings and subheadings
 
     r = Report('27972')
-    print("Headings: \n", r.headings)
-    print("Subheadings: \n", r.subheadings)
+    #print("Headings: \n", r.headings)
+    #print("Subheadings: \n", r.subheadings)
     print("Sections at: \n", r.section_ptrs)
+    for section in r.section_content:
+        print(section['Heading'], '\n', section['Content'])
