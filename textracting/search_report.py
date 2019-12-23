@@ -21,7 +21,8 @@ class Report():
         self.doclines = self.get_doc_lines()
         self.toc_page = self.get_toc_page()
         self.headings, self.subheadings = self.get_headings()
-        self.pagenum_pos = None # header or footer if pagenumbers
+        self.marginals_type = None # header or footer if pagenumbers
+        self.marginals_bb = None
         self.section_ptrs = self.get_section_ptrs()  # section_ptrs = [{HeadingText: , PageNum: , LineNum: }]
         self.section_content = self.get_sections()
 
@@ -99,13 +100,51 @@ class Report():
         return df
 
     def get_pagenum(self, page):
-        if self.pagenum_pos == 'Header':
-            if re.search(r'\t\d+', page[1][0]['Text']):
-                pagenum = re.search(r'\t\d+', page[1][0]['Text']).group(0)
+        pagenum = None
+        if self.marginals_type == 'Header':
+            line = page[1][0]
+            if self.check_if_line_is_marginal(line):
+                if re.search(r'\t\d+', line['Text']):
+                    pagenum = re.search(r'\t\d+', line['Text']).group(0)
+                    print(line['Text'], line['BoundingBox'])
         else:
-            if re.search(r'\t\d+', page[1][-1]['Text']):
-                pagenum = re.search(r'\t\d+', page[1][-1]['Text']).group(0)
-        return pagenum.strip()
+            line = page[1][-1]
+            if self.check_if_line_is_marginal(line):
+                if re.search(r'\t\d+', line['Text']):
+                    pagenum = re.search(r'\t\d+', line['Text']).group(0)
+                    print(line['Text'], line['BoundingBox'])
+        if pagenum:
+            return pagenum.strip()
+
+    def check_if_line_is_marginal(self, line):
+        if self.marginals_type:
+            line_bb = line['BoundingBox']
+            if line_bb['Width'] - 0.05 <= self.marginals_bb['Width'] <= line_bb['Width'] + 0.05:
+                if line_bb['Height'] - 0.005 <= self.marginals_bb['Height'] <= line_bb['Height'] + 0.005:
+                    if line_bb['Left'] - 0.05 <= self.marginals_bb['Left'] <= line_bb['Left'] + 0.05:
+                        if line_bb['Top'] - 0.05 <= self.marginals_bb['Top'] <= line_bb['Top'] + 0.05:
+                            return True
+        else:
+            print('No marginals type')
+        return False
+
+        # compare line bb to marginal bb
+        # width +- 0.05, height +- 0.005, left +- 0.05, top += 0.05
+        # update maginals bb with rolling average ?
+
+    def find_marginals(self):
+        page = self.docinfo[str(self.toc_page)]  # refpage to find marginal
+        first_line = page[0]
+        last_line = page[-1]
+        if re.search(r'\t\d+', first_line['Text']):
+            pagenum = re.search(r'\t\d+', first_line['Text']).group(0)
+            self.marginals_type = 'Header'
+            self.marginals_bb = first_line['BoundingBox']
+        elif re.search(r'\t\d+', last_line['Text']):
+            pagenum = re.search(r'\t\d+', last_line['Text']).group(0)
+            self.marginals_type = 'Footer'
+            self.marginals_bb = last_line['BoundingBox']
+
 
     def get_section_ptrs(self):
         h = 0
@@ -115,18 +154,19 @@ class Report():
         hnum = self.headings['SectionPrefix']
         htext = self.headings['SectionText']
 
+        self.find_marginals()
+
         for page in doc.items():
             if int(page[0]) != self.toc_page:
                 first_line = page[1][0]
                 last_line = page[1][-1]
                 pagenum = False
 
-                if re.search(r'\t\d+', first_line['Text']):
-                    pagenum = re.search(r'\t\d+', first_line['Text']).group(0)
-                    self.pagenum_pos = 'Header'
-                elif re.search(r'\t\d+', last_line['Text']):
-                    pagenum = re.search(r'\t\d+', last_line['Text']).group(0)
-                    self.pagenum_pos = 'Footer'
+                if self.marginals_type:
+                    if re.search(r'\t\d+', first_line['Text']) and self.check_if_line_is_marginal(first_line):
+                        pagenum = re.search(r'\t\d+', first_line['Text']).group(0)
+                    elif re.search(r'\t\d+', last_line['Text']) and self.check_if_line_is_marginal(last_line):
+                        pagenum = re.search(r'\t\d+', last_line['Text']).group(0)
 
                 for line in page[1]:
                     if h >= len(htext):
@@ -171,6 +211,13 @@ class Report():
         for page in range(start_page, len(self.doclines.items()) +2): # +1 because index starts at 1, +1 to include last element
             try:
                 for linenum in range(len(self.doclines[str(page)])):
+
+                    if linenum == 0 and self.marginals_type == 'Header':  # don't include header/footer in the section content
+                        continue  # AND store header/footer bounding box (assuming will be the same on each page, or
+                        # very close) and only delete if line within it - stops removing figure/table pages without header/footer
+                    if linenum == len(self.doclines[str(page)]) and self.marginals_type == 'Footer':
+                        continue
+
                     if page == end_page and linenum == end_line:  # if end of section
                         section = {'Heading': name, 'Content': content}
                         sections.append(section)
@@ -216,5 +263,8 @@ if __name__ == '__main__':
     #print("Headings: \n", r.headings)
     #print("Subheadings: \n", r.subheadings)
     print("Sections at: \n", r.section_ptrs)
-    for section in r.section_content:
-        print(section['Heading'], '\n', section['Content'])
+    json.dump(r.section_content, open('sections.json', 'w'))
+    #for section in r.section_content:
+    #    print(section['Heading'])
+    #    for line in section['Content']:
+    #        print(line)
