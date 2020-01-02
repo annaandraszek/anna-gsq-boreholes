@@ -92,9 +92,13 @@ def get_pageline_map(doc):
     return page_lines
 
 
-def get_restructpagelines(doc):
+def get_restructpagelines(doc, slopes=False):
     pagelines = {}
     pageinfo = {}
+    if slopes:
+        matching_slopes = []
+        unmatching_slopes = []
+
     for page in doc.items():
         prev_y = None
         lines = []
@@ -121,14 +125,29 @@ def get_restructpagelines(doc):
                 Wlast = line['BoundingBox']['Width']
 
             elif prev_y - 0.0075 <= y <= prev_y + 0.0075: # filled line has text added to
-                ln += " \t" + text
                 conf.append(line['Confidence'])
                 bb['width'] += line['BoundingBox']['Width']
                 bb['height'].append(line['BoundingBox']['Height'])
                 bb['left'].append(line['BoundingBox']['Left'])
                 bb['top'].append(line['BoundingBox']['Top'])
+                Lprev = Llast
                 Llast = line['BoundingBox']['Left']
+                Wprev = Wlast
                 Wlast = line['BoundingBox']['Width']
+
+                if slopes:
+                    slope = (prev_y - y) / (Llast - Lprev)
+                    only_slope = (prev_y - y) / (Llast - (Lprev + Wprev))  # here, wlast is really W1
+                    matching_slopes.append({'slope': slope, 'only_slope': only_slope,
+                                            'page, line': str(page[0]) + ',' + str(line['LineNum']),
+                                            'prev_text': ln, 'text': text})
+                    # print('MATCHING')
+                    # print('prev_y: ', prev_y, ' y: ', y)
+                    # print(page[0], ',', line['LineNum'], ': | prev text: ', ln, '| text: ', text)
+                    # print('slope: ', slope)
+                    # print('only slope: ', only_slope)
+
+                ln += " \t" + text
 
             elif len(ln) != 0: # line is emptied, new text is added
                 avgconf = np.average(np.array(conf))
@@ -140,6 +159,23 @@ def get_restructpagelines(doc):
                 lnnum += 1
                 new_entry = {'LineNum': lnnum, 'Text': ln, 'Confidence': avgconf, 'WordsWidth': wordswidth, 'BoundingBox': {
                     'Width': totalwidth, 'Height': maxheight, 'Left': minleft, 'Top': avgtop}}
+
+                Lprev = Llast
+                Wprev = Wlast
+                Llast = line['BoundingBox']['Left']
+
+                if slopes:
+                    if (Llast > (Lprev + Wprev)): # if the last word is more to the left - has to be to continue the line
+
+                        slope = (prev_y - y) / (Llast - Lprev)
+                        only_slope = (prev_y - y) / (Llast - (Lprev + Wprev))  # here, wlast is really W1
+                        unmatching_slopes.append({'slope': slope, 'only_slope': only_slope,
+                                                  'page, line': str(page[0]) + ',' + str(line['LineNum']),
+                                                  'prev_text': ln, 'text': text})
+                        # print('NOT MATCHING')
+                        # print(page[0], ',', line['LineNum'], ': | prev text: ', ln, '| text: ', text)
+                        # print('slope: ', slope)
+                        # print('only slope: ', only_slope)
 
                 if page[0] in pageinfo:
                     pageinfo[page[0]].append(new_entry)
@@ -185,6 +221,8 @@ def get_restructpagelines(doc):
         else: # in the case a page has only one line
             pageinfo[page[0]] = [new_entry]
 
+    if slopes:
+        return pagelines, pageinfo, matching_slopes, unmatching_slopes
     return pagelines, pageinfo
 
 
