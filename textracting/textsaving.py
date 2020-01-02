@@ -92,6 +92,34 @@ def save_annotated_doc(doc, pdf):
     # display image for 10 seconds
 
 
+def display_doc(docid): # doc has to be pageinfo type - made for restructpageinfo
+    report_path = settings.get_report_name(docid, local_path=True, file_extension=True)
+    images = convert_from_path(report_path)
+
+    docfile = open(settings.get_restructpageinfo_file(docid), "r")
+    doc = json.load(docfile)
+    drawn_images = []
+
+    # Create image showing bounding box/polygon the detected lines/text
+    for page in doc.items():
+        i = int(page[0])-1
+        image = images[i]
+        width, height = image.size
+        #draw = ImageDraw.Draw(image)
+        draw = ImageDraw.Draw(image)
+        for line in page[1]:
+            # Uncomment to draw bounding box
+            box = line['BoundingBox']
+            left = width * box['Left']
+            top = height * box['Top']
+            draw.rectangle([left, top, left + (width * box['Width']), top + (height * box['Height'])], outline='green')
+
+        image.save(docid + '_' + page[0] + ".jpeg", "JPEG")
+        drawn_images.append(image)
+
+    drawn_images[0].save(docid + '_boxed.pdf', save_all=True, append_images=drawn_images[1:])
+
+
 def save_lines(doc, file_id):
     blocks = doc['Blocks']
     with open(settings.get_text_file(file_id), "w") as o:
@@ -224,6 +252,8 @@ def clean_page():
 if __name__ == "__main__":
     #pagelineinfo()
     #clean_page()
-    restructpagelines()
+    #restructpagelines()
     #doc = json.load(open('training/cleanpage/cr_26114_1_cleanpage.json', "r"))
     #textracting.get_restructpagelines(doc)
+
+    display_doc('29850')
