@@ -11,7 +11,7 @@ headid_nb_model_file = model_path + 'cnb_head_id_model.pkl'
 def get_report_name(file_id, local_path=False, file_extension=False):
     file = ''
     if local_path:
-        file = report_local_path + file_id + '/'
+        file = report_local_path + str(file_id) + '/'
     file += "cr_" + str(file_id) + "_1"
     if file_extension:
         file += '.pdf'
@@ -22,8 +22,8 @@ def get_file_from_training(folder, file_id, local_path, extension='.json'):
     file = ''
     if local_path:
         file = 'training/' + folder + '/'
-    if not 'cr_' in file_id:
-        if not extension in file_id:
+    if not 'cr_' in str(file_id):
+        if not extension in str(file_id):
             file += get_report_name(file_id)
             return file + "_" + folder + extension
     return file + str(file_id) + "_" + folder + extension

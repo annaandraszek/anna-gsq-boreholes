@@ -114,10 +114,11 @@ def display_doc(docid): # doc has to be pageinfo type - made for restructpageinf
             top = height * box['Top']
             draw.rectangle([left, top, left + (width * box['Width']), top + (height * box['Height'])], outline='green')
 
-        image.save(docid + '_' + page[0] + ".jpeg", "JPEG")
+        #image.save(docid + '_' + page[0] + ".jpeg", "JPEG")
         drawn_images.append(image)
 
-    drawn_images[0].save(docid + '_boxed.pdf', save_all=True, append_images=drawn_images[1:])
+    save_path = settings.result_path + docid + '_boxed.pdf'
+    drawn_images[0].save(save_path, save_all=True, append_images=drawn_images[1:])
 
 
 def save_lines(doc, file_id):
@@ -252,8 +253,8 @@ def clean_page():
 if __name__ == "__main__":
     #pagelineinfo()
     #clean_page()
-    #restructpagelines()
+    restructpagelines()
     #doc = json.load(open('training/cleanpage/cr_26114_1_cleanpage.json', "r"))
     #textracting.get_restructpagelines(doc)
 
-    display_doc('29850')
+    #display_doc('74718')
