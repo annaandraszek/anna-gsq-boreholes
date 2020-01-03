@@ -11,10 +11,10 @@ def create_dataset():
     pageinfos = glob.glob('training/restructpageinfo/*')
     df = pd.DataFrame(columns=columns)
     for pagesinfo in pageinfos:
-        docset = []
         pi = json.load(open(pagesinfo))
         docid = pagesinfo.split('\\')[-1].replace('_1_restructpageinfo.json', '').strip('cr_')
         for info in pi.items():
+            docset = []
             page = info[0]
             lines = len(info[1])
             for line in info[1]:
@@ -22,7 +22,7 @@ def create_dataset():
                 contains_tab = 0
                 contains_page = 0
                 bb = line['BoundingBox']
-                if re.search(r'[0-9]+', line['Text']):
+                if re.search(r'(\s|^)[0-9]+(\s|$)', line['Text']):
                     contains_num = 1
                 if re.search(r'\t', line['Text']):
                     contains_tab = 1
@@ -48,4 +48,6 @@ def create_dataset():
 
 if __name__ == "__main__":
     df = create_dataset()
-    df.to_excel(settings.dataset_path + 'marginals_dataset.xlsx', index=False)
+    #df.to_excel(settings.dataset_path + 'marginals_dataset.xlsx', index=False)
+    df.to_csv(settings.dataset_path + 'marginals_dataset.csv', index=False)
+    
