@@ -109,70 +109,80 @@ def get_restructpagelines(doc, slopes=False):
 
     for page in doc.items():
         prev_y = None
+        first_y = None
         lines = []
         ln = ''
         conf = []
         bb = {'width':0, 'height': [], 'left': [], 'top': []}
         lnnum = 0
-        L1 = None
-        Llast = None
-        Wlast = None
+        first_left = None
+        prev_left = None
+        prev_width = None
         for line in page[1]:
             text = line['Text']
             y = line['BoundingBox']['Top']
+            left = line['BoundingBox']['Left']
 
             if len(ln) == 0:  # empty line has text added to
                 ln = text
                 conf.append(line['Confidence'])
                 bb = update_bb(bb, line)
-                L1 = line['BoundingBox']['Left']
-                Llast = L1
-                Wlast = line['BoundingBox']['Width']
+                first_left = line['BoundingBox']['Left']
+                prev_left = first_left
+                prev_width = line['BoundingBox']['Width']
+                first_y = y
 
-            elif prev_y - 0.0075 <= y <= prev_y + 0.0075: # filled line has text added to
+            elif first_y - 0.0075 <= y <= first_y + 0.0075: # filled line has text added to
                 conf.append(line['Confidence'])
                 bb = update_bb(bb, line)
-                Wprev = Wlast
-                Lprev = Llast
-                Llast = line['BoundingBox']['Left']
+                # test_prev_width = prev_width
+                # test_prev_left = prev_left
 
-                slope = (prev_y - y) / (Llast - Lprev)
-                only_slope = (prev_y - y) / (Llast - (Lprev + Wprev))  # here, wlast is really W1
+                if left < prev_left: # trying to add left-more string to the right of the line
+                    ln = text + " \t" + ln
+                    if left < first_left:
+                        first_left = left
 
-                if slopes:
-                    matching_slopes.append({'slope': slope, 'only_slope': only_slope,
-                                            'page, line': str(page[0]) + ',' + str(line['LineNum']),
-                                            'prev_text': ln, 'text': text})
+                else:  # new string is naturally to the right
+                    prev_left = left
+                    prev_width = line['BoundingBox']['Width']
+                    ln += " \t" + text
 
-                Wlast = line['BoundingBox']['Width']
-                ln += " \t" + text
+
+                # if slopes: # for testing
+                #     slope = (prev_y - y) / (prev_left - test_prev_left)
+                #     only_slope = (prev_y - y) / (prev_left - (test_prev_left + test_prev_width))  # here, wlast is really W1
+                #     matching_slopes.append({'slope': slope, 'only_slope': only_slope,
+                #                             'page, line': str(page[0]) + ',' + str(line['LineNum']),
+                #                             'prev_text': ln, 'text': text})
+
 
             elif len(ln) != 0: # line is emptied, new text is added UNLESS slope is acceptable
-                Lprev = Llast
-                Wprev = Wlast
-                testLlast = line['BoundingBox']['Left']
+                test_prev_left = prev_left
+                test_prev_width = prev_width
+                test_new_left = line['BoundingBox']['Left']
 
-                if (testLlast > (Lprev + Wprev)): # if the last word is more to the left - has to be to continue the line
-                    slope = (prev_y - y) / (testLlast - Lprev)
-                    only_slope = (prev_y - y) / (testLlast - (Lprev + Wprev))
+                if (test_new_left > (test_prev_left + test_prev_width)): # if the last word is more to the left - has to be to continue the line
+                    only_slope = (first_y - y) / (test_new_left - (test_prev_left + test_prev_width))
 
-                    if slopes:
-                        unmatching_slopes.append({'slope': slope, 'only_slope': only_slope,
-                                                  'page, line': str(page[0]) + ',' + str(line['LineNum']),
-                                                  'prev_text': ln, 'text': text})
+                    # if slopes:
+                    #     slope = (prev_y - y) / (test_new_left - test_prev_left)
+                    #     unmatching_slopes.append({'slope': slope, 'only_slope': only_slope,
+                    #                               'page, line': str(page[0]) + ',' + str(line['LineNum']),
+                    #                               'prev_text': ln, 'text': text})
 
                     if abs(only_slope) < 0.014:  # filled line has text added to
                         conf.append(line['Confidence'])
                         bb = update_bb(bb, line)
-                        Llast = testLlast
-                        Wlast = line['BoundingBox']['Width']
+                        prev_left = test_new_left
+                        prev_width = line['BoundingBox']['Width']
                         ln += " \t" + text
                         prev_y = y
                         continue
 
                 avgconf = np.average(np.array(conf))
                 wordswidth = bb['width']
-                totalwidth = Llast + Wlast - L1
+                totalwidth = prev_left + prev_width - first_left
                 maxheight = np.max(np.array(bb['height']))
                 minleft = np.min(np.array(bb['left']))
                 avgtop = np.average(np.array(bb['top']))
@@ -188,11 +198,12 @@ def get_restructpagelines(doc, slopes=False):
                 lines.append(ln)
                 ln = text
                 conf = [line['Confidence']]
-                L1 = line['BoundingBox']['Left']
-                Llast = L1
-                Wlast = line['BoundingBox']['Width']
+                first_left = line['BoundingBox']['Left']
+                prev_left = first_left
+                prev_width = line['BoundingBox']['Width']
                 bb = {'width': line['BoundingBox']['Width'], 'height': [line['BoundingBox']['Height']],
                       'left': [line['BoundingBox']['Left']], 'top': [line['BoundingBox']['Top']]}
+                first_y = y
 
             else: # text is added straight to lines (last non-restructed text in the doc)
                 lines.append(text)
@@ -211,7 +222,7 @@ def get_restructpagelines(doc, slopes=False):
 
         avgconf = np.average(np.array(conf))
         wordswidth = bb['width']
-        totalwidth = Llast + Wlast - L1
+        totalwidth = prev_left + prev_width - first_left
         maxheight = np.max(np.array(bb['height']))
         minleft = np.min(np.array(bb['left']))
         avgtop = np.average(np.array(bb['top']))
