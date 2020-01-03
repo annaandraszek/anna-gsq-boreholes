@@ -4,6 +4,13 @@ import json
 import glob
 import settings
 import re
+from sklearn import tree
+import sklearn
+import matplotlib.pyplot as plt
+import pickle
+import os
+import matplotlib
+import seaborn as sns
 
 def create_dataset():
     columns = ['DocID', 'PageNum', 'LineNum', 'NormedLineNum','Text', 'WordsWidth', 'Width', 'Height', 'Left', 'Top', 'ContainsNum',
@@ -42,12 +49,56 @@ def create_dataset():
     unnormed = np.array(df['Centrality'])
     normalized = (unnormed - min(unnormed)) / (max(unnormed) - min(unnormed))
     df['Centrality'] = normalized
-
     return df
 
 
+def data_prep(data, y=False):
+    data.dropna(inplace=True)
+    X = data.drop(['DocID', 'LineNum', 'Text', 'Marginal'], axis=1)  # PageNum?
+    if y:
+        Y = data['Marginal']
+        return X, Y
+    return X
+
+
+def train(data, model_file=settings.marginals_model_file):
+    X, Y = data_prep(data, y=True)
+    X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.33)
+    clf = tree.DecisionTreeClassifier()
+    clf = clf.fit(X_train, y_train)
+    y_pred = clf.predict(X_test)
+    accuracy = sklearn.metrics.accuracy_score(y_test, y_pred)
+    print(accuracy)
+    #tree.plot_tree(clf, feature_names=['PageNum', 'NormedLineNum', 'WordsWidth', 'Width', 'Height', 'Left', 'Top', 'ContainsNum',
+    #           'ContainsTab', 'ContainsPage', 'Centrality', ], class_names=True, filled=True)
+    #plt.show()
+    #plt.savefig(settings.result_path + 'marginals_tree.png')
+
+    #cm = sklearn.metrics.confusion_matrix(y_test, y_pred)
+    cm = sklearn.metrics.plot_confusion_matrix(clf, X_test, y_test)
+    print(cm.confusion_matrix)
+    #df_cm = pd.DataFrame(cm)
+    #sns.heatmap(df_cm, annot=True)
+    #plt.show()
+    with open(model_file, "wb") as file:
+        pickle.dump(clf, file)
+
+
+def classify_line(data):
+    if not os.path.exists(settings.marginals_model_file):
+        train(data)
+    with open(settings.marginals_model_file, "rb") as file:
+        model = pickle.load(file)
+    data = data_prep(data)
+    pred = model.predict(data)
+    return pred
+
+
 if __name__ == "__main__":
-    df = create_dataset()
-    #df.to_excel(settings.dataset_path + 'marginals_dataset.xlsx', index=False)
-    df.to_csv(settings.dataset_path + 'marginals_dataset.csv', index=False)
-    
+    #df = create_dataset()
+    #df.to_csv(settings.dataset_path + 'marginals_dataset.csv', index=False)
+
+    matplotlib.rcParams['figure.figsize'] = (20, 20)
+    file = 'marginals_dataset.xlsx'
+    data = pd.read_excel(settings.dataset_path + file)
+    train(data)
