@@ -13,9 +13,10 @@ import matplotlib
 import seaborn as sns
 import graphviz
 
+
 def create_dataset():
     columns = ['DocID', 'PageNum', 'LineNum', 'NormedLineNum','Text', 'Words2Width', 'WordsWidth', 'Width', 'Height', 'Left', 'Top', 'ContainsNum',
-               'ContainsTab', 'ContainsPage', 'Centrality', 'Marginal']
+               'ContainsTab', 'ContainsPage', 'Centrality']
     pageinfos = glob.glob('training/restructpageinfo/*')
     df = pd.DataFrame(columns=columns)
     for pagesinfo in pageinfos:
@@ -24,7 +25,6 @@ def create_dataset():
         for info in pi.items():
             docset = []
             page = info[0]
-            lines = len(info[1])
             for line in info[1]:
                 contains_num = 0
                 contains_tab = 0
@@ -41,11 +41,47 @@ def create_dataset():
                 words2width = line['WordsWidth'] / bb['Width']
                 docset.append([docid, int(page), line['LineNum'], 0, line['Text'], words2width, line['WordsWidth'],
                                bb['Width'], bb['Height'], bb['Left'], bb['Top'], contains_num, contains_tab,
-                               contains_page, centrality, 0])
+                               contains_page, centrality])
 
             temp = pd.DataFrame(data=docset, columns=columns)
             temp['NormedLineNum'] = (temp['LineNum'] - min(temp['LineNum'])) / (max(temp['LineNum']) - min(temp['LineNum']))
             df = df.append(temp, ignore_index=True)
+
+    unnormed = np.array(df['Centrality'])
+    normalized = (unnormed - min(unnormed)) / (max(unnormed) - min(unnormed))
+    df['Centrality'] = normalized
+    return df
+
+
+def create_individual_dataset(docid):
+    columns = ['DocID', 'PageNum', 'LineNum', 'NormedLineNum','Text', 'Words2Width', 'WordsWidth', 'Width', 'Height', 'Left', 'Top', 'ContainsNum',
+               'ContainsTab', 'ContainsPage', 'Centrality', 'Marginal']
+    pageinfo = settings.get_restructpageinfo_file(docid)
+    pi = json.load(open(pageinfo))
+    df = pd.DataFrame(columns=columns)
+    for info in pi.items():
+        docset = []
+        page = info[0]
+        for line in info[1]:
+            contains_num = 0
+            contains_tab = 0
+            contains_page = 0
+            bb = line['BoundingBox']
+            if re.search(r'(\s|^)[0-9]+(\s|$)', line['Text']):
+                contains_num = 1
+            if re.search(r'\t', line['Text']):
+                contains_tab = 1
+            if 'page' in line['Text'].lower():
+                contains_page = 1
+            centrality = 0.5 - abs(bb['Left'] + (bb['Width']/2) - 0.5)  # the higher value the more central
+            words2width = line['WordsWidth'] / bb['Width']
+            docset.append([docid, int(page), line['LineNum'], 0, line['Text'], words2width, line['WordsWidth'],
+                           bb['Width'], bb['Height'], bb['Left'], bb['Top'], contains_num, contains_tab,
+                           contains_page, centrality, 0])
+
+        temp = pd.DataFrame(data=docset, columns=columns)
+        temp['NormedLineNum'] = (temp['LineNum'] - min(temp['LineNum'])) / (max(temp['LineNum']) - min(temp['LineNum']))
+        df = df.append(temp, ignore_index=True)
 
     unnormed = np.array(df['Centrality'])
     normalized = (unnormed - min(unnormed)) / (max(unnormed) - min(unnormed))
@@ -94,7 +130,6 @@ def train(data, model='tree'):
         graph.render("marginals")#.jpeg")
 
 
-
     #cm = sklearn.metrics.confusion_matrix(y_test, y_pred)
     cm = sklearn.metrics.plot_confusion_matrix(clf, X_test, y_test)
     print(cm.confusion_matrix)
@@ -115,7 +150,7 @@ def train(data, model='tree'):
             print('Predicted: ', y_pred[i], 'Actual: ', y_test[i], '\nX: ', X_test.iloc[[i]])
 
 
-def classify_line(data):
+def classify(data):
     if not os.path.exists(settings.marginals_model_file_forest):
         train(data)
     with open(settings.marginals_model_file_forest, "rb") as file:
@@ -125,6 +160,14 @@ def classify_line(data):
     return pred
 
 
+def get_marginals(docid):
+    data = create_individual_dataset(docid)
+    result = classify(data)
+    data['Marginal'] = result
+    marginals = data.loc[data['Marginal'] != 0]
+    return marginals
+
+
 if __name__ == "__main__":
     #df = create_dataset()
     #df.to_csv(settings.dataset_path + 'marginals_dataset_v2.csv', index=False)
@@ -132,8 +175,9 @@ if __name__ == "__main__":
     #matplotlib.rcParams['figure.figsize'] = (20, 20)
     file = 'marginals_dataset_v2.csv'
     data = pd.read_csv(settings.dataset_path + file)
-    train(data, model='forest')
+    get_marginals(data)
+    #train(data, model='forest')
 
-    #classes = classify_line(data)
+    #classes = classify(data)
     #data['Marginal'] = classes
     #data.to_csv(settings.dataset_path + 'marginals_dataset_v2_tagged.csv', index=False)
