@@ -4,16 +4,17 @@ import json
 import glob
 import settings
 import re
-from sklearn import tree
+from sklearn import tree, naive_bayes, ensemble
 import sklearn
 import matplotlib.pyplot as plt
 import pickle
 import os
 import matplotlib
 import seaborn as sns
+import graphviz
 
 def create_dataset():
-    columns = ['DocID', 'PageNum', 'LineNum', 'NormedLineNum','Text', 'WordsWidth', 'Width', 'Height', 'Left', 'Top', 'ContainsNum',
+    columns = ['DocID', 'PageNum', 'LineNum', 'NormedLineNum','Text', 'Words2Width', 'WordsWidth', 'Width', 'Height', 'Left', 'Top', 'ContainsNum',
                'ContainsTab', 'ContainsPage', 'Centrality', 'Marginal']
     pageinfos = glob.glob('training/restructpageinfo/*')
     df = pd.DataFrame(columns=columns)
@@ -37,8 +38,8 @@ def create_dataset():
                     contains_page = 1
                 #normed_line = line['LineNum'] / lines
                 centrality = 0.5 - abs(bb['Left'] + (bb['Width']/2) - 0.5)  # the higher value the more central
-
-                docset.append([docid, int(page), line['LineNum'], 0, line['Text'], line['WordsWidth'],
+                words2width = line['WordsWidth'] / bb['Width']
+                docset.append([docid, int(page), line['LineNum'], 0, line['Text'], words2width, line['WordsWidth'],
                                bb['Width'], bb['Height'], bb['Left'], bb['Top'], contains_num, contains_tab,
                                contains_page, centrality, 0])
 
@@ -54,17 +55,27 @@ def create_dataset():
 
 def data_prep(data, y=False):
     data.dropna(inplace=True)
+    data.drop(data[data['Width'] < 0].index, inplace=True)
     X = data.drop(['DocID', 'LineNum', 'Text', 'Marginal'], axis=1)  # PageNum?
+    #X = X.drop(['Words2Width'], axis=1)  # temporarily
     if y:
         Y = data['Marginal']
         return X, Y
     return X
 
 
-def train(data, model_file=settings.marginals_model_file):
+def train(data, model='tree'):
     X, Y = data_prep(data, y=True)
     X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.33)
-    clf = tree.DecisionTreeClassifier()
+    if 'forest' in model:
+        clf = ensemble.RandomForestClassifier(n_estimators=12)
+        model_file = settings.marginals_model_file_forest
+    elif 'CNB' in model:
+        clf = naive_bayes.ComplementNB()
+        model_file = settings.marginals_model_file_CNB
+    else:
+        clf = tree.DecisionTreeClassifier()
+        model_file = settings.marginals_model_file_tree
     clf = clf.fit(X_train, y_train)
     y_pred = clf.predict(X_test)
     accuracy = sklearn.metrics.accuracy_score(y_test, y_pred)
@@ -73,6 +84,16 @@ def train(data, model_file=settings.marginals_model_file):
     #           'ContainsTab', 'ContainsPage', 'Centrality', ], class_names=True, filled=True)
     #plt.show()
     #plt.savefig(settings.result_path + 'marginals_tree.png')
+
+    if 'tree' in model:
+        dot_data = tree.export_graphviz(clf,  feature_names=['PageNum', 'NormedLineNum', 'Words2Width', 'WordsWidth', 'Width', 'Height',
+                                                             'Left', 'Top', 'ContainsNum', 'ContainsTab', 'ContainsPage',
+                                                             'Centrality', ], class_names=True, filled=True,
+                                        max_depth=4) # out_file=settings.result_path + 'marginals_tree.png',
+        graph = graphviz.Source(dot_data)
+        graph.render("marginals")#.jpeg")
+
+
 
     #cm = sklearn.metrics.confusion_matrix(y_test, y_pred)
     cm = sklearn.metrics.plot_confusion_matrix(clf, X_test, y_test)
@@ -83,11 +104,21 @@ def train(data, model_file=settings.marginals_model_file):
     with open(model_file, "wb") as file:
         pickle.dump(clf, file)
 
+    # display the wrong predictions
+    y_test = y_test.reset_index(drop=True)
+    X_test = X_test.reset_index(drop=True)
+    #print(y_pred.size, y_test.size, X_test.size)
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.width', None)
+    for i in range(y_pred.size):
+        if y_pred[i] != y_test[i]:
+            print('Predicted: ', y_pred[i], 'Actual: ', y_test[i], '\nX: ', X_test.iloc[[i]])
+
 
 def classify_line(data):
-    if not os.path.exists(settings.marginals_model_file):
+    if not os.path.exists(settings.marginals_model_file_forest):
         train(data)
-    with open(settings.marginals_model_file, "rb") as file:
+    with open(settings.marginals_model_file_forest, "rb") as file:
         model = pickle.load(file)
     data = data_prep(data)
     pred = model.predict(data)
@@ -96,9 +127,13 @@ def classify_line(data):
 
 if __name__ == "__main__":
     #df = create_dataset()
-    #df.to_csv(settings.dataset_path + 'marginals_dataset.csv', index=False)
+    #df.to_csv(settings.dataset_path + 'marginals_dataset_v2.csv', index=False)
 
-    matplotlib.rcParams['figure.figsize'] = (20, 20)
-    file = 'marginals_dataset.xlsx'
-    data = pd.read_excel(settings.dataset_path + file)
-    train(data)
+    #matplotlib.rcParams['figure.figsize'] = (20, 20)
+    file = 'marginals_dataset_v2.csv'
+    data = pd.read_csv(settings.dataset_path + file)
+    train(data, model='forest')
+
+    #classes = classify_line(data)
+    #data['Marginal'] = classes
+    #data.to_csv(settings.dataset_path + 'marginals_dataset_v2_tagged.csv', index=False)

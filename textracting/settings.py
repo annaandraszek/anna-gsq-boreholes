@@ -9,7 +9,7 @@ fig_tree_model_file = model_path + 'fig_tree_model.pkl'
 headid_nb_model_file = model_path + 'cnb_head_id_model.pkl'
 marginals_model_file_tree = model_path +'marginals_tree_model.pkl'
 marginals_model_file_CNB = model_path +'marginals_CNB_model.pkl'
-marginals_model_file_forest = model_path + 'marginals_forest_model.pkl'
+marginals_model_file_forest = model_path + 'marginals_forest_model_v2.pkl'
 
 def get_report_name(file_id, local_path=False, file_extension=False):
     file = ''
