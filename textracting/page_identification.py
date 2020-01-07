@@ -42,7 +42,7 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
         self.X = df['transformed']
         self.Y = df['tag']
         self.max_words, self.max_len = check_maxlens(df)
-        self.tok = Tokenizer(num_words=self.max_words)
+        self.tok = Tokenizer(num_words=self.max_words+1) # only num_words-1 will be taken into account!
         self.model = self.LSTM()
 
         X_train, X_test, Y_train, Y_test = train_test_split(self.X, self.Y, test_size=0.15)
@@ -65,7 +65,7 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
 
     def LSTM(self):
         model = Sequential()
-        model.add(Embedding(self.max_words, output_dim=self.max_len))#256))
+        model.add(Embedding(self.max_words+1, output_dim=self.max_len))#256))
         model.add(LSTM(128))
         model.add(Dropout(0.5))
         model.add(Dense(2, activation='sigmoid'))
@@ -92,7 +92,7 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
 
         strings = strings.apply(lambda x: transform_text(x))
         sequences = self.tok.texts_to_sequences(strings)
-        sequences_matrix = sequence.pad_sequences(sequences, maxlen=self.max_len)
+        sequences_matrix = sequence.pad_sequences(sequences, maxlen=12)
         predictions = self.model.predict(sequences_matrix)
         return predictions, np.argmax(predictions, axis=1)
 
@@ -113,6 +113,7 @@ def transform_text(str):
     tokens = str.split(r' ')
     new_text = ''
     for token in tokens:
+        token = token.lower()
         if re.match(r'^\t', token):
             new_text += 'tab '
             token = token.strip('\t')
@@ -122,13 +123,14 @@ def transform_text(str):
             new_text += 'bigNum '
         elif token.lower() in months:
             new_text += 'month '
-        elif re.match(r'^Page$', token):
+        elif re.match(r'^page$', token):
             new_text += 'page '
-        elif re.match(r'^[a-zA-Z]+$', token):
+        elif re.match(r'^appendix$', token):
+            new_text += 'appendix '
+        elif re.match(r'^[a-z]+$', token):
             new_text += 'word '
         elif not re.match(r'^(|\s+)$', token):
             new_text += 'mix '
-            print(token)
     return new_text
 
 
@@ -140,13 +142,33 @@ def create_dataset():
     new_text.to_csv(settings.marginals_id_trans_dataset, index=False)
 
 
+def run_model():
+    nn = NeuralNetwork()
+    nn.load_model_from_file()
+    df = pd.read_csv(settings.marginals_id_trans_dataset, usecols=['original'])
+    #data = df.original
+    data = pd.Series(['page 8', 'bhp hello 3', '12 month report', 'epm3424 3 february 1900',
+                                 'epm23 february 2000', 'epm34985 4000'])
+    p, r = nn.predict(data)#.original)
+
+    for i, row in df.iterrows():
+        print(row.original, ', ', p[i], ', ', r[i])
+
+
+
 if __name__ == "__main__":
-    #create_dataset():
+    #create_dataset()
     nn = NeuralNetwork()
     #nn.train()
-    nn.load_model_from_file()
-    p, r = nn.predict(pd.Series(['page 8', 'bhp hello world 3', '12 month report', 'epm3424 3 february 1900',
-                                 'epm23 february 2000', 'epm34985 4000']))
-    print(p)
-    print('------------------')
-    print(r)
+    run_model()
+
+    # result
+    # [[1.93149030e-01 8.52303803e-01]
+    #  [1.55359507e-04 9.99890804e-01]
+    #  [7.03883052e-01 3.61839056e-01]
+    #  [9.63378191e-01 3.04489434e-02]
+    #  [8.78076196e-01 1.08638585e-01]
+    #  [9.87653494e-01 1.31420493e-02]
+    #  [9.74116623e-01 2.65470557e-02]]
+    # ------------------
+    # [1 1 0 0 0 0 0]

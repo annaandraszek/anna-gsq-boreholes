@@ -68,9 +68,9 @@ Page 1 of 1,page smallNum word smallNum ,1
 "Mineral Exploration, BHP Billiton 	September 2008",word word word word tab month bigNum ,0
 "Mineral Exploration, BHP Billiton 	September 2008",word word word word tab month bigNum ,0
 "BHP Burton No. 1 Completion Report 	Page No. 4",word word word smallNum word word tab page word smallNum ,1
-EPC1163 Tartarus 12 Monthly Report - Year 1 Appendix 2,mix word smallNum word word word smallNum word smallNum ,0
+EPC1163 Tartarus 12 Monthly Report - Year 1 Appendix 2,mix word smallNum word word word smallNum appendix smallNum ,0
 "BHP Burton No. 1 Completion Report 	Page No. 1",word word word smallNum word word tab page word smallNum ,1
-EPC1163 Tartarus 12 Monthly Report - Year 1 Appendix 1,mix word smallNum word word word smallNum word smallNum ,0
+EPC1163 Tartarus 12 Monthly Report - Year 1 Appendix 1,mix word smallNum word word word smallNum appendix smallNum ,0
 "BHP Burton No. 1 Completion Report 	Page No. 3",word word word smallNum word word tab page word smallNum ,1
 "CR 10980 	Page 2",word bigNum tab page smallNum ,1
 "CR 10980 	Page 1",word bigNum tab page smallNum ,1
@@ -79,7 +79,7 @@ EPC1163 Tartarus 12 Monthly Report - Year 1 Appendix 1,mix word smallNum word wo
 "CR 10861 	Page 1",word bigNum tab page smallNum ,1
 "CR 10980 	Page 3",word bigNum tab page smallNum ,1
 4,smallNum ,1
-"EPC1163 Tartarus 12 Monthly Report - Year 1 	Appendix 4",mix word smallNum word word word smallNum tab word smallNum ,0
+"EPC1163 Tartarus 12 Monthly Report - Year 1 	Appendix 4",mix word smallNum word word word smallNum tab appendix smallNum ,0
 "APRIL, 2009 	16",month bigNum tab smallNum ,1
 "APRIL, 2009 	20",month bigNum tab smallNum ,1
 "APRIL, 2009 	10",month bigNum tab smallNum ,1
@@ -92,7 +92,7 @@ EPC1163 Tartarus 12 Monthly Report - Year 1 Appendix 1,mix word smallNum word wo
 "APRIL, 2009 	17",month bigNum tab smallNum ,1
 "APRIL, 2009 	22",month bigNum tab smallNum ,1
 "APRIL, 2009 	9",month bigNum tab smallNum ,1
-"EPC1163 Tartarus 12 Monthly Report - Year 1 	I 	Appendix 3",mix word smallNum word word word smallNum tab word tab word smallNum ,0
+"EPC1163 Tartarus 12 Monthly Report - Year 1 	I 	Appendix 3",mix word smallNum word word word smallNum tab word tab appendix smallNum ,0
 "APRIL, 2009 	19",month bigNum tab smallNum ,1
 "APRIL, 2009 	4",month bigNum tab smallNum ,1
 "APRIL, 2009 	29",month bigNum tab smallNum ,1
@@ -105,13 +105,13 @@ EPC1163 Tartarus 12 Monthly Report - Year 1 Appendix 1,mix word smallNum word wo
 "APRIL, 2009 	11",month bigNum tab smallNum ,1
 "APRIL, 2009 	15",month bigNum tab smallNum ,1
 "APRIL, 2009 	6",month bigNum tab smallNum ,1
-EPC1163 Tartarus 12 Monthly Report - Year 1 Appendix 2,mix word smallNum word word word smallNum word smallNum ,0
+EPC1163 Tartarus 12 Monthly Report - Year 1 Appendix 2,mix word smallNum word word word smallNum appendix smallNum ,0
 "APRIL, 2009 	2",month bigNum tab smallNum ,1
 "APRIL, 2009 	21",month bigNum tab smallNum ,1
 "APRIL, 2009 	14",month bigNum tab smallNum ,1
 "APRIL, 2009 	3",month bigNum tab smallNum ,1
-EPC1163 Tartarus 12 Monthly Report - Year 1 Appendix 2,mix word smallNum word word word smallNum word smallNum ,0
-EPC1163 Tartarus 12 Monthly Report - Year 1 Appendix 1,mix word smallNum word word word smallNum word smallNum ,0
+EPC1163 Tartarus 12 Monthly Report - Year 1 Appendix 2,mix word smallNum word word word smallNum appendix smallNum ,0
+EPC1163 Tartarus 12 Monthly Report - Year 1 Appendix 1,mix word smallNum word word word smallNum appendix smallNum ,0
 "APRIL, 2009 	31",month bigNum tab smallNum ,1
 "APRIL, 2009 	13",month bigNum tab smallNum ,1
 "South Cockenzie Final Report 	(i)",word word word word tab word ,0
@@ -454,13 +454,13 @@ BMA,word ,0
 "Lightning Creek/Buster Creek Venture 	3 	March 1997",word word word word word tab smallNum tab month bigNum ,1
 "EPM 9216 	February 1995",word bigNum tab month bigNum ,0
 "EPM 10732 - Partial Relinquishment Report 	October 1999",word bigNum word word word tab month bigNum ,0
-"Wilgunya EPM 13282 	Drill Hole Magnetics 	Appendix",word word bigNum tab word word word tab word ,0
+"Wilgunya EPM 13282 	Drill Hole Magnetics 	Appendix",word word bigNum tab word word word tab appendix ,0
 "EPM 9216 	3 	February 1995",word bigNum tab smallNum tab month bigNum ,1
 "Lightning Creek/Buster Creek Venture 	} 	March 1997",word word word word word tab tab month bigNum ,0
 "CR 10157 - EPM 7786 Longford 	March 2001",word bigNum word bigNum word tab month bigNum ,0
 "EPM 7777 - TALAWANTA 	MARCH 1992",word bigNum word tab month bigNum ,0
 "CR 10157 - EPM 7786 Longford 	4 	March 2001",word bigNum word bigNum word tab smallNum tab month bigNum ,1
-"Wilgunya EPM 13282 	Drill Hole Locations 	Appendix",word word bigNum tab word word word tab word ,0
+"Wilgunya EPM 13282 	Drill Hole Locations 	Appendix",word word bigNum tab word word word tab appendix ,0
 "Police Creek Annual Report 	6",word word word word tab smallNum ,1
 BHP Billiton Mitsubishi Alliance,word word word word ,0
 BHP PBilliton Mitsubishi Alliance,word word word word ,0
