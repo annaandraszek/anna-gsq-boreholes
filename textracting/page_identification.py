@@ -9,7 +9,7 @@ os.environ['KMP_WARNINGS'] = '0'
 
 months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october',
           'november', 'december']
-from keras.layers import LSTM, Activation, Dense, Dropout, TimeDistributed, Input, Embedding
+
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing import sequence
 from keras.models import load_model
@@ -18,15 +18,10 @@ import joblib
 import os
 from sklearn.model_selection import train_test_split
 from keras.models import Sequential
-from keras.layers import LSTM, Dense
+from keras.layers import LSTM, Dense, Dropout, Embedding
 from keras.utils import to_categorical
-from keras.preprocessing.text import text_to_word_sequence
 
-
-class NeuralNetwork(): #give this arguments like: model type, train/test file
-    #max_words = 900
-    #max_len = 15
-    #y_dict = {}
+class NeuralNetwork():
     epochs = 15
     batch_size = 15
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
@@ -37,7 +32,7 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
         self.model_loc = self.model_path + self.model_name + '.h5'
         self.tok_loc = self.model_path + self.model_name + 'tokeniser.joblib'
 
-    def train(self, file=settings.dataset_path + 'identified_trans_marginals_dataset.csv'):
+    def train(self, file=settings.marginals_id_trans_dataset):
         df = pd.read_csv(file)
         self.X = df['transformed']
         self.Y = df['tag']
@@ -108,7 +103,7 @@ def check_maxlens(df):
     return unique_words, max_seq_len
 
 
-def transform_text(str):
+def transform_text(str, transform_all=True):
     str = str.translate(str.maketrans(string.punctuation, ' '*len(string.punctuation)))
     tokens = str.split(r' ')
     new_text = ''
@@ -118,7 +113,10 @@ def transform_text(str):
             new_text += 'tab '
             token = token.strip('\t')
         if re.match(r'^[0-9][0-9]?$', token):
-            new_text += 'smallNum '
+            if transform_all:
+                new_text += 'smallNum '
+            else:
+                new_text += token + ' '
         elif re.match(r'^[0-9]+$', token):
             new_text += 'bigNum '
         elif token.lower() in months:
