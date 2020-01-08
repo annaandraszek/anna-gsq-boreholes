@@ -41,16 +41,17 @@ def check_maxlens(x):
 
 
 class NeuralNetwork():
-    epochs = 200
+    epochs = 100
     batch_size = 30
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
     model_path = settings.model_path
 
-    def __init__(self, model_name='mask'):
+    def __init__(self, model_name='mask_lstm', model_type='NN'):
         self.model_name = 'page_ex_' + model_name
         self.model_loc = self.model_path + self.model_name + '.h5'
         self.tok_loc = self.model_path + self.model_name + 'tokeniser.joblib'
         self.classes_loc = self.model_path + self.model_name + 'class_dict.joblib'
+        self.mode_type = model_type
 
     def train(self, file=settings.page_extraction_dataset):
         df = pd.read_csv(file)
@@ -67,7 +68,11 @@ class NeuralNetwork():
 
         self.num_classes = len(self.classes.items())
         self.tok = Tokenizer(num_words=self.max_words+1) # only num_words-1 will be taken into account!
-        self.model = self.NN()
+
+        if self.mode_type == 'LSTM':
+            self.model = self.LSTM()
+        else:
+            self.model = self.NN()
 
         X_train, X_test, Y_train, Y_test = train_test_split(self.X, y_masked, test_size=0.15)
 
@@ -92,10 +97,8 @@ class NeuralNetwork():
     def NN(self):
         model = Sequential()
         model.add(Embedding(input_length=self.max_len, input_dim = self.max_words+1, output_dim=self.max_len))#256))
-        #model.add(LSTM(128, return_sequences=True))
-        #model.add(LSTM(128))
         model.add(Dense(32, activation='relu'))
-        #model.add(Dropout(0.1))
+        model.add(Dropout(0.1))
         #model.add(Dense(256, activation='relu', input_shape=()))
         model.add(Flatten())
         model.add(Dense(self.max_len, activation='softmax'))
@@ -104,6 +107,22 @@ class NeuralNetwork():
                       optimizer='rmsprop',
                       metrics=['accuracy'])
         return model
+
+    def LSTM(self):
+        model = Sequential()
+        model.add(Embedding(input_length=self.max_len, input_dim=self.max_words + 1, output_dim=self.max_len))  # 256))
+        #model.add(LSTM(48, return_sequences=True))
+        model.add(LSTM(192))
+        model.add(Dropout(0.1))
+        #model.add(Flatten())
+        model.add(Dense(self.max_len, activation='softmax'))
+
+        model.compile(loss='categorical_crossentropy',
+                      optimizer='rmsprop',
+                      metrics=['accuracy'])
+        return model
+
+
 
     def load_model_from_file(self):
         self.model = load_model(self.model_loc)
@@ -149,27 +168,40 @@ class NeuralNetwork():
         return map, vector
 
 
-def run_model():
-    nn = NeuralNetwork()
-    nn.load_model_from_file()
-    df = pd.read_csv(settings.page_extraction_dataset)
-    data = df.transformed
-    #data = pd.Series(['page 8', 'bhp hello 3', 'epm3424 3 february 1900', 'epm34985 4000'])
+def run_model(model_name, model_type='NN'):
+    nn = NeuralNetwork(model_name, model_type)
+    #nn.load_model_from_file()
+    #df = pd.read_csv(settings.page_extraction_dataset)
+    #data = df.transformed
+    data = pd.Series(['page 3 of 8',
+                      'bhp hello 3',
+                      'epm3424 \t3 \tfebruary 1900',
+                      'epm3424 \tpage 3 \tfebruary 1900',
+                      'epm3424 page \t3 \tfebruary 1900',
+                      'epm3424 page 3 \tfebruary 1900',
+                      'epm34985 \t40',
+                      '8 \t9 \t10',
+                      '8 may 1998 \treport 90',
+                      '3 \tbhp annual report'])
+    trans_data = data.apply(lambda x: transform_text(x, transform_all=False))
+    #trans_data2 = trans_data.apply(lambda x: num2word(x))
     #p, r = nn.predict(data)#.original)
-    r = nn.predict(data)
+    r = nn.predict(trans_data)
 
-    #print(r, '\n', p)
+    print(r)
 
-    correct = 0
-    incorrect = 0
-    for i, row in df.iterrows():
 
-        print(row.original, ', ', r[i])
-        if str(row.pagenum) != r[i]:
-            incorrect += 1
-        else:
-            correct += 1
-    print('real accuracy: ', correct/(correct+incorrect))
+    if False:
+        correct = 0
+        incorrect = 0
+        for i, row in df.iterrows():
+
+            print(row.original, ', ', r[i])
+            if str(row.pagenum) != r[i]:
+                incorrect += 1
+            else:
+                correct += 1
+        print('real accuracy: ', correct/(correct+incorrect))
 
 
 def create_dataset():
@@ -186,6 +218,10 @@ def create_dataset():
 
 if __name__ == '__main__':
     #create_dataset()
-    nn = NeuralNetwork()
+    #nn = NeuralNetwork(model_name='mask_lstm', model_type='LSTM')
     #nn.train()
-    run_model()
+    run_model(model_name='mask_lstm', model_type='LSTM')
+
+    #nn = NeuralNetwork(model_name='mask_nn', model_type='NN')
+    #nn.train()
+    run_model(model_name='mask_nn', model_type='NN')
