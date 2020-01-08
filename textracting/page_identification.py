@@ -109,25 +109,27 @@ def transform_text(str, transform_all=True):
     new_text = ''
     for token in tokens:
         token = token.lower()
-        if re.match(r'^\t', token):
+        if re.match(r'^\t', token):  # tab character
             new_text += 'tab '
             token = token.strip('\t')
-        if re.match(r'^[0-9][0-9]?$', token):
+        if re.match(r'^[0-9][0-9]?$', token):  # one or two digit number
             if transform_all:
                 new_text += 'smallNum '
             else:
                 new_text += token + ' '
-        elif re.match(r'^[0-9]+$', token):
+        elif re.match(r'^[0-9][0-9][0-9]$', token):  # three digit number
+            new_text += 'mediumNum '
+        elif re.match(r'^[0-9]+$', token):  # any digit number (at this point, higher than three digit)
             new_text += 'bigNum '
-        elif token.lower() in months:
+        elif token.lower() in months:  # name of a month
             new_text += 'month '
-        elif re.match(r'^page$', token):
+        elif re.match(r'^page$', token):  # 'page'
             new_text += 'page '
-        elif re.match(r'^appendix$', token):
+        elif re.match(r'^appendix$', token):  # 'appendix'
             new_text += 'appendix '
-        elif re.match(r'^[a-z]+$', token):
+        elif re.match(r'^[a-z]+$', token):  # any letter-only word
             new_text += 'word '
-        elif not re.match(r'^(|\s+)$', token):
+        elif not re.match(r'^(|\s+)$', token):  # any string which is not empty or only whitespace
             new_text += 'mix '
     return new_text
 
