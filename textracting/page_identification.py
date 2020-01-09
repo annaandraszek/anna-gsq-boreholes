@@ -155,6 +155,11 @@ def run_model():
         print(row.original, ', ', p[i], ', ', r[i])
 
 
+def get_page_marginals(marginals):
+    nn = NeuralNetwork()
+    p, r = nn.predict(marginals)#.original)
+    return r
+
 
 if __name__ == "__main__":
     #create_dataset()

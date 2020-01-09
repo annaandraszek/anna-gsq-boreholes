@@ -54,6 +54,43 @@ def create_dataset():
     return df
 
 
+def create_individual_dataset(docid):
+    pagesinfo = settings.get_restructpageinfo_file(docid)
+    pageslines = settings.get_restructpagelines_file(docid)
+    pi = json.load(open(pagesinfo))
+    pl = json.load(open(pageslines))
+    docset = np.zeros((len(pi.items()), 11))
+
+    for info, lines, i in zip(pi.items(), pl.items(), range(len(pi))):
+        fig = 0
+        figln = 0
+        figlnpos = -1
+        confs = []
+        linelens = []
+        for line, inf, j in zip(lines[1], info[1], range(len(lines[1]))):
+            confs.append(inf['Confidence'])
+            linelens.append(len(line))
+            if 'figure' in line.lower():
+                fig = 1
+                if figlnpos == -1:
+                    figlnpos = j / len(lines[1])
+                if re.search(r'Figure\s\d+\.*\s*\w*', line) or re.search(r'FIGURE\s\d+\.*\s*\w*', line):
+                    figln = 1
+                    figlnpos = j / len(lines[1])
+        medconf = np.median(np.array(confs))
+        avgconf = np.average(np.array(confs))
+        rangeconf = np.max(np.array(confs)) - np.min(np.array(confs))
+        medlineln = np.median(np.array(linelens))
+
+        q75, q25 = np.percentile(np.array(confs), [75, 25])
+        iqr = q75 - q25
+
+        docset[i] = np.array([docid.strip('cr_'), info[0], medconf, avgconf, rangeconf, iqr, medlineln, fig, figln, figlnpos, 0])
+    df = pd.DataFrame(docset, columns=['DocID', 'PageNum', 'MedConfidence', 'AvgConfidence', 'RangeConfidence',
+                                'IQRConfidence','MedLineLen', 'ContainsFigWord', 'ContainsFigLn', 'FigPos', 'FigPage'])
+    return df
+
+
 def data_prep(data, y=False, limited_cols=None):
     X = data.drop(['DocID', 'FigPage'], axis=1)
 
@@ -119,8 +156,12 @@ def classify_page(data):
     return pred
 
 
-def get_fig_pages(data_file='fig_dataset.csv'):
-    df = pd.read_csv(data_file)
+def get_fig_pages(docid=None):
+    if not docid:
+        data_file = settings.dataset_path + 'fig_dataset.csv'
+        df = pd.read_csv(data_file)
+    else:
+        df = create_individual_dataset(docid)
     classes = classify_page(df)
     mask = np.array([True if i==1 else False for i in classes])
     fig_pages = df[mask]

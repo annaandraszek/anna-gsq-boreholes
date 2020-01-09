@@ -2,6 +2,7 @@ from __future__ import print_function
 import pandas as pd
 import settings
 from page_identification import transform_text
+import page_identification
 import os
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing import sequence
@@ -46,7 +47,7 @@ class NeuralNetwork():
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
     model_path = settings.model_path
 
-    def __init__(self, model_name='mask_lstm', model_type='NN'):
+    def __init__(self, model_name='mask_nn', model_type='NN'):
         self.model_name = 'page_ex_' + model_name
         self.model_loc = self.model_path + self.model_name + '.h5'
         self.tok_loc = self.model_path + self.model_name + 'tokeniser.joblib'
@@ -168,11 +169,36 @@ class NeuralNetwork():
         return map, vector
 
 
+# goal of this is to match page numbers in the text with pages of the pdf, by which we navigate - so we can navigate to
+#   the textually-numbered pages
+# therefore essential to return a mapping between the actual page number and the textual page number - which needs to
+#   be done a few steps ahead of this to carry it through to here; in marginals identification
+def get_page_nums(marginals, ml_only=False): # given a dataset of marginals of the document
+    page_marginals_mask = page_identification.get_page_marginals(marginals.Text)  # from all the marginals, get only those containing page numbers
+    page_marginals = marginals.loc[page_marginals_mask == 1]
+    nn = NeuralNetwork('mask_nn', 'NN')
+    trans_marginals = page_marginals.Text.apply(lambda x: transform_text(x, transform_all=False))
+    if ml_only:
+        page_nums = nn.predict(trans_marginals)
+    else:  # if there is only one smallNum in the line, return that. if there are more, put it through the predict function
+        page_nums = []
+        for line in trans_marginals:
+            tokens = line.split()
+            page_num = None
+            for token in tokens:
+                if re.match('^[0-9]+$', token):
+                    if page_num:  # have found two nums in the line, need to go to predict
+                        page_num = nn.predict(pd.Series(line))[0]
+                        break
+                    else:
+                        page_num = token
+            page_nums.append(page_num)
+    page_marginals['Page'] = page_nums
+    return page_marginals
+
+
 def run_model(model_name, model_type='NN'):
     nn = NeuralNetwork(model_name, model_type)
-    #nn.load_model_from_file()
-    #df = pd.read_csv(settings.page_extraction_dataset)
-    #data = df.transformed
     data = pd.Series(['page 3 of 8',
                       'bhp hello 3',
                       'epm3424 \t3 \tfebruary 1900',
@@ -184,14 +210,14 @@ def run_model(model_name, model_type='NN'):
                       '8 may 1998 \treport 90',
                       '3 \tbhp annual report'])
     trans_data = data.apply(lambda x: transform_text(x, transform_all=False))
-    #trans_data2 = trans_data.apply(lambda x: num2word(x))
-    #p, r = nn.predict(data)#.original)
     r = nn.predict(trans_data)
-
     print(r)
 
-
-    if False:
+    all_predictions = False
+    if all_predictions:
+        df = pd.read_csv(settings.page_extraction_dataset)
+        data = df.transformed
+        r = nn.predict(data)
         correct = 0
         incorrect = 0
         for i, row in df.iterrows():
