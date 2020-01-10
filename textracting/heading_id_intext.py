@@ -1,16 +1,12 @@
-
-
 # headings dataset
 # - exclude lines in toc
 # - exclude lines in fig pages
 # - exclude marginals
 
-
 # inputs to trained model:
 # lines in pages if pages not toc, not fig
 # outputs:
 # lines look like headings and all their info they came with
-import numpy as np
 import pandas as pd
 import re
 import settings
@@ -25,6 +21,8 @@ import pickle
 from sklearn.base import BaseEstimator, TransformerMixin
 import os
 from lstm_heading_identification import num2cyfra1
+import eli5
+
 
 def contains_num(x):
     if re.search('^[0-9]+.*?\s\w', str(x)):
@@ -88,11 +86,42 @@ class Text2CNBPrediction(TransformerMixin, BaseEstimator):
             ('tf', TfidfVectorizer()),
             ('cnb', ComplementNB(norm=True))])
         self.text_clf = text_clf.fit(x, y)
+        self.feature_names = self.text_clf['tf'].get_feature_names()
+        # self.y = y
         return self
 
     def transform(self, data):
         pred = self.text_clf.predict(data)
+        # self.data = data
         return pd.DataFrame(pred)  # check what form this is in
+
+    def get_feature_names(self):
+        return self.feature_names
+
+    # def accuracy(self, return_wrong=False):
+    #     pred = self.text_clf.predict(self.data)
+    #     right, wrong = 0, 0
+    #
+    #     if return_wrong:
+    #         wrong_preds_x = []
+    #         wrong_preds_y = []
+    #         wrong_preds_pred = []
+    #     for a, b, c in zip(self.y, pred, self.data):
+    #         if a == b:
+    #             right += 1
+    #         else:
+    #             wrong += 1
+    #             if return_wrong:
+    #                 wrong_preds_x.append(c)
+    #                 wrong_preds_y.append(a)
+    #                 wrong_preds_pred.append(b)
+    #
+    #     accuracy = right/(right+wrong)
+    #     if return_wrong:
+    #         wrong_dict = {'x': wrong_preds_x, 'y': wrong_preds_y, 'pred': wrong_preds_pred}
+    #         wrong_df = pd.DataFrame(data=wrong_dict)
+    #         return accuracy, wrong_df
+    #     return accuracy
 
 
 class Num2Cyfra1(TransformerMixin, BaseEstimator):
@@ -122,6 +151,12 @@ def train(data, model_file=settings.heading_id_intext_model_file):
     print(accuracy)
     report = classification_report(Y, clf.predict(X))
     print(report)
+
+    #cnb_transformer = clf['union'].transformers[0][1]
+    #print(cnb_transformer.accuracy(return_wrong=True))
+
+    eli5.show_weights(clf)
+
     with open(model_file, "wb") as file:
         pickle.dump(clf, file)
 
