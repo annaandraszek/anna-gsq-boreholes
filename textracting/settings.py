@@ -13,6 +13,7 @@ marginals_model_file_forest = model_path + 'marginals_forest_model_v2.pkl'
 marginals_id_dataset = dataset_path + 'identified_marginals_dataset.csv'
 marginals_id_trans_dataset = dataset_path + 'identified_trans_marginals_dataset.csv'
 page_extraction_dataset = dataset_path + 'page_extraction_dataset.csv'
+heading_id_intext_model_file = model_path + 'heading_intext_CNB_model.pkl'
 
 def get_report_name(file_id, local_path=False, file_extension=False):
     file = ''
