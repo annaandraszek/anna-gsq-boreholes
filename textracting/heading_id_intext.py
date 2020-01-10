@@ -15,7 +15,7 @@ import pandas as pd
 import re
 import settings
 import sklearn
-from sklearn.pipeline import Pipeline, FeatureUnion
+from sklearn.pipeline import Pipeline
 from sklearn.metrics import classification_report, accuracy_score
 from sklearn.naive_bayes import ComplementNB
 from sklearn.ensemble import RandomForestClassifier
@@ -23,7 +23,8 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.compose import ColumnTransformer
 import pickle
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.preprocessing import StandardScaler
+import os
+from lstm_heading_identification import num2cyfra1
 
 def contains_num(x):
     if re.search('^[0-9]+.*?\s\w', str(x)):
@@ -80,8 +81,12 @@ def data_prep(df, y=False):
 
 
 class Text2CNBPrediction(TransformerMixin, BaseEstimator):
-    def fit(self, x, y=None):
-        text_clf = Pipeline([('tf', TfidfVectorizer()), ('cnb', ComplementNB())])
+    def fit(self, x, y):
+        # add to pipeline: first step transforming all numbers to cyfra1 format
+        text_clf = Pipeline([
+            ('n2c', Num2Cyfra1()),
+            ('tf', TfidfVectorizer()),
+            ('cnb', ComplementNB(norm=True))])
         self.text_clf = text_clf.fit(x, y)
         return self
 
@@ -90,27 +95,22 @@ class Text2CNBPrediction(TransformerMixin, BaseEstimator):
         return pd.DataFrame(pred)  # check what form this is in
 
 
-def find_bad(x):
-    try:
-        float(x)
-    except ValueError:
-        return "I'M BADDDDDDDDDDDDDDDDDD"
+class Num2Cyfra1(TransformerMixin, BaseEstimator):
+    def fit(self, x, y=None):
+        return self
+
+    def transform(self, data):
+        data = data.apply(lambda x: num2cyfra1(x))
+        return data  # check what form this is in
+
 
 def train(data, model_file=settings.heading_id_intext_model_file):
-    # one main pipeline, made up of a columntranformer containing little pipelines for different operations on data (text vs other)
-
     X, Y = data_prep(data, y=True)
-    #X.Centrality = X.Centrality.apply(lambda x: find_bad(x))
-    X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.33)
+    X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.25)
 
     clf = Pipeline([
         ('union', ColumnTransformer([
-            #('clf', Pipeline([
-            #    ('tf', TfidfVectorizer()),
-            #    ('cnb', ComplementNB())
-            ('text', Text2CNBPrediction()
-            #])
-            , 'Text')
+            ('text', Text2CNBPrediction(), 'Text')
         ], remainder="passthrough")),
         ('forest', RandomForestClassifier())
     ], verbose=True)
@@ -120,12 +120,20 @@ def train(data, model_file=settings.heading_id_intext_model_file):
 
     accuracy = accuracy_score(y_test, y_pred)
     print(accuracy)
-    report = classification_report(y_train, clf.predict(X_train))
+    report = classification_report(Y, clf.predict(X))
     print(report)
-    #with open(pre + '_CNBreport.txt', "w") as r:
-    #    r.write(report)
-    #with open(pre + model_file, "wb") as file:
-    #    pickle.dump(clf, file)
+    with open(model_file, "wb") as file:
+        pickle.dump(clf, file)
+
+
+def classify(data, model_file=settings.heading_id_intext_model_file):
+    if not os.path.exists(model_file):
+        train(data)
+    with open(model_file, "rb") as file:
+        model = pickle.load(file)
+    data = data_prep(data)
+    pred = model.predict(data)
+    return pred
 
 
 if __name__ == '__main__':
@@ -133,4 +141,11 @@ if __name__ == '__main__':
     data = pd.read_csv(data_path)
     #create_dataset(data_path)
     #edit_dataset(data_path)
-    train(data)
+    #train(data)
+    preds = classify(data)
+    x = 0
+    for i, row in data.iterrows():
+        if preds[i] != row.Heading:
+            print(row.DocID, '\t', row.PageNum, ',', row.LineNum, '\t', row.Text, ' | ', row.Heading, ' | ', preds[i])
+            x += 1
+    print('Wrong classifications: ', x)
