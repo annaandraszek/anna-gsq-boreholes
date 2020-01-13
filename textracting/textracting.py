@@ -1,337 +1,99 @@
-import re
-import numpy as np
+
+# Running textract on documents in S3
+
+import boto3
+import time
+import json
+import textmain
+import texttransforming
+import settings
+
+def startJob(s3BucketName, objectName, features=None):
+    response = None
+    client = boto3.client('textract', region_name='ap-southeast-1')
+    response = client.start_document_analysis(
+        DocumentLocation={
+            'S3Object': {
+                'Bucket': s3BucketName,
+                'Name': objectName
+            }
+        },
+        FeatureTypes=features,
+    )
+
+    return response["JobId"]
 
 
-def get_rows_columns_map(table_result, blocks_map):
-    rows = {}
-    for relationship in table_result['Relationships']:
-        if relationship['Type'] == 'CHILD':
-            for child_id in relationship['Ids']:
-                cell = blocks_map[child_id]
-                if cell['BlockType'] == 'CELL':
-                    row_index = cell['RowIndex']
-                    col_index = cell['ColumnIndex']
-                    if row_index not in rows:
-                        # create new row
-                        rows[row_index] = {}
+def isJobComplete(jobId):
+    time.sleep(5)
+    client = boto3.client('textract')
+    response = client.get_document_analysis(JobId=jobId)
+    status = response["JobStatus"]
+    print("Job status: {}".format(status))
 
-                    # get the text value
-                    rows[row_index][col_index] = get_text(cell, blocks_map)
-    return rows
+    while (status == "IN_PROGRESS"):
+        time.sleep(5)
+        response = client.get_document_analysis(JobId=jobId)
+        status = response["JobStatus"]
+        print("Job status: {}".format(status))
+
+    return status
 
 
-def generate_table_csv(table_result, blocks_map, table_index):
-    rows = get_rows_columns_map(table_result, blocks_map)
+def getJobResults(jobId):
+    pages = []
+    time.sleep(5)
+    client = boto3.client('textract')
+    response = client.get_document_analysis(JobId=jobId)
 
-    table_id = 'Table_' + str(table_index)
+    pages.append(response)
+    print("Resultset page recieved: {}".format(len(pages)))
+    nextToken = None
+    if ('NextToken' in response):
+        nextToken = response['NextToken']
 
-    # get cells.
-    csv = 'Table: {0}\n\n'.format(table_id)
-
-    for row_index, cols in rows.items():
-
-        for col_index, text in cols.items():
-            csv += '{}'.format(text) + ","
-        csv += '\n'
-
-    csv += '\n\n\n'
-    return csv
-
-
-def get_text(result, blocks_map):
-    text = ''
-    if 'Relationships' in result:
-        for relationship in result['Relationships']:
-            if relationship['Type'] == 'CHILD':
-                for child_id in relationship['Ids']:
-                    word = blocks_map[child_id]
-                    if word['BlockType'] == 'WORD':
-                        text += word['Text'] + ' '
-                    if word['BlockType'] == 'SELECTION_ELEMENT':
-                        if word['SelectionStatus'] == 'SELECTED':
-                            text += 'X '
-    return text
-
-
-def get_table_csv(doc):
-    # Get the text blocks
-    blocks = doc['Blocks']
-
-    blocks_map = {}
-    table_blocks = []
-    for block in blocks:
-        blocks_map[block['Id']] = block
-        if block['BlockType'] == "TABLE":
-            table_blocks.append(block)
-
-    if len(table_blocks) <= 0:
-        return "<b> NO Table FOUND </b>"
-
-    csv = ''
-    for index, table in enumerate(table_blocks):
-        csv += generate_table_csv(table, blocks_map, index + 1)
-        csv += '\n\n'
-    return csv
-
-
-def get_pageline_map(doc):
-    blocks = doc['Blocks']
-    page_child_map = {}
-    page_lines = {}
-
-    for block in blocks:
-        if block['BlockType'] == "PAGE":
-            if 'CHILD' in block['Relationships'][0]['Type']:
-                page_child_map[block['Page']] = block['Relationships'][0]['Ids']
-        if block['BlockType'] == "LINE":
-            if block['Id'] in page_child_map[block['Page']]:
-                if block['Page'] in page_lines:
-                    page_lines[block['Page']].append(block['Text'])
-                else:
-                    page_lines[block['Page']] = [block['Text']]
-    return page_lines
-
-
-def update_bb(bb, line):
-    bb['width'] += line['BoundingBox']['Width']
-    bb['height'].append(line['BoundingBox']['Height'])
-    bb['left'].append(line['BoundingBox']['Left'])
-    bb['top'].append(line['BoundingBox']['Top'])
-    return bb
-
-
-def get_restructpagelines(doc, slopes=False):
-    pagelines = {}
-    pageinfo = {}
-    if slopes:
-        matching_slopes = []
-        unmatching_slopes = []
-
-    for page in doc.items():
-        first_y = None
-        lines = []
-        ln = ''
-        conf = []
-        original_line_nums = []
-        bb = {'width':0, 'height': [], 'left': [], 'top': []}
-        lnnum = 0
-        first_left = None
-        prev_left = None
-        prev_width = None
-        for line in page[1]:
-            text = line['Text']
-            y = line['BoundingBox']['Top']
-            left = line['BoundingBox']['Left']
-
-            if len(ln) == 0:  # empty line has text added to
-                ln = text
-                conf.append(line['Confidence'])
-                original_line_nums.append(line['LineNum'])
-                bb = update_bb(bb, line)
-                first_left = line['BoundingBox']['Left']
-                prev_left = first_left
-                prev_width = line['BoundingBox']['Width']
-                first_y = y
-
-            elif first_y - 0.0075 <= y <= first_y + 0.0075: # filled line has text added to
-                conf.append(line['Confidence'])
-                original_line_nums.append(line['LineNum'])
-                bb = update_bb(bb, line)
-                # test_prev_width = prev_width
-                # test_prev_left = prev_left
-
-                if left < prev_left: # trying to add left-more string to the right of the line
-                    ln = text + " \t" + ln
-                    if left < first_left:
-                        first_left = left
-
-                else:  # new string is naturally to the right
-                    prev_left = left
-                    prev_width = line['BoundingBox']['Width']
-                    ln += " \t" + text
-
-
-                # if slopes: # for testing
-                #     slope = (prev_y - y) / (prev_left - test_prev_left)
-                #     only_slope = (prev_y - y) / (prev_left - (test_prev_left + test_prev_width))  # here, wlast is really W1
-                #     matching_slopes.append({'slope': slope, 'only_slope': only_slope,
-                #                             'page, line': str(page[0]) + ',' + str(line['LineNum']),
-                #                             'prev_text': ln, 'text': text})
-
-
-            elif len(ln) != 0: # line is emptied, new text is added UNLESS slope is acceptable
-                test_prev_left = prev_left
-                test_prev_width = prev_width
-                test_new_left = line['BoundingBox']['Left']
-
-                if (test_new_left > (test_prev_left + test_prev_width)): # if the last word is more to the left - has to be to continue the line
-                    only_slope = (first_y - y) / (test_new_left - (test_prev_left + test_prev_width))
-
-                    # if slopes:
-                    #     slope = (prev_y - y) / (test_new_left - test_prev_left)
-                    #     unmatching_slopes.append({'slope': slope, 'only_slope': only_slope,
-                    #                               'page, line': str(page[0]) + ',' + str(line['LineNum']),
-                    #                               'prev_text': ln, 'text': text})
-
-                    if abs(only_slope) < 0.014:  # filled line has text added to
-                        conf.append(line['Confidence'])
-                        original_line_nums.append(line['LineNum'])
-                        bb = update_bb(bb, line)
-                        prev_left = test_new_left
-                        prev_width = line['BoundingBox']['Width']
-                        ln += " \t" + text
-                        prev_y = y
-                        continue
-
-                avgconf = np.average(np.array(conf))
-                wordswidth = bb['width']
-                totalwidth = prev_left + prev_width - first_left
-                maxheight = np.max(np.array(bb['height']))
-                minleft = np.min(np.array(bb['left']))
-                avgtop = np.average(np.array(bb['top']))
-                lnnum += 1
-                new_entry = {'LineNum': lnnum, 'Text': ln, 'Confidence': avgconf, 'OriginalLines': original_line_nums,
-                             'WordsWidth': wordswidth, 'BoundingBox': { 'Width': totalwidth, 'Height': maxheight,
-                                                                        'Left': minleft, 'Top': avgtop}}
-
-                if page[0] in pageinfo:
-                    pageinfo[page[0]].append(new_entry)
-                else:
-                    pageinfo[page[0]] = [new_entry]
-
-                lines.append(ln)
-                ln = text
-                conf = [line['Confidence']]
-                original_line_nums = [(line['LineNum'])]
-                first_left = line['BoundingBox']['Left']
-                prev_left = first_left
-                prev_width = line['BoundingBox']['Width']
-                bb = {'width': line['BoundingBox']['Width'], 'height': [line['BoundingBox']['Height']],
-                      'left': [line['BoundingBox']['Left']], 'top': [line['BoundingBox']['Top']]}
-                first_y = y
-
-            else: # text is added straight to lines (last non-restructed text in the doc)
-                lines.append(text)
-                if page[0] in pageinfo:
-                    pageinfo[page[0]].append(line)
-                else:
-                    pageinfo[page[0]] = line
-                pageinfo[page[0]][lnnum]['LineNum'] = lnnum
-                pageinfo[page[0]][lnnum]['WordsWidth'] = pageinfo[page[0]][lnnum]['BoundingBox']['Width']
-
-            prev_y = y
-
-        #  (case: last line in the document)
-        lines.append(ln)
-        pagelines[page[0]] = lines
-
-        avgconf = np.average(np.array(conf))
-        wordswidth = bb['width']
-        totalwidth = prev_left + prev_width - first_left
-        maxheight = np.max(np.array(bb['height']))
-        minleft = np.min(np.array(bb['left']))
-        avgtop = np.average(np.array(bb['top']))
-        lnnum += 1
-        new_entry = {'LineNum': lnnum, 'Text': ln, 'Confidence': avgconf, 'OriginalLines': original_line_nums,
-                     'WordsWidth': wordswidth, 'BoundingBox': { 'Width': totalwidth, 'Height': maxheight,
-                                                                'Left': minleft, 'Top': avgtop}}
-
-        if page[0] in pageinfo:
-            pageinfo[page[0]].append(new_entry)
-        else: # in the case a page has only one line
-            pageinfo[page[0]] = [new_entry]
-
-    if slopes:
-        return pagelines, pageinfo, matching_slopes, unmatching_slopes
-    return pagelines, pageinfo
-
-
-def get_pagelineinfo_map(doc):
-    blocks = doc['Blocks']
-    page_child_map = {}
-    pagelineinfo = {}
-
-    for block in blocks:
-        if block['BlockType'] == "PAGE":
-            if 'CHILD' in block['Relationships'][0]['Type']:
-                page_child_map[block['Page']] = block['Relationships'][0]['Ids']
-        if block['BlockType'] == "LINE":
-            if block['Id'] in page_child_map[block['Page']]:
-                if block['Page'] in pagelineinfo:
-                    pagelineinfo[block['Page']].append({'LineNum':len(pagelineinfo[block['Page']])+1,
-                                                        'Text': block['Text'], 'Confidence': block['Confidence'],
-                                                       'BoundingBox': block['Geometry']['BoundingBox']})
-                else:
-                    pagelineinfo[block['Page']] = [{'LineNum': 1, 'Text': block['Text'], 'Confidence': block['Confidence'],
-                                                        'BoundingBox': block['Geometry']['BoundingBox']}]
-    return pagelineinfo
-
-
-def get_pageinfo(doc):
-    blocks = doc['Blocks']
-    pages = {}
-    for block in blocks:
-        if block['BlockType'] == "PAGE":
-            pages[block['Page']] = block
+    while (nextToken):
+        time.sleep(5)
+        response = client.get_document_analysis(JobId=jobId, NextToken=nextToken)
+        pages.append(response)
+        print("Resultset page recieved: {}".format(len(pages)))
+        nextToken = None
+        if ('NextToken' in response):
+            nextToken = response['NextToken']
     return pages
 
 
-def get_kv_map(doc):
-    blocks = doc['Blocks']
-    # get key and value maps
-    key_map = {}
-    value_map = {}
-    block_map = {}
-    for block in blocks:
-        block_id = block['Id']
-        block_map[block_id] = block
-        if block['BlockType'] == "KEY_VALUE_SET":
-            if 'KEY' in block['EntityTypes']:
-                key_map[block_id] = block
-            else:
-                value_map[block_id] = block
-    return key_map, value_map, block_map
+# takes a report in S3 and runs textract on it, saving the direct results to disk
+def report2textract(fname, bucket, features):
+    if '.pdf' in fname:
+        docid = fname.rstrip('.pdf')
+    else:
+        docid = fname
+    jobId = startJob(bucket, fname, features=features)
+    print("Started job with id: {}".format(jobId))
+    if isJobComplete(jobId):
+        response = getJobResults(jobId)
+        if response[0]['JobStatus'] == 'FAILED':
+            print(docid + ' failed, status message: ', response[0]['StatusMessage'])
+        else:
+            fp = open(settings.get_full_json_file(docid), 'w')
+            json.dump(response, fp)
+
+            if 'TABLES' in features:
+                textmain.save_tables(response, docid)
+            if 'FORMS' in features:
+                textmain.save_kv_pairs(response, docid)
+
+            print('Completed textracting ' + docid)
 
 
-def get_kv_relationship(key_map, value_map, block_map):
-    kvs = {}
-    for block_id, key_block in key_map.items():
-        value_block = find_value_block(key_block, value_map)
-        key = get_text(key_block, block_map)
-        val = get_text(value_block, block_map)
-        kvs[key] = val
-    return kvs
-
-
-def find_value_block(key_block, value_map):
-    for relationship in key_block['Relationships']:
-        if relationship['Type'] == 'VALUE':
-            for value_id in relationship['Ids']:
-                value_block = value_map[value_id]
-    return value_block
-
-
-def print_kvs(kvs):
-    for key, value in kvs.items():
-        print(key, ":", value)
-
-
-def get_kv_pairs(result, display=False):
-    key_map, value_map, block_map = get_kv_map(result)
-
-    # Get Key Value relationship
-    kvs = get_kv_relationship(key_map, value_map, block_map)
-    if display:
-        show_kv_pairs(kvs)
-    return kvs
-
-
-def show_kv_pairs(kvs):
-    print("\n\n== FOUND KEY : VALUE pairs ===\n")
-    print_kvs(kvs)
-
-
-def search_value(kvs, search_key):
-    for key, value in kvs.items():
-        if re.search(search_key, key, re.IGNORECASE):
-            return value
+if __name__ == "__main__":
+    s3BucketName = 'gsq-ml'
+    pre = 'cr_' # 'smaller_'
+    docs = ['30281', '31069', '33412', '37414', '37838', '38865', '44387', '45470', '47884', '56500', '57048']
+    for doc_path in docs:
+        docid = pre + doc_path
+        documentName = pre + doc_path + '_1.pdf' #'.pdf'
+        features=['TABLES', 'FORMS']
+        report2textract(documentName, s3BucketName, features)
+        textmain.clean_and_restruct(docid) # pagelineinfo -> cleanpage -> restructpageinfo
