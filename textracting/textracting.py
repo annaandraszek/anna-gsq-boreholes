@@ -8,9 +8,10 @@ import textmain
 import texttransforming
 import settings
 
+
 def startJob(s3BucketName, objectName, features=None):
     response = None
-    client = boto3.client('textract', region_name='ap-southeast-1')
+    client = boto3.client('textract', region_name='ap-southeast-2')
     response = client.start_document_analysis(
         DocumentLocation={
             'S3Object': {
@@ -69,7 +70,12 @@ def report2textract(fname, bucket, features):
         docid = fname.rstrip('.pdf')
     else:
         docid = fname
-    jobId = startJob(bucket, fname, features=features)
+    try:
+        fname = settings.get_s3_location(docid)
+        jobId = startJob(bucket, fname, features=features)
+    except:
+        fname = settings.get_s3_location(docid, format='tif')
+        jobId = startJob(bucket, fname, features=features)
     print("Started job with id: {}".format(jobId))
     if isJobComplete(jobId):
         response = getJobResults(jobId)
@@ -85,15 +91,3 @@ def report2textract(fname, bucket, features):
                 textmain.save_kv_pairs(response, docid)
 
             print('Completed textracting ' + docid)
-
-
-if __name__ == "__main__":
-    s3BucketName = 'gsq-ml'
-    pre = 'cr_' # 'smaller_'
-    docs = ['30281', '31069', '33412', '37414', '37838', '38865', '44387', '45470', '47884', '56500', '57048']
-    for doc_path in docs:
-        docid = pre + doc_path
-        documentName = pre + doc_path + '_1.pdf' #'.pdf'
-        features=['TABLES', 'FORMS']
-        report2textract(documentName, s3BucketName, features)
-        textmain.clean_and_restruct(docid) # pagelineinfo -> cleanpage -> restructpageinfo

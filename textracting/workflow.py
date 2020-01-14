@@ -1,4 +1,4 @@
-# download reports from s3 gsq-staging and upload to s3 gsq-ml
+# download reports from s3 gsq-staging ?
 
 # run textracting on reports, saving various json, csv, txt files
 
@@ -10,3 +10,15 @@
 
 # todo create heading recognition dataset and train
 # todo create heading identification dataset and train
+
+
+import textmain
+import textloading
+import search_report
+
+if __name__ == '__main__':
+    docids = textloading.get_reportid_sample()
+    textmain.textract_many(docids, features=['TABLES', 'FORMS'])
+
+    for docid in docids:
+        report = search_report.Report(docid)  # need every ml method here to be able to create a dataset with an unseen report

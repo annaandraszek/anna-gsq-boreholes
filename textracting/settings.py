@@ -14,15 +14,23 @@ marginals_id_dataset = dataset_path + 'identified_marginals_dataset.csv'
 marginals_id_trans_dataset = dataset_path + 'identified_trans_marginals_dataset.csv'
 page_extraction_dataset = dataset_path + 'page_extraction_dataset.csv'
 heading_id_intext_model_file = model_path + 'heading_intext_CNB_model.pkl'
+heading_classification_model_file = model_path + 'heading_classification_CNB.pkl'
 
 
-def get_report_name(file_id, local_path=False, file_extension=False):
+def get_s3_location(file_id, format='pdf'):
+    return 'QDEX/' + file_id + '/' + get_report_name(file_id, file_extension=format)
+
+
+def get_report_name(file_id, local_path=False, file_extension=None):
     file = ''
     if local_path:
         file = report_local_path + str(file_id) + '/'
     file += "cr_" + str(file_id) + "_1"
     if file_extension:
-        file += '.pdf'
+        if 'pdf' in file_extension:
+            file += '.pdf'
+        elif 'tif' in file_extension:
+            file += '.tif'
     return file
 
 

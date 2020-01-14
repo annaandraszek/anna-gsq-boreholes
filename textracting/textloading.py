@@ -38,10 +38,10 @@ def download_reports(reports, local_location='reports/'):
     download_dir(client, resource, 'QDEX/', reports, local_location, bucket='gsq-staging')
 
 
-def get_reportid_sample():
+def get_reportid_sample(num=50):
     random.seed(19)
     reps = pd.read_excel('../investigations/QDEX_reports_BHP.xlsx')
-    rs = random.sample(list(reps.REPNO), 50)
+    rs = random.sample(list(reps.REPNO), num)
     return rs
 
 
