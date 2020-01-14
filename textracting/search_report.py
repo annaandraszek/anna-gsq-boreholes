@@ -11,7 +11,8 @@ import page_extraction
 import fig_classification
 import heading_id_intext
 os.environ['KMP_AFFINITY'] = 'noverbose'
-
+from pdf2image import convert_from_path
+from PIL import ImageDraw, Image
 
 class Report():
     def __init__(self, docid):
@@ -22,14 +23,20 @@ class Report():
         self.docinfo = self.get_doc_info()
         self.doclines = self.get_doc_lines()
         self.toc_page = self.get_toc_page()
-        self.fig_pages = fig_classification.get_fig_pages(self.docid)
+        self.fig_pages = fig_classification.get_fig_pages(self.docid, self.docinfo, self.doclines)
         self.section_ptrs = self.get_section_ptrs()  # section_ptrs = [{HeadingText: , PageNum: , LineNum: }]
         self.section_content = self.get_sections()
 
     def get_doc_lines(self):
-        pagelines = settings.get_restructpagelines_file(self.docid)
-        pl = json.load(open(pagelines, "r"))
-        return pl
+        pagelines = {}
+        for page in self.docinfo.items():
+            pagenum = page[0]
+            info = page[1]
+            lines = []
+            for line in info:
+                lines.append(line['Text'])
+            pagelines[pagenum] = lines
+        return pagelines
 
     def get_doc_info(self):
         pageinfo = settings.get_restructpageinfo_file(self.docid)
@@ -179,14 +186,60 @@ def print_sections(report):
         print('\n')
 
 
+def draw_report(report):
+    report_path = settings.get_report_name(report.docid, local_path=True, file_extension='pdf')
+    images = convert_from_path(report_path)
+
+    doc = report.docinfo
+    drawn_images = []
+
+    for page in doc.items():
+        i = int(page[0])-1
+        image = images[i]  # this has to be of type RGB
+        width, height = image.size
+        draw = ImageDraw.Draw(image, 'RGBA')
+
+        if int(page[0]) in report.marginals['PageNum'].values:     # draw bb around marginals
+            lnnum = report.marginals.loc[report.marginals['PageNum'] == int(page[0])]['LineNum']
+            linenum = lnnum.values[0] - 1
+            line = page[1][linenum]
+            box = line['BoundingBox']
+            left = width * box['Left']
+            top = height * box['Top']
+            draw.rectangle([left, top, left + (width * box['Width']), top + (height * box['Height'])], outline='green')
+
+            # draw bb around page number (by comparing marginal content to result of page number extraction)
+
+        if page[0] == str(report.toc_page): # change colour of toc page
+            img_copy = image.copy()
+            background = ImageDraw.Draw(img_copy, 'RGBA')
+            background.rectangle([0, 0, image.size[0], image.size[1]], fill='green')
+            image = Image.blend(img_copy, image, alpha=0.3)
+
+        elif float(page[0]) in report.fig_pages['PageNum'].values: # change colour of fig pages
+            img_copy = image.copy()
+            background = ImageDraw.Draw(img_copy, 'RGBA')
+            background.rectangle([0, 0, image.size[0], image.size[1]], fill='purple')
+            image = Image.blend(image, img_copy, alpha=0.3)
+
+        #else:
+        # draw bb around section headers
+        # draw bb around sections
+
+        drawn_images.append(image)
+    save_path = settings.result_path + report.docid + '_boxed.pdf'
+    drawn_images[0].save(save_path, save_all=True, append_images=drawn_images[1:])
+
+
 if __name__ == '__main__':
     # transform document pages into dataset of pages for toc classification, classify pages, and isolate toc
     # from toc page, transform content into dataset of headings for heading identification, identify headings, and return headings and subheadings
 
     r = Report('26525')
-    print('TOC Headings: \n')
-    for string in r.doclines[str(r.toc_page)]:
-        print(string)
-    print("In Text Headings: \n", r.headings)
+    draw_report(r)
+    #print('TOC Headings: \n')
+    #for string in r.doclines[str(r.toc_page)]:
+    #    print(string)
+    #print("In Text Headings: \n", r.headings)
     #print("Subheadings: \n", r.subheadings)
     #print_sections(r)

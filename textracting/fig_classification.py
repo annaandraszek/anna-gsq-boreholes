@@ -54,14 +54,14 @@ def create_dataset():
     return df
 
 
-def create_individual_dataset(docid):
-    pagesinfo = settings.get_restructpageinfo_file(docid)
-    pageslines = settings.get_restructpagelines_file(docid)
-    pi = json.load(open(pagesinfo))
-    pl = json.load(open(pageslines))
+def create_individual_dataset(docid, docinfo, doclines):
+    #pagesinfo = settings.get_restructpageinfo_file(docid)
+    #pageslines = settings.get_restructpagelines_file(docid)
+    pi = docinfo #json.load(open(pagesinfo))
+    #pl = json.load(open(pageslines))
     docset = np.zeros((len(pi.items()), 11))
 
-    for info, lines, i in zip(pi.items(), pl.items(), range(len(pi))):
+    for info, lines, i in zip(pi.items(), doclines.items(), range(len(pi))):
         fig = 0
         figln = 0
         figlnpos = -1
@@ -156,12 +156,12 @@ def classify_page(data):
     return pred
 
 
-def get_fig_pages(docid=None):
+def get_fig_pages(docid, docinfo, doclines):
     if not docid:
         data_file = settings.dataset_path + 'fig_dataset.csv'
         df = pd.read_csv(data_file)
     else:
-        df = create_individual_dataset(docid)
+        df = create_individual_dataset(docid, docinfo, doclines)
     classes = classify_page(df)
     mask = np.array([True if i==1 else False for i in classes])
     fig_pages = df[mask]
