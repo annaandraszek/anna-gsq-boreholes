@@ -45,22 +45,6 @@ def get_file_from_training(folder, file_id, local_path, extension='.json'):
     return file + str(file_id) + "_" + folder + extension
 
 
-# def get_pageinfo_file(file_id, local_path=True):
-#     return get_file_from_training('pageinfo', file_id, local_path)
-#
-#
-# def get_pagelineinfo_file(file_id, local_path=True):
-#     return get_file_from_training('pagelineinfo', file_id, local_path)
-#
-#
-# def get_pagelines_file(file_id, local_path=True):
-#     return get_file_from_training('pagelines', file_id, local_path)
-#
-#
-# def get_restructpagelines_file(file_id, local_path=True):
-#     return get_file_from_training('restructpagelines', file_id, local_path)
-#
-
 def get_restructpageinfo_file(file_id, local_path=True):
     return get_file_from_training('restructpageinfo', file_id, local_path)
 
@@ -72,14 +56,7 @@ def get_kvs_file(file_id, local_path=True):
 def get_tables_file(file_id, local_path=True):
     return get_file_from_training('tables', file_id, local_path, extension='.csv')
 
-#
-# def get_text_file(file_id, local_path=True):
-#     return get_file_from_training('text', file_id, local_path, extension='.txt')
-#
 
 def get_full_json_file(file_id, local_path=True):
     return get_file_from_training('fulljson', file_id, local_path)
 
-#
-# def get_cleanpage_file(file_id, local_path=True):
-#     return get_file_from_training('cleanpage', file_id, local_path)

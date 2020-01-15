@@ -15,13 +15,14 @@
 import textmain
 import textloading
 import search_report
+import texttransforming
 
 if __name__ == '__main__':
     #docids = textloading.get_reportid_sample(2)
     docids = ['24352', '28184']
     print(docids)
     #textmain.textract_many(docids, features=['TABLES', 'FORMS'])
-
     for docid in docids:
+        texttransforming.clean_and_restruct(docid)
         report = search_report.Report(docid)  # need every ml method here to be able to create a dataset with an unseen report
         search_report.draw_report(report)

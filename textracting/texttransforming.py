@@ -218,6 +218,7 @@ def get_restructpagelines(doc):
         lines = []
         ln = ''
         conf = []
+        original_bbs = []
         original_line_nums = []
         bb = {'width':0, 'height': [], 'left': [], 'top': []}
         lnnum = 0
@@ -232,6 +233,7 @@ def get_restructpagelines(doc):
             if len(ln) == 0:  # empty line has text added to
                 ln = text
                 conf.append(line['Confidence'])
+                original_bbs.append(line['BoundingBox'])
                 original_line_nums.append(line['LineNum'])
                 bb = update_bb(bb, line)
                 first_left = line['BoundingBox']['Left']
@@ -241,6 +243,7 @@ def get_restructpagelines(doc):
 
             elif first_y - 0.0075 <= y <= first_y + 0.0075: # filled line has text added to
                 conf.append(line['Confidence'])
+                original_bbs.append(line['BoundingBox'])
                 original_line_nums.append(line['LineNum'])
                 bb = update_bb(bb, line)
 
@@ -264,6 +267,7 @@ def get_restructpagelines(doc):
 
                     if abs(only_slope) < 0.014:  # filled line has text added to
                         conf.append(line['Confidence'])
+                        original_bbs.append(line['BoundingBox'])
                         original_line_nums.append(line['LineNum'])
                         bb = update_bb(bb, line)
                         prev_left = test_new_left
@@ -280,7 +284,8 @@ def get_restructpagelines(doc):
                 lnnum += 1
                 new_entry = {'LineNum': lnnum, 'Text': ln, 'Confidence': avgconf, 'OriginalLines': original_line_nums,
                              'WordsWidth': wordswidth, 'BoundingBox': { 'Width': totalwidth, 'Height': maxheight,
-                                                                        'Left': minleft, 'Top': avgtop}}
+                                                                        'Left': minleft, 'Top': avgtop},
+                             'OriginalBBs': original_bbs}
 
                 if page[0] in pageinfo:
                     pageinfo[page[0]].append(new_entry)
@@ -290,6 +295,7 @@ def get_restructpagelines(doc):
                 lines.append(ln)
                 ln = text
                 conf = [line['Confidence']]
+                original_bbs = [line['BoundingBox']]
                 original_line_nums = [(line['LineNum'])]
                 first_left = line['BoundingBox']['Left']
                 prev_left = first_left
@@ -320,7 +326,8 @@ def get_restructpagelines(doc):
         lnnum += 1
         new_entry = {'LineNum': lnnum, 'Text': ln, 'Confidence': avgconf, 'OriginalLines': original_line_nums,
                      'WordsWidth': wordswidth, 'BoundingBox': { 'Width': totalwidth, 'Height': maxheight,
-                                                                'Left': minleft, 'Top': avgtop}}
+                                                                'Left': minleft, 'Top': avgtop},
+                     'OriginalBBs': original_bbs}
 
         if page[0] in pageinfo:
             pageinfo[page[0]].append(new_entry)

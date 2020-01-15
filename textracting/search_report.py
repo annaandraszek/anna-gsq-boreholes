@@ -13,6 +13,8 @@ import heading_id_intext
 os.environ['KMP_AFFINITY'] = 'noverbose'
 from pdf2image import convert_from_path
 from PIL import ImageDraw, Image
+import re
+
 
 class Report():
     def __init__(self, docid):
@@ -113,19 +115,6 @@ class Report():
         return df
 
     def create_intext_id_dataset(self):
-        # if creating an individual dataset need to get the data from report.docinfo, and apply the same kind
-            # of transforms for extra attributes as was done originally
-            # needs added: NormedLineNum, Words2Width, ContainsNum, Centrality, WordCount
-        # df = pd.DataFrame(
-        #     columns=
-        # lineset = []
-        # for page in self.docinfo:
-        #     if page[0] != self.toc_page and page[0] not in self.fig_pages:
-        #         for line in page:
-        #
-        #             lineset.append([self.docid, page[0], line['LineNum'], ])
-        #
-
         columns = ['DocID', 'PageNum', 'LineNum', 'NormedLineNum', 'Text', 'Words2Width', 'WordsWidth',
                          'Width', 'Height', 'Left', 'Top', 'ContainsNum', 'Centrality', 'WordCount', 'Heading']
         df = pd.DataFrame(columns=columns)
@@ -157,7 +146,7 @@ class Report():
         self.headings, self.subheadings = self.get_headings()
         self.marginals = marginals_classification.get_marginals(self.docid)  # a df containing many columns, key: pagenum, text
         self.marginals_set = set([(p, l) for p, l in zip(self.marginals.PageNum, self.marginals.LineNum)])
-        #self.page_nums = page_extraction.get_page_nums(self.marginals)
+        self.page_nums = page_extraction.get_page_nums(self.marginals)
         self.headings_intext = heading_id_intext.get_headings_intext(self.docid, self.create_intext_id_dataset())
         section_ptrs = self.headings_intext.loc[self.headings_intext['Heading'] == 1]
         section_ptrs.reset_index(inplace=True, drop=True)
@@ -253,9 +242,28 @@ def draw_report(report):
             box = line['BoundingBox']
             left = width * box['Left']
             top = height * box['Top']
-            draw.rectangle([left, top, left + (width * box['Width']), top + (height * box['Height'])], outline='green')
+            draw.rectangle([left, top, left + (width * box['Width']), top + (height * box['Height'])], outline='blue')
 
             # draw bb around page number (by comparing marginal content to result of page number extraction)
+            if int(page[0]) in report.page_nums['PageNum'].values:  # draw bb around marginals
+                pg_marginal = report.page_nums.loc[report.page_nums['PageNum'] == int(page[0])]
+                #pglnnum = pg_marginal['LineNum']
+                #pglinenum = pglnnum.values[0] - 1
+                text = pg_marginal.Text.values[0]
+                split_text = text.split('\t')
+                reg = r'(^|\s)' + str(pg_marginal['Page'].values[0]) + r'($|\s)'   # implement returning pagenum position instead? would make this MUCH easier
+                pgnum_i = None
+                for t, i in zip(split_text, range(len(split_text))):
+                    if re.search(reg, t):
+                        pgnum_i = i
+                        break
+                box = line['OriginalBBs'][pgnum_i]
+                left = width * box['Left']
+                top = height * box['Top']
+                draw.rectangle([left, top, left + (width * box['Width']), top + (height * box['Height'])],
+                               outline='orange')
+
+            #original_marginal_bb = docinfo[pagestr][lineindex]['OriginalBBs'][index in marginal]
 
         if page[0] == str(report.toc_page): # change colour of toc page
             img_copy = image.copy()
@@ -271,6 +279,15 @@ def draw_report(report):
 
         #else:
         # draw bb around section headers
+        elif int(page[0]) in report.section_ptrs['PageNum'].values:
+            lnnum = report.section_ptrs.loc[report.section_ptrs['PageNum'] == int(page[0])]['LineNum']
+            linenum = lnnum.values[0] - 1
+            line = page[1][linenum]
+            box = line['BoundingBox']
+            left = width * box['Left']
+            top = height * box['Top']
+            draw.rectangle([left, top, left + (width * box['Width']), top + (height * box['Height'])], outline='green')
+
         # draw bb around sections
 
         drawn_images.append(image)
