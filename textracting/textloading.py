@@ -2,7 +2,7 @@
 # Pre-textract functions
 
 import random
-from textracting import report2textract
+#from textracting import report2textract
 import boto3
 import glob
 import img2pdf
@@ -10,13 +10,15 @@ import pandas as pd
 import settings
 import boto3
 import os
+import logging
+from botocore.exceptions import ClientError
 
 
 def list2strs(lst):
     return [str(e) for e in lst]
 
 
-def download_dir(client, resource, dist, reports, local='/tmp', bucket='your_bucket', ):
+def download_dir(client, resource, dist, reports, local='/tmp', bucket='your_bucket'):
     paginator = client.get_paginator('list_objects')
 
     for report in reports:
@@ -36,6 +38,11 @@ def download_reports(reports, local_location='reports/'):
     client = boto3.client('s3', region_name='ap-southeast-2')
     resource = boto3.resource('s3')
     download_dir(client, resource, 'QDEX/', reports, local_location, bucket='gsq-staging')
+
+
+def download_report(fname, dest):
+    resource = boto3.resource('s3')
+    resource.meta.client.download_file('gsq-staging', fname, dest)
 
 
 def get_reportid_sample(num=50):

@@ -71,7 +71,8 @@ def save_kv_pairs(result, file_id):
 
 def clean_and_restruct(docid, save=True):
     json_file = settings.get_full_json_file(docid)
-    json_doc = json.load(open(json_file, 'r'))
+    with open(json_file) as file:
+        json_doc = json.load(file)
     json_res = json2res(json_doc)
     pagelineinfo = get_pagelineinfo_map(json_res)  # takes json response
     clean_page = get_clean_page(pagelineinfo, docid)
@@ -163,7 +164,7 @@ def get_text(result, blocks_map):
 
 def get_table_csv(doc):
     # Get the text blocks
-    blocks = doc['Blocks']
+    blocks = doc#['Blocks']
 
     blocks_map = {}
     table_blocks = []
@@ -360,7 +361,7 @@ def get_pageinfo(doc):
 
 
 def get_kv_map(doc):
-    blocks = doc['Blocks']
+    blocks = doc#['Blocks']
     # get key and value maps
     key_map = {}
     value_map = {}

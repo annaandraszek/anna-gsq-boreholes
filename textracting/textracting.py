@@ -7,6 +7,19 @@ import json
 import textmain
 import texttransforming
 import settings
+import re
+import textloading
+import img2pdf
+import os
+
+def find_file(docid):  # for finding the file type of a report
+    file_pre = settings.get_s3_location(docid, format=None)
+    client = boto3.client('s3')
+    #my_bucket = s3.Bucket('gsq-staging/QDEX')
+    files = client.list_objects_v2(Bucket='gsq-staging', Prefix=file_pre)
+    for file in files['Contents']:
+        if file['Key'].startswith(file_pre + '.'):
+            return file['Key']
 
 
 def startJob(s3BucketName, objectName, features=None):
@@ -21,7 +34,6 @@ def startJob(s3BucketName, objectName, features=None):
         },
         FeatureTypes=features,
     )
-
     return response["JobId"]
 
 
@@ -70,12 +82,27 @@ def report2textract(fname, bucket, features):
         docid = fname.rstrip('.pdf')
     else:
         docid = fname
-    try:
-        fname = settings.get_s3_location(docid)
-        jobId = startJob(bucket, fname, features=features)
-    except:
-        fname = settings.get_s3_location(docid, format='tif')
-        jobId = startJob(bucket, fname, features=features)
+    fname = find_file(docid)
+
+    # if report is a .tif: need to download it, convert it to pdf with image2pdf, and upload to s3 again for textract
+    # s3: gsq-ml, same object path but pdf
+
+    if '.tif' in fname:
+        fname_out = re.sub('.tif', '.pdf', fname)
+        report_path = 'reports/' + fname_out
+        report_in = 'reports/' + fname
+        new_dir = report_path.rsplit('/', 1)[0] + '/'
+        if not os.path.exists(new_dir):
+            os.makedirs(new_dir)
+        textloading.download_report(fname, report_in)
+        with open(report_path, "wb") as f:
+            f.write(img2pdf.convert(open(report_in, "rb")))
+        s3 = boto3.resource('s3')
+        bucket = 'gsq-ml2'
+        s3.meta.client.upload_file(report_path, bucket, fname_out)
+        fname = fname_out
+
+    jobId = startJob(bucket, fname, features=features)
     print("Started job with id: {}".format(jobId))
     if isJobComplete(jobId):
         response = getJobResults(jobId)
@@ -84,10 +111,12 @@ def report2textract(fname, bucket, features):
         else:
             fp = open(settings.get_full_json_file(docid), 'w')
             json.dump(response, fp)
-
+            res_blocks = []
+            for i in response:
+                res_blocks.extend(i['Blocks'])
             if 'TABLES' in features:
-                textmain.save_tables(response, docid)
+                texttransforming.save_tables(res_blocks, docid)
             if 'FORMS' in features:
-                textmain.save_kv_pairs(response, docid)
+                texttransforming.save_kv_pairs(res_blocks, docid)
 
             print('Completed textracting ' + docid)
