@@ -93,12 +93,11 @@ def contains_num(x):
 def create_dataset(datafile=settings.dataset_path + 'heading_id_intext_dataset.csv', docid=False):
     sourcefile = settings.dataset_path + 'marginals_dataset_v2.csv'
     df = pd.read_csv(sourcefile)
-    if docid:  # if creating an individual dataset
+
+    if docid:
         df = df.loc[df['DocID'] == float(docid)]
     # remove ContainsTab, ContainsPage
     df = df.drop(['ContainsTab', 'ContainsPage'], axis=1)
-    # update contains num to just re.search('[0-9]+')
-    df.ContainsNum = df.Text.apply(lambda x: contains_num(x))
     # remove rows with Marginal == 1 or 2. then remove marginal column
     df = df.loc[df.Marginal == 0]
     df = df.drop(['Marginal'], axis=1)
@@ -114,16 +113,18 @@ def create_dataset(datafile=settings.dataset_path + 'heading_id_intext_dataset.c
     for i, row in df.iterrows():
         if (row.DocID, row.PageNum) in toc_tuples or (row.DocID, row.PageNum) in fig_tuples:
             to_drop.append(i)
+    df = df.drop(index=to_drop)
 
+    # update contains num to just re.search('[0-9]+')
+    df['ContainsNum'] = df.Text.apply(lambda x: contains_num(x))
     # add column: line word count
     df['WordCount'] = df.Text.apply(lambda x: len(x.split()))
 
-    new_df = df.drop(index=to_drop)
     #print(new_df)
     if not docid:
-        new_df.to_csv(datafile, index=False)
-    new_df['Heading'] = 0
-    return new_df
+        df.to_csv(datafile, index=False)
+    df['Heading'] = 0
+    return df
     # manually annotate, or, send to classifier
 
 
@@ -194,8 +195,12 @@ def classify(data, model_file=settings.heading_id_intext_model_file):
     return pred
 
 
-def get_headings_intext(docid):
-    data = create_dataset(docid=docid)
+def get_headings_intext(docid, dataset=None):
+    try:
+        if not dataset:
+            data = create_dataset(docid=docid)
+    except ValueError:
+        data = dataset
     pred = classify(data)
     data['Heading'] = pred
     headings = data.loc[pred > 0]

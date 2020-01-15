@@ -8,9 +8,9 @@ import texttransforming
 # textract a report with docid in s3
 # features can = ['TABLES', 'FORMS']
 def textract(docid, features):
-    documentName = 'cr_' + docid + '_1.pdf'  # '.pdf'
-    textracting.report2textract(documentName, features=features, bucket='gsq-staging')
-    texttransforming.clean_and_restruct(docid)  # pagelineinfo -> cleanpage -> restructpageinfo
+    #documentName = 'cr_' + docid + '_1.pdf'  # '.pdf'
+    textracting.report2textract(docid, features=features, bucket='gsq-staging')
+    texttransforming.clean_and_restruct(docid, save=True)  # pagelineinfo -> cleanpage -> restructpageinfo
 
 
 def textract_many(docids, features):

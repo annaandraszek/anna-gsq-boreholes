@@ -12,6 +12,7 @@ import textloading
 import img2pdf
 import os
 
+
 def find_file(docid):  # for finding the file type of a report
     file_pre = settings.get_s3_location(docid, format=None)
     client = boto3.client('s3')

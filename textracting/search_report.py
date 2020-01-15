@@ -75,10 +75,10 @@ class Report():
             newdf = heading_identification.pre_process_id_dataset(pre='cyfra1', datafile=self.head_id_dataset_path, training=False)
             newdf.to_csv(self.head_id_dataset_path_proc)
         model = lstm_heading_identification.NeuralNetwork()
-        refdf = pd.read_csv(settings.dataset_path + 'processed_heading_id_dataset.csv')
-        refdf = refdf.loc[refdf['DocID'] == float(self.docid)]
-        x_labels = refdf[['SectionPrefix', 'SectionText', 'SectionPage']]
-        x_labels.reset_index(drop=True, inplace=True)
+        #refdf = pd.read_csv(settings.dataset_path + 'processed_heading_id_dataset.csv')
+        #refdf = refdf.loc[refdf['DocID'] == float(self.docid)]
+        #x_labels = refdf[['SectionPrefix', 'SectionText', 'SectionPage']]
+        #x_labels.reset_index(drop=True, inplace=True)
         x = pd.read_csv(self.head_id_dataset_path_proc)['SectionText']
         _, res = model.predict(x)
         headings = pd.DataFrame(columns=['SectionPrefix', 'SectionText', 'SectionPage'])
@@ -87,10 +87,16 @@ class Report():
         for i, pred in zip(range(len(res)), res):
             #if pred == 0:
             #print(x_labels.iloc[i])
-            if pred == 1:
-                headings = headings.append(x_labels.iloc[i], ignore_index=True)
-            elif pred == 2:
-                subheadings = subheadings.append(x_labels.iloc[i], ignore_index=True)
+            if pred > 0:
+                heading = self.docinfo[str(self.toc_page)][i]
+                section_prefix, section_text = heading_identification.split_prefix(heading['Text'])
+                section_text, section_page = heading_identification.split_pagenum(section_text)
+                if pred == 1:
+                    headings.loc[len(headings)] = [section_prefix, section_text, section_page]
+                    #headings = headings.append([[section_prefix, section_text, section_page]], ignore_index=True)
+                elif pred == 2:
+                    subheadings.loc[len(subheadings)] = [section_prefix, section_text, section_page]
+                    #subheadings = subheadings.append([[section_prefix, section_text, section_page]], ignore_index=True)
         return headings, subheadings
 
     def create_identification_dataset(self):
@@ -99,11 +105,52 @@ class Report():
         for lines in pages.items():
             if lines[0] == str(self.toc_page):
                 docset = []
-                for line, i in zip(lines[1].items(), range(len(lines[1].items()))):
-                    docset.append([self.docid, i, line.Text])
+                for line, i in zip(lines[1], range(len(lines[1]))):
+                    docset.append([self.docid, i, line['Text']])
                 pgdf = pd.DataFrame(data=docset, columns=['DocID', 'LineNum', 'LineText'])
                 df = df.append(pgdf, ignore_index=True)
         df.to_csv(self.head_id_dataset_path, index=False)
+        return df
+
+    def create_intext_id_dataset(self):
+        # if creating an individual dataset need to get the data from report.docinfo, and apply the same kind
+            # of transforms for extra attributes as was done originally
+            # needs added: NormedLineNum, Words2Width, ContainsNum, Centrality, WordCount
+        # df = pd.DataFrame(
+        #     columns=
+        # lineset = []
+        # for page in self.docinfo:
+        #     if page[0] != self.toc_page and page[0] not in self.fig_pages:
+        #         for line in page:
+        #
+        #             lineset.append([self.docid, page[0], line['LineNum'], ])
+        #
+
+        columns = ['DocID', 'PageNum', 'LineNum', 'NormedLineNum', 'Text', 'Words2Width', 'WordsWidth',
+                         'Width', 'Height', 'Left', 'Top', 'ContainsNum', 'Centrality', 'WordCount', 'Heading']
+        df = pd.DataFrame(columns=columns)
+        for info in self.docinfo.items():
+            docset = []
+            page = info[0]
+            for line in info[1]:
+                bb = line['BoundingBox']
+                centrality = 0.5 - abs(bb['Left'] + (bb['Width'] / 2) - 0.5)  # the higher value the more central
+                words2width = line['WordsWidth'] / bb['Width']
+                docset.append([self.docid, int(page), line['LineNum'], 0, line['Text'], words2width, line['WordsWidth'],
+                               bb['Width'], bb['Height'], bb['Left'], bb['Top'], 0, centrality, 0, 0])
+
+            temp = pd.DataFrame(data=docset, columns=columns)
+            temp['NormedLineNum'] = (temp['LineNum'] - min(temp['LineNum'])) / (
+                        max(temp['LineNum']) - min(temp['LineNum']))
+            df = df.append(temp, ignore_index=True)
+
+        unnormed = np.array(df['Centrality'])
+        normalized = (unnormed - min(unnormed)) / (max(unnormed) - min(unnormed))
+        df['Centrality'] = normalized
+        # update contains num to just re.search('[0-9]+')
+        df['ContainsNum'] = df.Text.apply(lambda x: heading_id_intext.contains_num(x))
+        # add column: line word count
+        df['WordCount'] = df.Text.apply(lambda x: len(x.split()))
         return df
 
     def get_section_ptrs(self):
@@ -111,7 +158,7 @@ class Report():
         self.marginals = marginals_classification.get_marginals(self.docid)  # a df containing many columns, key: pagenum, text
         self.marginals_set = set([(p, l) for p, l in zip(self.marginals.PageNum, self.marginals.LineNum)])
         #self.page_nums = page_extraction.get_page_nums(self.marginals)
-        self.headings_intext = heading_id_intext.get_headings_intext(self.docid)
+        self.headings_intext = heading_id_intext.get_headings_intext(self.docid, self.create_intext_id_dataset())
         section_ptrs = self.headings_intext.loc[self.headings_intext['Heading'] == 1]
         section_ptrs.reset_index(inplace=True, drop=True)
         return section_ptrs

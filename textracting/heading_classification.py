@@ -42,13 +42,14 @@ def predict(inputs):
     with open(settings.heading_classification_model_file, "rb") as file:
         model = pickle.load(file)
     pred = model.predict(inputs)
-    return pred
+    proba = model.predict_proba(inputs)
+    return pred, proba
 
 
 if __name__ == '__main__':
     dataset = settings.dataset_path + 'heading_classification_dataset.csv'
     df = pd.read_csv(dataset)
-    train(df)
+    #train(df)
     preds = predict(df.Text)
     #print(preds)
 

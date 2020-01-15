@@ -1,5 +1,5 @@
 
-report_local_path = 'training/QDEX/'
+report_local_path = 'reports/QDEX/'
 model_path = 'models/'
 result_path = 'results/'
 dataset_path = 'datasets/'
