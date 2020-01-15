@@ -14,7 +14,7 @@ os.environ['KMP_AFFINITY'] = 'noverbose'
 from pdf2image import convert_from_path
 from PIL import ImageDraw, Image
 import re
-
+from PyPDF2 import PdfFileWriter, PdfFileReader
 
 class Report():
     def __init__(self, docid):
@@ -288,19 +288,33 @@ def draw_report(report):
             top = height * box['Top']
             draw.rectangle([left, top, left + (width * box['Width']), top + (height * box['Height'])], outline='green')
 
-        # draw bb around sections
 
         drawn_images.append(image)
     save_path = settings.result_path + report.docid + '_boxed.pdf'
     drawn_images[0].save(save_path, save_all=True, append_images=drawn_images[1:])
 
 
+# add bookmarks to sections and sub-bookmarks to subsections
+# if drawing report, after it has been drawn on. if not, need to download the report if it has not been converted from tif
+def bookmark_report(report):
+    report_file = 'results/' + report.docid + '_boxed.pdf'
+    output = PdfFileWriter()
+    input = PdfFileReader(open(report_file, 'rb'))
+    ptrs = report.section_ptrs
+    for page in input.pages:
+        output.addPage(page)
+    for i, row in ptrs.iterrows():
+        section = output.addBookmark(row['Text'], row['PageNum']-1)
+    outfile = 'results/' + report.docid + '_bookmarked.pdf'
+    output.write(open(outfile, 'wb'))
+
 if __name__ == '__main__':
     # transform document pages into dataset of pages for toc classification, classify pages, and isolate toc
     # from toc page, transform content into dataset of headings for heading identification, identify headings, and return headings and subheadings
 
-    r = Report('26525')
+    r = Report('30281')
     draw_report(r)
+    bookmark_report(r)
     #print('TOC Headings: \n')
     #for string in r.doclines[str(r.toc_page)]:
     #    print(string)
