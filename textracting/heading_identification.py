@@ -4,14 +4,7 @@ import pandas as pd
 import json
 import numpy as np
 import re
-import sklearn
-import pickle
 import settings
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.feature_extraction.text import TfidfTransformer
-from sklearn.naive_bayes import ComplementNB
-from sklearn.pipeline import Pipeline
-from sklearn.metrics import classification_report
 
 
 def split_prefix(string):
@@ -135,44 +128,6 @@ def create_identification_dataset():
             print("IndexError ", tocpg, docid)
     df.to_csv("heading_id_dataset.csv", index=False)
     return df
-
-
-def data_prep(df, y=False):
-    X = df.SectionText
-    if y:
-        Y = df.Heading
-        return X, Y
-    else:
-        return X
-
-
-def train(data, pre='cyfra', model_file=settings.headid_nb_model_file):
-    X, Y = data_prep(data, y=True)
-    X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.33)
-    clf = Pipeline([('vect', CountVectorizer()),
-                              ('tfidf', TfidfTransformer()),
-                              ('clf', ComplementNB(norm=True))])  # pipeline of fit/transforms
-
-    clf = clf.fit(X_train, y_train)
-    y_pred = clf.predict(X_test)
-
-    accuracy = sklearn.metrics.accuracy_score(y_test, y_pred)
-    print(accuracy)
-    report = classification_report(y_train, clf.predict(X_train))
-    print(report)
-    with open(pre + '_CNBreport.txt', "w") as r:
-        r.write(report)
-    with open(pre + model_file, "wb") as file:
-        pickle.dump(clf, file)
-
-
-def predict(inputs):
-    if isinstance(inputs, str):
-        inputs = [inputs]
-    with open(settings.headid_nb_model_file, "rb") as file:
-        model = pickle.load(file)
-    pred = model.predict(inputs)
-    return pred
 
 
 if __name__ == "__main__":
