@@ -22,8 +22,25 @@ from sklearn.naive_bayes import ComplementNB
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.pipeline import Pipeline
 from sklearn.base import BaseEstimator, TransformerMixin
-from lstm_heading_identification import num2cyfra1
 import pandas as pd
+
+
+def num2cyfra1(string):
+    s = ''
+    prev_c = ''
+    i = 1
+    for c in string:
+        if re.match(r'[0-9]', c):
+            if prev_c != 'num':
+                s += 'cyfra' + str(i) + ' '
+                i += 1
+                prev_c = 'num'
+        elif c == '.':
+            s += 'punkt '
+            prev_c = '.'
+        else:
+            s+= c
+    return s
 
 
 class Text2CNBPrediction(TransformerMixin, BaseEstimator):

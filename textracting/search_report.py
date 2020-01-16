@@ -5,7 +5,6 @@ import toc_classification
 import settings
 import os
 import heading_identification
-import lstm_heading_identification
 import marginals_classification
 import page_extraction
 import fig_classification
@@ -85,7 +84,7 @@ class Report():
     def get_headings(self):
         df = self.create_identification_dataset()
         newdf = heading_identification.pre_process_id_dataset(pre='cyfra1', datafile=df, training=False)
-        model = lstm_heading_identification.NeuralNetwork()
+        model = heading_identification.NeuralNetwork()
         x = newdf['SectionText']
         _, res = model.predict(x)
         columns = ['LineNum', 'SectionPrefix', 'SectionText', 'SectionPage']  #'PageNum',
