@@ -153,7 +153,6 @@ def data_prep(df, y=False):
         return X
 
 
-
 def train(data=pd.read_csv(settings.dataset_path + 'heading_id_intext_dataset.csv'),
           model_file=settings.heading_id_intext_model_file):
     X, Y = data_prep(data, y=True)
@@ -200,11 +199,6 @@ def classify(data, model_file=settings.heading_id_intext_model_file):
 
 
 def get_headings_intext(data):
-    #try:
-    #    if not dataset:
-    #        data = create_dataset(docid=docid)
-    #except ValueError:
-    #    data = dataset
     pred = classify(data)
     data['Heading'] = pred
     headings = data.loc[pred > 0]

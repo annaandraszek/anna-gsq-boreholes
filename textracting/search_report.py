@@ -23,8 +23,6 @@ class Report():
     def __init__(self, docid):
         self.docid = docid
         self.toc_dataset_path = settings.production_path + docid + '_toc_dataset.csv'
-        #self.head_id_dataset_path = settings.production_path + docid + '_headid_dataset.csv'
-        #self.head_id_dataset_path_proc = settings.production_path +  docid + '_proc_headid_dataset.csv'
         self.docinfo = self.get_doc_info()
         self.doclines = self.get_doc_lines()
         self.line_dataset = self.create_line_dataset()
@@ -71,33 +69,21 @@ class Report():
         return pgdf
 
     def get_toc_page(self):
-        #if not os.path.exists(self.toc_dataset_path):
         data = self.create_toc_dataset()
         toc_pages = toc_classification.get_toc_pages(data)
         toc = int(toc_pages['PageNum'].values[0])
         return toc
 
     def get_headings(self):
-        #if not os.path.exists(self.head_id_dataset_path):
         df = self.create_identification_dataset()
-        #if not os.path.exists(self.head_id_dataset_path_proc):
         newdf = heading_identification.pre_process_id_dataset(pre='cyfra1', datafile=df, training=False)
-        #newdf.to_csv(self.head_id_dataset_path_proc)
         model = lstm_heading_identification.NeuralNetwork()
-        #refdf = pd.read_csv(settings.dataset_path + 'processed_heading_id_dataset.csv')
-        #refdf = refdf.loc[refdf['DocID'] == float(self.docid)]
-        #x_labels = refdf[['SectionPrefix', 'SectionText', 'SectionPage']]
-        #x_labels.reset_index(drop=True, inplace=True)
-        #x = pd.read_csv(self.head_id_dataset_path_proc)['SectionText']
         x = newdf['SectionText']
         _, res = model.predict(x)
         columns = ['LineNum', 'SectionPrefix', 'SectionText', 'SectionPage']  #'PageNum',
         headings = pd.DataFrame(columns=columns)
         subheadings = pd.DataFrame(columns=columns)
-        #neither = []
         for i, pred in zip(range(len(res)), res):
-            #if pred == 0:
-            #print(x_labels.iloc[i])
             if pred > 0:
                 heading = self.docinfo[str(self.toc_page)][i]
                 section_prefix, section_text = heading_identification.split_prefix(heading['Text'])
@@ -105,10 +91,8 @@ class Report():
                 hrow = [heading['LineNum'], section_prefix, section_text, section_page]  # heading['PageNum'],
                 if pred == 1:
                     headings.loc[len(headings)] = hrow
-                    #headings = headings.append([[section_prefix, section_text, section_page]], ignore_index=True)
                 elif pred == 2:
                     subheadings.loc[len(subheadings)] = hrow
-                    #subheadings = subheadings.append([[section_prefix, section_text, section_page]], ignore_index=True)
         return headings, subheadings
 
     def create_line_dataset(self):
@@ -138,8 +122,6 @@ class Report():
         df['Centrality'] = normalized
         return df
 
-
-
     def create_identification_dataset(self): # dataset for identifying headings in TOC
         columns = ['DocID', 'LineNum', 'Text']
         df = self.line_dataset.loc[self.line_dataset['PageNum'] == self.toc_page]
@@ -147,47 +129,10 @@ class Report():
         df.reset_index(inplace=True, drop=True)
         return df
 
-        #df = pd.DataFrame(columns=['DocID', 'LineNum', 'LineText'])
-        #pages = json.load(open(settings.get_restructpageinfo_file(self.docid), 'r'))
-        # for lines in pages.items():
-        #     if lines[0] == str(self.toc_page):
-        #         docset = []
-        #         for line, i in zip(lines[1], range(len(lines[1]))):
-        #             docset.append([self.docid, i, line['Text']])
-        #         pgdf = pd.DataFrame(data=docset, columns=['DocID', 'LineNum', 'LineText'])
-        #         df = df.append(pgdf, ignore_index=True)
-        # df.to_csv(self.head_id_dataset_path, index=False)
-        # return df
-
     def create_intext_id_dataset(self):
         df = self.line_dataset.copy(deep=True)
-        #columns = ['DocID', 'PageNum', 'LineNum', 'NormedLineNum', 'Text', 'Words2Width', 'WordsWidth',
-        #                 'Width', 'Height', 'Left', 'Top', 'ContainsNum', 'Centrality', 'WordCount', 'Heading']
-
-        # df = pd.DataFrame(columns=columns)
-        # for info in self.docinfo.items():
-        #     docset = []
-        #     page = info[0]
-        #     for line in info[1]:
-        #         bb = line['BoundingBox']
-        #         centrality = 0.5 - abs(bb['Left'] + (bb['Width'] / 2) - 0.5)  # the higher value the more central
-        #         words2width = line['WordsWidth'] / bb['Width']
-        #         docset.append([self.docid, int(page), line['LineNum'], 0, line['Text'], words2width, line['WordsWidth'],
-        #                        bb['Width'], bb['Height'], bb['Left'], bb['Top'], 0, centrality, 0, 0])
-        #
-        #     temp = pd.DataFrame(data=docset, columns=columns)
-        #     temp['NormedLineNum'] = (temp['LineNum'] - min(temp['LineNum'])) / (
-        #                 max(temp['LineNum']) - min(temp['LineNum']))
-        #     df = df.append(temp, ignore_index=True)
-
-        # unnormed = np.array(df['Centrality'])
-        # normalized = (unnormed - min(unnormed)) / (max(unnormed) - min(unnormed))
-        # df['Centrality'] = normalized
-        # update contains num to just re.search('[0-9]+')
         df['ContainsNum'] = df.Text.apply(lambda x: heading_id_intext.contains_num(x))
         df['Heading'] = 0
-        # # add column: line word count
-        # df['WordCount'] = df.Text.apply(lambda x: len(x.split()))
         return df
 
     def create_marginals_dataset(self):
@@ -198,41 +143,6 @@ class Report():
         df['Marginal'] = 0
         df.drop(columns=['WordCount'], inplace=True)
         return df
-        #columns = ['DocID', 'PageNum', 'LineNum', 'NormedLineNum', 'Text', 'Words2Width', 'WordsWidth', 'Width',
-        #           'Height', 'Left', 'Top', 'ContainsNum',
-        #           'ContainsTab', 'ContainsPage', 'Centrality', 'Marginal']
-        # pageinfo = settings.get_restructpageinfo_file(docid)
-        # pi = json.load(open(pageinfo))
-        # df = pd.DataFrame(columns=columns)
-        # for info in pi.items():
-        #     docset = []
-        #     page = info[0]
-        #     for line in info[1]:
-        #         contains_num = 0
-        #         contains_tab = 0
-        #         contains_page = 0
-        #         bb = line['BoundingBox']
-        #         if re.search(r'(\s|^)[0-9]+(\s|$)', line['Text']):
-        #             contains_num = 1
-        #         if re.search(r'\t', line['Text']):
-        #             contains_tab = 1
-        #         if 'page' in line['Text'].lower():
-        #             contains_page = 1
-        #         centrality = 0.5 - abs(bb['Left'] + (bb['Width'] / 2) - 0.5)  # the higher value the more central
-        #         words2width = line['WordsWidth'] / bb['Width']
-        #         docset.append([docid, int(page), line['LineNum'], 0, line['Text'], words2width, line['WordsWidth'],
-        #                        bb['Width'], bb['Height'], bb['Left'], bb['Top'], contains_num, contains_tab,
-        #                        contains_page, centrality, 0])
-        #
-        #     temp = pd.DataFrame(data=docset, columns=columns)
-        #     temp['NormedLineNum'] = (temp['LineNum'] - min(temp['LineNum'])) / (
-        #                 max(temp['LineNum']) - min(temp['LineNum']))
-        #     df = df.append(temp, ignore_index=True)
-        #
-        # unnormed = np.array(df['Centrality'])
-        # normalized = (unnormed - min(unnormed)) / (max(unnormed) - min(unnormed))
-        # df['Centrality'] = normalized
-        #return df
 
     def get_section_ptrs(self):
         self.headings, self.subheadings = self.get_headings()
@@ -248,7 +158,6 @@ class Report():
 
     def get_sections(self):
         # from section ptrs, section = section ptr, reading until the start of the next section
-        #for ptr in self.section_ptrs:
         if self.section_ptrs.shape[0] == 0:
             return []
 
