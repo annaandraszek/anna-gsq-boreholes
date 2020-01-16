@@ -14,6 +14,24 @@ import seaborn as sns
 import graphviz
 
 
+def contains_num(string):
+    if re.search(r'(\s|^)[0-9]+(\s|$)', string):
+        return 1
+    return 0
+
+
+def contains_tab(string):
+    if re.search(r'\t', string):
+        return 1
+    return 0
+
+
+def contains_page(string):
+    if 'page' in string.lower():
+        return 1
+    return 0
+
+
 def create_dataset():
     columns = ['DocID', 'PageNum', 'LineNum', 'NormedLineNum','Text', 'Words2Width', 'WordsWidth', 'Width', 'Height', 'Left', 'Top', 'ContainsNum',
                'ContainsTab', 'ContainsPage', 'Centrality']
@@ -160,8 +178,8 @@ def classify(data):
     return pred
 
 
-def get_marginals(docid):
-    data = create_individual_dataset(docid)
+def get_marginals(data):
+    #data = create_individual_dataset(docid)
     result = classify(data)
     data['Marginal'] = result
     marginals = data.loc[data['Marginal'] != 0]

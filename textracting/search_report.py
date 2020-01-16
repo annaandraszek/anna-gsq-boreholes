@@ -10,24 +10,34 @@ import marginals_classification
 import page_extraction
 import fig_classification
 import heading_id_intext
+import heading_classification
 os.environ['KMP_AFFINITY'] = 'noverbose'
 from pdf2image import convert_from_path
 from PIL import ImageDraw, Image
 import re
 from PyPDF2 import PdfFileWriter, PdfFileReader
+import time
+
 
 class Report():
     def __init__(self, docid):
         self.docid = docid
         self.toc_dataset_path = settings.production_path + docid + '_toc_dataset.csv'
-        self.head_id_dataset_path = settings.production_path + docid + '_headid_dataset.csv'
-        self.head_id_dataset_path_proc = settings.production_path +  docid + '_proc_headid_dataset.csv'
+        #self.head_id_dataset_path = settings.production_path + docid + '_headid_dataset.csv'
+        #self.head_id_dataset_path_proc = settings.production_path +  docid + '_proc_headid_dataset.csv'
         self.docinfo = self.get_doc_info()
         self.doclines = self.get_doc_lines()
+        self.line_dataset = self.create_line_dataset()
         self.toc_page = self.get_toc_page()
         self.fig_pages = fig_classification.get_fig_pages(self.docid, self.docinfo, self.doclines)
+        self.line_dataset = self.create_line_dataset()
         self.section_ptrs = self.get_section_ptrs()  # section_ptrs = [{HeadingText: , PageNum: , LineNum: }]
         self.section_content = self.get_sections()
+        #self.toc_heading_classes, self.text_heading_classes = self.classify_headings()
+
+    def classify_headings(self):
+
+        heading_classification()
 
     def get_doc_lines(self):
         pagelines = {}
@@ -47,8 +57,6 @@ class Report():
 
     def create_toc_dataset(self):
         docset = np.zeros((len(self.docinfo.items()), 5))
-        #docid = pageinfo.split('/')[-1].replace('_1_restructpageinfo.json', '').strip('cr_')
-
         for info, lines, j, in zip(self.docinfo.items(), self.doclines.items(), range(len(self.docinfo.items()))):
             toc = 0
             c = 0
@@ -57,34 +65,35 @@ class Report():
                     c = 1
                     if 'table of contents' in line.lower():
                         toc = 1
-
             docset[j] = np.array([self.docid, info[0], len(lines[1]), toc, c])
         pgdf = pd.DataFrame(data=docset, columns=['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord'])
-        pgdf.to_csv(self.toc_dataset_path, index=False)
+        #pgdf.to_csv(self.toc_dataset_path, index=False)
         return pgdf
 
     def get_toc_page(self):
-        if not os.path.exists(self.toc_dataset_path):
-            self.create_toc_dataset()
-        toc_pages = toc_classification.get_toc_pages(self.docid)
+        #if not os.path.exists(self.toc_dataset_path):
+        data = self.create_toc_dataset()
+        toc_pages = toc_classification.get_toc_pages(data)
         toc = int(toc_pages['PageNum'].values[0])
         return toc
 
     def get_headings(self):
-        if not os.path.exists(self.head_id_dataset_path):
-            self.create_identification_dataset()
-        if not os.path.exists(self.head_id_dataset_path_proc):
-            newdf = heading_identification.pre_process_id_dataset(pre='cyfra1', datafile=self.head_id_dataset_path, training=False)
-            newdf.to_csv(self.head_id_dataset_path_proc)
+        #if not os.path.exists(self.head_id_dataset_path):
+        df = self.create_identification_dataset()
+        #if not os.path.exists(self.head_id_dataset_path_proc):
+        newdf = heading_identification.pre_process_id_dataset(pre='cyfra1', datafile=df, training=False)
+        #newdf.to_csv(self.head_id_dataset_path_proc)
         model = lstm_heading_identification.NeuralNetwork()
         #refdf = pd.read_csv(settings.dataset_path + 'processed_heading_id_dataset.csv')
         #refdf = refdf.loc[refdf['DocID'] == float(self.docid)]
         #x_labels = refdf[['SectionPrefix', 'SectionText', 'SectionPage']]
         #x_labels.reset_index(drop=True, inplace=True)
-        x = pd.read_csv(self.head_id_dataset_path_proc)['SectionText']
+        #x = pd.read_csv(self.head_id_dataset_path_proc)['SectionText']
+        x = newdf['SectionText']
         _, res = model.predict(x)
-        headings = pd.DataFrame(columns=['SectionPrefix', 'SectionText', 'SectionPage'])
-        subheadings = pd.DataFrame(columns=['SectionPrefix', 'SectionText', 'SectionPage'])
+        columns = ['LineNum', 'SectionPrefix', 'SectionText', 'SectionPage']  #'PageNum',
+        headings = pd.DataFrame(columns=columns)
+        subheadings = pd.DataFrame(columns=columns)
         #neither = []
         for i, pred in zip(range(len(res)), res):
             #if pred == 0:
@@ -93,30 +102,20 @@ class Report():
                 heading = self.docinfo[str(self.toc_page)][i]
                 section_prefix, section_text = heading_identification.split_prefix(heading['Text'])
                 section_text, section_page = heading_identification.split_pagenum(section_text)
+                hrow = [heading['LineNum'], section_prefix, section_text, section_page]  # heading['PageNum'],
                 if pred == 1:
-                    headings.loc[len(headings)] = [section_prefix, section_text, section_page]
+                    headings.loc[len(headings)] = hrow
                     #headings = headings.append([[section_prefix, section_text, section_page]], ignore_index=True)
                 elif pred == 2:
-                    subheadings.loc[len(subheadings)] = [section_prefix, section_text, section_page]
+                    subheadings.loc[len(subheadings)] = hrow
                     #subheadings = subheadings.append([[section_prefix, section_text, section_page]], ignore_index=True)
         return headings, subheadings
 
-    def create_identification_dataset(self):
-        df = pd.DataFrame(columns=['DocID', 'LineNum', 'LineText'])
-        pages = json.load(open(settings.get_restructpageinfo_file(self.docid), 'r'))
-        for lines in pages.items():
-            if lines[0] == str(self.toc_page):
-                docset = []
-                for line, i in zip(lines[1], range(len(lines[1]))):
-                    docset.append([self.docid, i, line['Text']])
-                pgdf = pd.DataFrame(data=docset, columns=['DocID', 'LineNum', 'LineText'])
-                df = df.append(pgdf, ignore_index=True)
-        df.to_csv(self.head_id_dataset_path, index=False)
-        return df
-
-    def create_intext_id_dataset(self):
-        columns = ['DocID', 'PageNum', 'LineNum', 'NormedLineNum', 'Text', 'Words2Width', 'WordsWidth',
-                         'Width', 'Height', 'Left', 'Top', 'ContainsNum', 'Centrality', 'WordCount', 'Heading']
+    def create_line_dataset(self):
+        # create a dataset of all lines in the document and their universally used attributes like words2width, centrality
+            # to be used by any classifier which uses lines
+        columns = ['DocID', 'PageNum', 'LineNum', 'NormedLineNum', 'Text', 'Words2Width', 'WordsWidth', 'Width',
+                   'Height', 'Left', 'Top', 'Centrality', 'WordCount']
         df = pd.DataFrame(columns=columns)
         for info in self.docinfo.items():
             docset = []
@@ -125,8 +124,9 @@ class Report():
                 bb = line['BoundingBox']
                 centrality = 0.5 - abs(bb['Left'] + (bb['Width'] / 2) - 0.5)  # the higher value the more central
                 words2width = line['WordsWidth'] / bb['Width']
+                wordcount = len(line['Text'].split())
                 docset.append([self.docid, int(page), line['LineNum'], 0, line['Text'], words2width, line['WordsWidth'],
-                               bb['Width'], bb['Height'], bb['Left'], bb['Top'], 0, centrality, 0, 0])
+                               bb['Width'], bb['Height'], bb['Left'], bb['Top'], centrality, wordcount])
 
             temp = pd.DataFrame(data=docset, columns=columns)
             temp['NormedLineNum'] = (temp['LineNum'] - min(temp['LineNum'])) / (
@@ -136,18 +136,110 @@ class Report():
         unnormed = np.array(df['Centrality'])
         normalized = (unnormed - min(unnormed)) / (max(unnormed) - min(unnormed))
         df['Centrality'] = normalized
+        return df
+
+
+
+    def create_identification_dataset(self): # dataset for identifying headings in TOC
+        columns = ['DocID', 'LineNum', 'Text']
+        df = self.line_dataset.loc[self.line_dataset['PageNum'] == self.toc_page]
+        df = df[columns]
+        df.reset_index(inplace=True, drop=True)
+        return df
+
+        #df = pd.DataFrame(columns=['DocID', 'LineNum', 'LineText'])
+        #pages = json.load(open(settings.get_restructpageinfo_file(self.docid), 'r'))
+        # for lines in pages.items():
+        #     if lines[0] == str(self.toc_page):
+        #         docset = []
+        #         for line, i in zip(lines[1], range(len(lines[1]))):
+        #             docset.append([self.docid, i, line['Text']])
+        #         pgdf = pd.DataFrame(data=docset, columns=['DocID', 'LineNum', 'LineText'])
+        #         df = df.append(pgdf, ignore_index=True)
+        # df.to_csv(self.head_id_dataset_path, index=False)
+        # return df
+
+    def create_intext_id_dataset(self):
+        df = self.line_dataset.copy(deep=True)
+        #columns = ['DocID', 'PageNum', 'LineNum', 'NormedLineNum', 'Text', 'Words2Width', 'WordsWidth',
+        #                 'Width', 'Height', 'Left', 'Top', 'ContainsNum', 'Centrality', 'WordCount', 'Heading']
+
+        # df = pd.DataFrame(columns=columns)
+        # for info in self.docinfo.items():
+        #     docset = []
+        #     page = info[0]
+        #     for line in info[1]:
+        #         bb = line['BoundingBox']
+        #         centrality = 0.5 - abs(bb['Left'] + (bb['Width'] / 2) - 0.5)  # the higher value the more central
+        #         words2width = line['WordsWidth'] / bb['Width']
+        #         docset.append([self.docid, int(page), line['LineNum'], 0, line['Text'], words2width, line['WordsWidth'],
+        #                        bb['Width'], bb['Height'], bb['Left'], bb['Top'], 0, centrality, 0, 0])
+        #
+        #     temp = pd.DataFrame(data=docset, columns=columns)
+        #     temp['NormedLineNum'] = (temp['LineNum'] - min(temp['LineNum'])) / (
+        #                 max(temp['LineNum']) - min(temp['LineNum']))
+        #     df = df.append(temp, ignore_index=True)
+
+        # unnormed = np.array(df['Centrality'])
+        # normalized = (unnormed - min(unnormed)) / (max(unnormed) - min(unnormed))
+        # df['Centrality'] = normalized
         # update contains num to just re.search('[0-9]+')
         df['ContainsNum'] = df.Text.apply(lambda x: heading_id_intext.contains_num(x))
-        # add column: line word count
-        df['WordCount'] = df.Text.apply(lambda x: len(x.split()))
+        df['Heading'] = 0
+        # # add column: line word count
+        # df['WordCount'] = df.Text.apply(lambda x: len(x.split()))
         return df
+
+    def create_marginals_dataset(self):
+        df = self.line_dataset.copy(deep=True)
+        df['ContainsNum'] = df.Text.apply(lambda x: marginals_classification.contains_num(x))
+        df['ContainsTab'] = df.Text.apply(lambda x: marginals_classification.contains_tab(x))
+        df['ContainsPage'] = df.Text.apply(lambda x: marginals_classification.contains_page(x))
+        df['Marginal'] = 0
+        df.drop(columns=['WordCount'], inplace=True)
+        return df
+        #columns = ['DocID', 'PageNum', 'LineNum', 'NormedLineNum', 'Text', 'Words2Width', 'WordsWidth', 'Width',
+        #           'Height', 'Left', 'Top', 'ContainsNum',
+        #           'ContainsTab', 'ContainsPage', 'Centrality', 'Marginal']
+        # pageinfo = settings.get_restructpageinfo_file(docid)
+        # pi = json.load(open(pageinfo))
+        # df = pd.DataFrame(columns=columns)
+        # for info in pi.items():
+        #     docset = []
+        #     page = info[0]
+        #     for line in info[1]:
+        #         contains_num = 0
+        #         contains_tab = 0
+        #         contains_page = 0
+        #         bb = line['BoundingBox']
+        #         if re.search(r'(\s|^)[0-9]+(\s|$)', line['Text']):
+        #             contains_num = 1
+        #         if re.search(r'\t', line['Text']):
+        #             contains_tab = 1
+        #         if 'page' in line['Text'].lower():
+        #             contains_page = 1
+        #         centrality = 0.5 - abs(bb['Left'] + (bb['Width'] / 2) - 0.5)  # the higher value the more central
+        #         words2width = line['WordsWidth'] / bb['Width']
+        #         docset.append([docid, int(page), line['LineNum'], 0, line['Text'], words2width, line['WordsWidth'],
+        #                        bb['Width'], bb['Height'], bb['Left'], bb['Top'], contains_num, contains_tab,
+        #                        contains_page, centrality, 0])
+        #
+        #     temp = pd.DataFrame(data=docset, columns=columns)
+        #     temp['NormedLineNum'] = (temp['LineNum'] - min(temp['LineNum'])) / (
+        #                 max(temp['LineNum']) - min(temp['LineNum']))
+        #     df = df.append(temp, ignore_index=True)
+        #
+        # unnormed = np.array(df['Centrality'])
+        # normalized = (unnormed - min(unnormed)) / (max(unnormed) - min(unnormed))
+        # df['Centrality'] = normalized
+        #return df
 
     def get_section_ptrs(self):
         self.headings, self.subheadings = self.get_headings()
-        self.marginals = marginals_classification.get_marginals(self.docid)  # a df containing many columns, key: pagenum, text
+        self.marginals = marginals_classification.get_marginals(self.create_marginals_dataset())  # a df containing many columns, key: pagenum, text
         self.marginals_set = set([(p, l) for p, l in zip(self.marginals.PageNum, self.marginals.LineNum)])
         self.page_nums = page_extraction.get_page_nums(self.marginals)
-        self.headings_intext = heading_id_intext.get_headings_intext(self.docid, self.create_intext_id_dataset())
+        self.headings_intext = heading_id_intext.get_headings_intext(self.create_intext_id_dataset())
         section_ptrs = self.headings_intext.loc[self.headings_intext['Heading'] == 1]
         self.subsection_ptrs = self.headings_intext.loc[self.headings_intext['Heading'] == 2]
         self.subsection_ptrs.reset_index(inplace=True, drop=True)
@@ -157,15 +249,21 @@ class Report():
     def get_sections(self):
         # from section ptrs, section = section ptr, reading until the start of the next section
         #for ptr in self.section_ptrs:
+        if self.section_ptrs.shape[0] == 0:
+            return []
+
         section_num = 0
         ptr = self.section_ptrs.iloc[section_num]
         name = ptr['Text']
         start_page = ptr['PageNum']
         start_line = ptr['LineNum']
-        next_section = self.section_ptrs.iloc[section_num+1]
-        end_page = next_section['PageNum']
-        end_line = next_section['LineNum']
-
+        if self.section_ptrs.shape[0] > 1:
+            next_section = self.section_ptrs.iloc[section_num+1]
+            end_page = next_section['PageNum']
+            end_line = next_section['LineNum']
+        else:
+            end_page = len(self.doclines)
+            end_line = len(self.doclines[str(end_page)])
         content = []
         sections = []
         end = False
@@ -244,7 +342,7 @@ def draw_report(report):
             box = line['BoundingBox']
             left = width * box['Left']
             top = height * box['Top']
-            draw.rectangle([left, top, left + (width * box['Width']), top + (height * box['Height'])], outline='blue')
+            draw.rectangle([left, top, left + (width * box['Width']), top + (height * box['Height'])], outline='orange')
 
             # draw bb around page number (by comparing marginal content to result of page number extraction)
             if int(page[0]) in report.page_nums['PageNum'].values:  # draw bb around marginals
@@ -263,7 +361,7 @@ def draw_report(report):
                 left = width * box['Left']
                 top = height * box['Top']
                 draw.rectangle([left, top, left + (width * box['Width']), top + (height * box['Height'])],
-                               outline='orange')
+                               outline='red')
 
             #original_marginal_bb = docinfo[pagestr][lineindex]['OriginalBBs'][index in marginal]
 
@@ -273,7 +371,7 @@ def draw_report(report):
             background.rectangle([0, 0, image.size[0], image.size[1]], fill='green')
             image = Image.blend(img_copy, image, alpha=0.3)
 
-        elif float(page[0]) in report.fig_pages['PageNum'].values: # change colour of fig pages
+        if float(page[0]) in report.fig_pages['PageNum'].values: # change colour of fig pages
             img_copy = image.copy()
             background = ImageDraw.Draw(img_copy, 'RGBA')
             background.rectangle([0, 0, image.size[0], image.size[1]], fill='purple')
@@ -281,15 +379,26 @@ def draw_report(report):
 
         #else:
         # draw bb around section headers
-        elif int(page[0]) in report.section_ptrs['PageNum'].values:
-            lnnum = report.section_ptrs.loc[report.section_ptrs['PageNum'] == int(page[0])]['LineNum']
-            linenum = lnnum.values[0] - 1
-            line = page[1][linenum]
-            box = line['BoundingBox']
-            left = width * box['Left']
-            top = height * box['Top']
-            draw.rectangle([left, top, left + (width * box['Width']), top + (height * box['Height'])], outline='green')
+        if int(page[0]) in report.section_ptrs['PageNum'].values:
+            lnnums = report.section_ptrs.loc[report.section_ptrs['PageNum'] == int(page[0])]['LineNum']
+            for line in lnnums.values:
+                linenum = line - 1
+                line = page[1][linenum]
+                box = line['BoundingBox']
+                left = width * box['Left']
+                top = height * box['Top']
+                draw.rectangle([left, top, left + (width * box['Width']), top + (height * box['Height'])], outline='blue')
 
+        if int(page[0]) in report.subsection_ptrs['PageNum'].values:
+            lnnums = report.subsection_ptrs.loc[report.subsection_ptrs['PageNum'] == int(page[0])]['LineNum']
+            for line in lnnums.values:
+                linenum = line - 1
+                line = page[1][linenum]
+                box = line['BoundingBox']
+                left = width * box['Left']
+                top = height * box['Top']
+                draw.rectangle([left, top, left + (width * box['Width']), top + (height * box['Height'])],
+                               outline='green')
 
         drawn_images.append(image)
     save_path = settings.result_path + report.docid + '_boxed.pdf'
@@ -320,9 +429,12 @@ if __name__ == '__main__':
     # transform document pages into dataset of pages for toc classification, classify pages, and isolate toc
     # from toc page, transform content into dataset of headings for heading identification, identify headings, and return headings and subheadings
 
+    start = time.time()
     r = Report('28184')
     draw_report(r)
     bookmark_report(r)
+    end = time.time()
+    print('time:', end - start)
     #print('TOC Headings: \n')
     #for string in r.doclines[str(r.toc_page)]:
     #    print(string)

@@ -141,6 +141,10 @@ def edit_dataset(dataset=settings.dataset_path + 'heading_id_intext_dataset.csv'
 def data_prep(df, y=False):
 #    df = df.apply(lambda x: rm_empty(x))
 #    df = df.dropna()
+    original_cols = ['DocID', 'PageNum', 'LineNum', 'NormedLineNum', 'Text', 'Words2Width', 'WordsWidth', 'Width',
+                     'Height', 'Left','Top', 'ContainsNum', 'Centrality', 'Heading', 'WordCount']
+
+    df = pd.DataFrame(df, columns=original_cols)  # ordering as the fit, to not cause error in ColumnTranformer
     X = df.drop(columns=['DocID', 'Top', 'Heading'])
     if y:
         Y = df.Heading
@@ -195,12 +199,12 @@ def classify(data, model_file=settings.heading_id_intext_model_file):
     return pred
 
 
-def get_headings_intext(docid, dataset=None):
-    try:
-        if not dataset:
-            data = create_dataset(docid=docid)
-    except ValueError:
-        data = dataset
+def get_headings_intext(data):
+    #try:
+    #    if not dataset:
+    #        data = create_dataset(docid=docid)
+    #except ValueError:
+    #    data = dataset
     pred = classify(data)
     data['Heading'] = pred
     headings = data.loc[pred > 0]

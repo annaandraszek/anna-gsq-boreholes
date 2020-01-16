@@ -46,7 +46,7 @@ def download_report(fname, dest):
 
 
 def get_reportid_sample(num=50):
-    random.seed(19)
+    #random.seed(19)
     reps = pd.read_excel('../investigations/QDEX_reports_BHP.xlsx')
     rs = random.sample(list(reps.REPNO), num)
     return [str(r) for r in rs]

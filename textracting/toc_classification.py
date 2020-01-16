@@ -76,9 +76,9 @@ def classify_page(data):
     return pred
 
 
-def get_toc_pages(docid):
-    data_file = settings.production_path + docid + '_toc_dataset.csv'
-    df = pd.read_csv(data_file)
+def get_toc_pages(df):
+    #data_file = settings.production_path + docid + '_toc_dataset.csv'
+    #df = pd.read_csv(data_file)
     classes = classify_page(df)
     mask = np.array([True if i==1 else False for i in classes])
     toc_pages = df[mask]

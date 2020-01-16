@@ -74,7 +74,11 @@ def num2strona(string):
 
 
 def pre_process_id_dataset(pre='cyfra', datafile=settings.dataset_path + "heading_id_dataset.csv", training=True):
-    df = pd.read_csv(datafile)
+    if isinstance(datafile, pd.DataFrame):
+        df = datafile
+        df['LineText'] = df['Text']
+    else:
+        df = pd.read_csv(datafile)
     # break up the LineText column into SectionPrefix, SectionText, and SectionPage
     newdf = pd.DataFrame(columns=['DocID', 'LineNum', 'SectionPrefix', 'SectionText', 'SectionPage'])
     newdf.DocID = df.DocID
