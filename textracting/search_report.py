@@ -149,6 +149,8 @@ class Report():
         self.page_nums = page_extraction.get_page_nums(self.marginals)
         self.headings_intext = heading_id_intext.get_headings_intext(self.docid, self.create_intext_id_dataset())
         section_ptrs = self.headings_intext.loc[self.headings_intext['Heading'] == 1]
+        self.subsection_ptrs = self.headings_intext.loc[self.headings_intext['Heading'] == 2]
+        self.subsection_ptrs.reset_index(inplace=True, drop=True)
         section_ptrs.reset_index(inplace=True, drop=True)
         return section_ptrs
 
@@ -300,11 +302,17 @@ def bookmark_report(report):
     report_file = 'results/' + report.docid + '_boxed.pdf'
     output = PdfFileWriter()
     input = PdfFileReader(open(report_file, 'rb'))
-    ptrs = report.section_ptrs
+    ptrs = report.headings_intext
     for page in input.pages:
         output.addPage(page)
     for i, row in ptrs.iterrows():
-        section = output.addBookmark(row['Text'], row['PageNum']-1)
+        #page, line = row['PageNum'], row['LineNum']
+        #lnbb = report.docinfo[page][line-1]['BoundingBox']
+        if row['Heading'] == 1:
+            section = output.addBookmark(row['Text'], row['PageNum']-1, fit='/FitB')
+        elif row['Heading'] == 2:
+            output.addBookmark(row['Text'], row['PageNum']-1, parent=section, fit='/FitB')  # catch if section doesn't exist?
+
     outfile = 'results/' + report.docid + '_bookmarked.pdf'
     output.write(open(outfile, 'wb'))
 
@@ -312,7 +320,7 @@ if __name__ == '__main__':
     # transform document pages into dataset of pages for toc classification, classify pages, and isolate toc
     # from toc page, transform content into dataset of headings for heading identification, identify headings, and return headings and subheadings
 
-    r = Report('30281')
+    r = Report('28184')
     draw_report(r)
     bookmark_report(r)
     #print('TOC Headings: \n')
