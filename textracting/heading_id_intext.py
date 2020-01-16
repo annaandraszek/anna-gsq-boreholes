@@ -202,8 +202,8 @@ def get_headings_intext(data):
     pred = classify(data)
     data['Heading'] = pred
     headings = data.loc[pred > 0]
-    return headings[['PageNum', 'LineNum', 'Text', 'Heading']]
-
+    #return headings[['PageNum', 'LineNum', 'Text', 'Heading']]
+    return headings
 
 if __name__ == '__main__':
     data_path = settings.dataset_path + 'heading_id_intext_dataset.csv'

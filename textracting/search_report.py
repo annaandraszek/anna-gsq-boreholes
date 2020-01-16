@@ -31,11 +31,19 @@ class Report():
         self.line_dataset = self.create_line_dataset()
         self.section_ptrs = self.get_section_ptrs()  # section_ptrs = [{HeadingText: , PageNum: , LineNum: }]
         self.section_content = self.get_sections()
-        #self.toc_heading_classes, self.text_heading_classes = self.classify_headings()
+        self.toc_heading_classes, self.text_heading_classes = self.classify_headings()
 
     def classify_headings(self):
-
-        heading_classification()
+        # classify both toc headings and text headings, but separately
+        intext_dataset = self.headings_intext
+        toc_dataset = self.line_dataset.loc[self.line_dataset['PageNum'] == self.toc_page]
+        lines = self.headings['LineNum']
+        toc_dataset = toc_dataset[toc_dataset['LineNum'].isin(self.headings['LineNum'])]
+        toc_res = heading_classification.classify(toc_dataset)
+        intext_res = heading_classification.classify(intext_dataset)
+        print(toc_res)
+        print(intext_res)
+        return toc_res, intext_res
 
     def get_doc_lines(self):
         pagelines = {}
@@ -111,12 +119,10 @@ class Report():
                 wordcount = len(line['Text'].split())
                 docset.append([self.docid, int(page), line['LineNum'], 0, line['Text'], words2width, line['WordsWidth'],
                                bb['Width'], bb['Height'], bb['Left'], bb['Top'], centrality, wordcount])
-
             temp = pd.DataFrame(data=docset, columns=columns)
             temp['NormedLineNum'] = (temp['LineNum'] - min(temp['LineNum'])) / (
                         max(temp['LineNum']) - min(temp['LineNum']))
             df = df.append(temp, ignore_index=True)
-
         unnormed = np.array(df['Centrality'])
         normalized = (unnormed - min(unnormed)) / (max(unnormed) - min(unnormed))
         df['Centrality'] = normalized
@@ -339,7 +345,7 @@ if __name__ == '__main__':
     # from toc page, transform content into dataset of headings for heading identification, identify headings, and return headings and subheadings
 
     start = time.time()
-    r = Report('28184')
+    r = Report('28066')
     draw_report(r)
     bookmark_report(r)
     end = time.time()

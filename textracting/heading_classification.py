@@ -46,6 +46,13 @@ def predict(inputs):
     return pred, proba
 
 
+def classify(data):
+    X = data_prep(data)
+    pred, proba = predict(X)
+    data['HeadingType'] = pred
+    return data
+
+
 if __name__ == '__main__':
     dataset = settings.dataset_path + 'heading_classification_dataset.csv'
     df = pd.read_csv(dataset)
