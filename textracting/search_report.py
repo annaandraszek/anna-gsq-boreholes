@@ -16,6 +16,8 @@ from PIL import ImageDraw, Image
 import re
 from PyPDF2 import PdfFileWriter, PdfFileReader
 import time
+import docx
+from heading_id_intext import Text2CNBPrediction, Num2Cyfra1, num2cyfra1
 
 
 class Report():
@@ -37,8 +39,9 @@ class Report():
         intext_dataset = self.headings_intext
         toc_dataset = self.line_dataset.loc[self.line_dataset['PageNum'] == self.toc_page]
         lines = self.headings['LineNum']
-        toc_dataset = toc_dataset[toc_dataset['LineNum'].isin(self.headings['LineNum'])]
-        toc_res = heading_classification.classify(toc_dataset)
+        dataset = toc_dataset[toc_dataset['LineNum'].isin(self.headings['LineNum'])]
+        self.toc_dataset = dataset.append(toc_dataset[toc_dataset['LineNum'].isin(self.subheadings['LineNum'])], ignore_index=True)
+        toc_res = heading_classification.classify(self.toc_dataset)
         intext_res = heading_classification.classify(intext_dataset)
         print(toc_res)
         print(intext_res)
@@ -135,7 +138,8 @@ class Report():
         return df
 
     def create_intext_id_dataset(self):
-        df = self.line_dataset.copy(deep=True)
+        #df = self.line_dataset.copy(deep=True)
+        df = self.line_dataset.loc[self.line_dataset['PageNum'] != self.toc_page]
         df['ContainsNum'] = df.Text.apply(lambda x: heading_id_intext.contains_num(x))
         df['Heading'] = 0
         return df
@@ -237,7 +241,7 @@ def print_sections(report):
 
 
 def draw_report(report):
-    report_path = settings.get_report_name(report.docid, local_path=True, file_extension='pdf')
+    report_path = settings.get_report_name(report.docid, local_path=True, file_extension='.pdf')
     images = convert_from_path(report_path)
 
     doc = report.docinfo
@@ -280,10 +284,19 @@ def draw_report(report):
             #original_marginal_bb = docinfo[pagestr][lineindex]['OriginalBBs'][index in marginal]
 
         if page[0] == str(report.toc_page): # change colour of toc page
+            for i, row in report.toc_dataset.iterrows():
+                left = width * row['Left']
+                top = height * row['Top']
+                #draw = ImageDraw.Draw(image)
+                draw.rectangle([left, top, left + (width * row['Width']), top + (height * row['Height'])],
+                               outline='pink')
+
             img_copy = image.copy()
             background = ImageDraw.Draw(img_copy, 'RGBA')
             background.rectangle([0, 0, image.size[0], image.size[1]], fill='green')
             image = Image.blend(img_copy, image, alpha=0.3)
+
+
 
         if float(page[0]) in report.fig_pages['PageNum'].values: # change colour of fig pages
             img_copy = image.copy()
@@ -315,14 +328,14 @@ def draw_report(report):
                                outline='green')
 
         drawn_images.append(image)
-    save_path = settings.result_path + report.docid + '_boxed.pdf'
-    drawn_images[0].save(save_path, save_all=True, append_images=drawn_images[1:])
+    outfile = settings.get_report_name(report.docid, local_path=True, file_extension='_boxed.pdf')
+    drawn_images[0].save(outfile, save_all=True, append_images=drawn_images[1:])
 
 
 # add bookmarks to sections and sub-bookmarks to subsections
 # if drawing report, after it has been drawn on. if not, need to download the report if it has not been converted from tif
 def bookmark_report(report):
-    report_file = 'results/' + report.docid + '_boxed.pdf'
+    report_file = settings.get_report_name(report.docid, local_path=True, file_extension='_boxed.pdf')
     output = PdfFileWriter()
     input = PdfFileReader(open(report_file, 'rb'))
     ptrs = report.headings_intext
@@ -336,17 +349,29 @@ def bookmark_report(report):
         elif row['Heading'] == 2:
             output.addBookmark(row['Text'], row['PageNum']-1, parent=section, fit='/FitB')  # catch if section doesn't exist?
 
-    outfile = 'results/' + report.docid + '_bookmarked.pdf'
+    outfile = settings.get_report_name(report.docid, local_path=True, file_extension='_bookmarked.pdf')
     output.write(open(outfile, 'wb'))
+
+
+def save_report_sections(report):
+    doc = docx.Document()
+    for section in report.section_content:
+        doc.add_heading(section['Heading'], 1)
+        p = doc.add_paragraph()
+        for line in section['Content']:
+            p.add_run(line + ' ')
+        doc.add_page_break()
+    doc.save(settings.get_report_name(report.docid, local_path=True, file_extension='_sections.docx'))
 
 if __name__ == '__main__':
     # transform document pages into dataset of pages for toc classification, classify pages, and isolate toc
     # from toc page, transform content into dataset of headings for heading identification, identify headings, and return headings and subheadings
 
     start = time.time()
-    r = Report('28066')
+    r = Report('28184')
     draw_report(r)
     bookmark_report(r)
+    save_report_sections(r)
     end = time.time()
     print('time:', end - start)
     #print('TOC Headings: \n')

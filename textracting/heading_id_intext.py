@@ -261,12 +261,12 @@ def train(data=pd.read_csv(settings.dataset_path + 'heading_id_intext_dataset.cs
     conf_matrix = confusion_matrix(y_true, y_pred)
     print(conf_matrix)
 
-    temp = pd.DataFrame(data=data)
-    temp['y_pred'] = y_pred
-    temp['correct'] = temp.Heading == temp.y_pred
+    #temp = pd.DataFrame(data=data)
+    #temp['y_pred'] = y_pred
+    #temp['correct'] = temp.Heading == temp.y_pred
     #cnb = Text2CNBPrediction().fit(X_train, y_train)
     #temp['text_transform'] = cnb.transform(temp['Text'])
-    print([(a, x, y) for a, x, y in zip(data.Text, y_true, y_pred) if x!=y])
+    #print([(a, x, y) for a, x, y in zip(data.Text, y_true, y_pred) if x!=y])
 
     #cnb_transformer = clf['union'].transformers[0][1]
     #print(cnb_transformer.accuracy(return_wrong=True))
@@ -275,19 +275,23 @@ def train(data=pd.read_csv(settings.dataset_path + 'heading_id_intext_dataset.cs
 
     with open(model_file, "wb") as file:
         pickle.dump(clf, file)
-    cnb_predictor = Text2CNBPrediction()
-    #Text2CNBPrediction.__module__ = "model_maker"
-    with open("cnb_predictor.pkl", 'wb') as file:
-        pickle.dump(cnb_predictor, file)
+    #cnb_predictor = Text2CNBPrediction()
+    #Text2CNBPrediction.__module__ = "heading_id_intext"
+    #with open("models/cnb_predictor.pkl", 'wb') as file:
+    #    pickle.dump(cnb_predictor, file)
+    #with open("models/num2cyfra1.pkl", 'wb') as file:
+    #    pickle.dump(num2cyfra1, file)
 
 
 def classify(data, model_file=settings.heading_id_intext_model_file):
     if not os.path.exists(model_file):
         train()
+    # with open("models/cnb_predictor.pkl", 'rb') as file:
+    #     cnb_predictor = pickle.load(file)
+    # with open("models/num2cyfra1.pkl", 'rb') as file:
+    #     num2cyfra1 = pickle.load(file)
     with open(model_file, "rb") as file:
         model = pickle.load(file)
-    with open("cnb_predictor.pkl", 'rb') as file:
-        cnb_predictor = pickle.load(file)
     data = data_prep(data)
     pred = model.predict(data)
     return pred
