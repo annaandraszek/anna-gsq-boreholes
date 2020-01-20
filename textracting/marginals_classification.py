@@ -118,18 +118,18 @@ def data_prep(data, y=False):
     return X
 
 
-def train(data, model='tree'):
+def train(data, model='forest'):
     X, Y = data_prep(data, y=True)
     X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.33)
-    if 'forest' in model:
-        clf = ensemble.RandomForestClassifier(n_estimators=12)
-        model_file = settings.marginals_model_file_forest
-    elif 'CNB' in model:
-        clf = naive_bayes.ComplementNB()
-        model_file = settings.marginals_model_file_CNB
-    else:
-        clf = tree.DecisionTreeClassifier()
-        model_file = settings.marginals_model_file_tree
+    #if 'forest' in model:
+    clf = ensemble.RandomForestClassifier(n_estimators=12)
+    model_file = settings.marginals_model_file_forest
+    # elif 'CNB' in model:
+    #     clf = naive_bayes.ComplementNB()
+    #     model_file = settings.marginals_model_file_CNB
+    # else:
+    #     clf = tree.DecisionTreeClassifier()
+    #     model_file = settings.marginals_model_file_tree
     clf = clf.fit(X_train, y_train)
     y_pred = clf.predict(X_test)
     accuracy = sklearn.metrics.accuracy_score(y_test, y_pred)
@@ -139,13 +139,13 @@ def train(data, model='tree'):
     #plt.show()
     #plt.savefig(settings.result_path + 'marginals_tree.png')
 
-    if 'tree' in model:
-        dot_data = tree.export_graphviz(clf,  feature_names=['PageNum', 'NormedLineNum', 'Words2Width', 'WordsWidth', 'Width', 'Height',
-                                                             'Left', 'Top', 'ContainsNum', 'ContainsTab', 'ContainsPage',
-                                                             'Centrality', ], class_names=True, filled=True,
-                                        max_depth=4) # out_file=settings.result_path + 'marginals_tree.png',
-        graph = graphviz.Source(dot_data)
-        graph.render("marginals")#.jpeg")
+    # if 'tree' in model:
+    #     dot_data = tree.export_graphviz(clf,  feature_names=['PageNum', 'NormedLineNum', 'Words2Width', 'WordsWidth', 'Width', 'Height',
+    #                                                          'Left', 'Top', 'ContainsNum', 'ContainsTab', 'ContainsPage',
+    #                                                          'Centrality', ], class_names=True, filled=True,
+    #                                     max_depth=4) # out_file=settings.result_path + 'marginals_tree.png',
+    #     graph = graphviz.Source(dot_data)
+    #     graph.render("marginals")#.jpeg")
 
 
     #cm = sklearn.metrics.confusion_matrix(y_test, y_pred)

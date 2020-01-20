@@ -87,11 +87,10 @@ def report2textract(fname, bucket, features):
 
     # if report is a .tif: need to download it, convert it to pdf with image2pdf, and upload to s3 again for textract
     # s3: gsq-ml, same object path but pdf
-
+    report_in = 'reports/' + fname
     if '.tif' in fname:
         fname_out = re.sub('.tif', '.pdf', fname)
         report_path = 'reports/' + fname_out
-        report_in = 'reports/' + fname
         new_dir = report_path.rsplit('/', 1)[0] + '/'
         if not os.path.exists(new_dir):
             os.makedirs(new_dir)
@@ -102,6 +101,8 @@ def report2textract(fname, bucket, features):
         bucket = 'gsq-ml2'
         s3.meta.client.upload_file(report_path, bucket, fname_out)
         fname = fname_out
+    else:
+        textloading.download_report(fname, report_in)
 
     jobId = startJob(bucket, fname, features=features)
     print("Started job with id: {}".format(jobId))

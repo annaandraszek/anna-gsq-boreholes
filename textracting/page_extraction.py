@@ -70,10 +70,10 @@ class NeuralNetwork():
         self.num_classes = len(self.classes.items())
         self.tok = Tokenizer(num_words=self.max_words+1) # only num_words-1 will be taken into account!
 
-        if self.mode_type == 'LSTM':
-            self.model = self.LSTM()
-        else:
-            self.model = self.NN()
+        # if self.mode_type == 'LSTM':
+        #     self.model = self.LSTM()
+        # else:
+        self.model = self.NN()
 
         X_train, X_test, Y_train, Y_test = train_test_split(self.X, y_masked, test_size=0.15)
 
@@ -109,19 +109,19 @@ class NeuralNetwork():
                       metrics=['accuracy'])
         return model
 
-    def LSTM(self):
-        model = Sequential()
-        model.add(Embedding(input_length=self.max_len, input_dim=self.max_words + 1, output_dim=self.max_len))  # 256))
-        #model.add(LSTM(48, return_sequences=True))
-        model.add(LSTM(192))
-        model.add(Dropout(0.1))
-        #model.add(Flatten())
-        model.add(Dense(self.max_len, activation='softmax'))
-
-        model.compile(loss='categorical_crossentropy',
-                      optimizer='rmsprop',
-                      metrics=['accuracy'])
-        return model
+    # def LSTM(self):
+    #     model = Sequential()
+    #     model.add(Embedding(input_length=self.max_len, input_dim=self.max_words + 1, output_dim=self.max_len))  # 256))
+    #     #model.add(LSTM(48, return_sequences=True))
+    #     model.add(LSTM(192))
+    #     model.add(Dropout(0.1))
+    #     #model.add(Flatten())
+    #     model.add(Dense(self.max_len, activation='softmax'))
+    #
+    #     model.compile(loss='categorical_crossentropy',
+    #                   optimizer='rmsprop',
+    #                   metrics=['accuracy'])
+    #     return model
 
 
 
@@ -246,7 +246,7 @@ if __name__ == '__main__':
     #create_dataset()
     #nn = NeuralNetwork(model_name='mask_lstm', model_type='LSTM')
     #nn.train()
-    run_model(model_name='mask_lstm', model_type='LSTM')
+    # run_model(model_name='mask_lstm', model_type='LSTM')
 
     #nn = NeuralNetwork(model_name='mask_nn', model_type='NN')
     #nn.train()

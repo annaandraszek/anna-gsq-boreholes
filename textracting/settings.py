@@ -27,10 +27,7 @@ def get_report_name(file_id, local_path=False, file_extension=None):
         file = report_local_path + str(file_id) + '/'
     file += "cr_" + str(file_id) + "_1"
     if file_extension:
-        if 'pdf' in file_extension:
-            file += '.pdf'
-        elif 'tif' in file_extension:
-            file += '.tif'
+            file += file_extension
     return file
 
 

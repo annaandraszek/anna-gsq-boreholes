@@ -19,7 +19,7 @@ import texttransforming
 
 if __name__ == '__main__':
     docids = textloading.get_reportid_sample(5)
-    #docids = ['24352', '28184', '30281']
+    #docids = ['46517']
     print(docids)
     for docid in docids:
         textmain.textract(docid, features=['TABLES', 'FORMS'])
@@ -27,3 +27,4 @@ if __name__ == '__main__':
         report = search_report.Report(docid)  # need every ml method here to be able to create a dataset with an unseen report
         search_report.draw_report(report)
         search_report.bookmark_report(report)
+        search_report.save_report_sections(report)
