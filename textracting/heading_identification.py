@@ -128,8 +128,6 @@ def check_maxlens(df):
     return max_words, max_len
 
 
-
-
 def split_prefix(string):
     s = re.split(r'(^[0-9]+\.*[0-9]*\.*[0-9]*)', string, 1)
     if len(s) == 1:
@@ -146,7 +144,6 @@ def split_pagenum(string):
     elif len(s) == 3:
         s = [s[0], s[1]]
     return s
-
 
 
 def num2cyfra(string):

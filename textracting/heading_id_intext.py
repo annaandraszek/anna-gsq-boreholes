@@ -7,12 +7,11 @@
 # lines in pages if pages not toc, not fig
 # outputs:
 # lines look like headings and all their info they came with
-import pandas as pd
 import re
 import settings
 import sklearn
 from sklearn.pipeline import Pipeline
-from sklearn.metrics import classification_report, accuracy_score
+from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.compose import ColumnTransformer
 import pickle
@@ -23,6 +22,9 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.pipeline import Pipeline
 from sklearn.base import BaseEstimator, TransformerMixin
 import pandas as pd
+import textdistance
+import spacy
+from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 
 
 def num2cyfra1(string):
@@ -32,36 +34,73 @@ def num2cyfra1(string):
     for c in string:
         if re.match(r'[0-9]', c):
             if prev_c != 'num':
-                s += 'cyfra' + str(i) + ' '
+                s += ' cyfra' + str(i) + ' '
                 i += 1
                 prev_c = 'num'
         elif c == '.':
-            s += 'punkt '
+            s += ' punkt '
             prev_c = '.'
         else:
             s+= c
+            #prev_c = 'char'
     return s
 
 
+# technically an estimator.. but an estimator can't have acuracy
 class Text2CNBPrediction(TransformerMixin, BaseEstimator):
     def fit(self, x, y):
+        #x, y = check_X_y(x, y, accept_sparse=True)
+        #self.n_features_ = x.shape[1]
         # add to pipeline: first step transforming all numbers to cyfra1 format
         text_clf = Pipeline([
             ('n2c', Num2Cyfra1()),
-            ('tf', TfidfVectorizer()),
+            ('tf', TfidfVectorizer(analyzer='word', ngram_range=(1,2))),
             ('cnb', ComplementNB(norm=True))])
         self.text_clf = text_clf.fit(x, y)
-     #   self.feature_names = self.text_clf['tf'].get_feature_names()
-        # self.y = y
+        self.feature_names_ = self.text_clf['tf'].get_feature_names()
+        self.metrics(x, y)
+        self.y_ = y
+
         return self
 
+    def metrics(self, x, y):
+        tf_words = self.text_clf['tf'].get_feature_names()
+
+        pred = self.text_clf.predict(x)
+        accuracy = accuracy_score(y, pred)
+        print(confusion_matrix(y, pred))
+        print('text2cnb accuracy: ', accuracy)
+        print(classification_report(y, pred))
+        right, wrong = 0, 0
+        wrong_preds_x = []
+        wrong_preds_y = []
+        wrong_preds_pred = []
+        for a, b, c in zip(y, pred, x):
+            if a == b:
+                right += 1
+            else:
+                wrong += 1
+                wrong_preds_x.append(c)
+                wrong_preds_y.append(a)
+                wrong_preds_pred.append(b)
+
+        wrong_dict = {'x': wrong_preds_x, 'y': wrong_preds_y, 'pred': wrong_preds_pred}
+        wrong_df = pd.DataFrame(data=wrong_dict)
+        return accuracy, wrong_df
+
+
+
     def transform(self, data):
-        pred = self.text_clf.predict(data)
+        #check_is_fitted(self, 'n_features_')
+        #data = check_array(data, accept_sparse=True)
+        #if data.shape[1] != self.n_features_:
+        #    raise ValueError('Shape of input is different from what was seen in `fit`')
         # self.data = data
+        pred = self.text_clf.predict(data)
         return pd.DataFrame(pred)  # check what form this is in
 
-    #def get_feature_names(self):
-    #    return self.feature_names
+    def get_feature_names(self):
+        return self.feature_names_
 
     # def accuracy(self, return_wrong=False):
     #     pred = self.text_clf.predict(self.data)
@@ -145,9 +184,38 @@ def create_dataset(datafile=settings.dataset_path + 'heading_id_intext_dataset.c
     # manually annotate, or, send to classifier
 
 
+#model = spacy.load('en_core_web_md')
+
+
+# string compare
+def line_matches_heading(line, heading):
+    # char compare tokens first, then compare tokens to tokens?
+    line_tokens = line.lower.split()
+    heading_tokens = heading.lower.split()
+    #return textdistance.jaccard(line_tokens, heading_tokens), heading  # just going to return the distance for now to see what's up
+
+    # calculate vector of words in each sentence, average the sentence, then compute cosine similarity
+
+
+
+def check_if_line_in_TOC(docid, text, toc_df):
+    # compare the line to its toc headings
+    # must be >= X similar. can do some tests of this to find the right threshold and metric
+    doc_toc = toc_df.loc[toc_df.DocID == docid]
+    distances, headings = doc_toc.LineText.apply(lambda x: line_matches_heading(text, x))
+    i = distances.idmax
+    return distances[i], headings[i] # best match, and to whom just for me to compare
+    # most of these should be very low as they shouldn't be a heading
+
+
 def edit_dataset(dataset=settings.dataset_path + 'heading_id_intext_dataset.csv'):
     df = pd.read_csv(dataset)
-    df['WordCount'] = df.Text.apply(lambda x: len(x.split()))
+    #df['WordCount'] = df.Text.apply(lambda x: len(x.split()))
+    # need to reference heading_id_dataset.csv: DocId, LineText, Heading[0, 1, 2]
+    toc_df = pd.read_csv(settings.dataset_path + 'heading_id_dataset.csv', columns=['DocID', 'LineText', 'Heading'])
+    toc_head_df = toc_df.loc[toc_df.Heading > 0]
+
+    df['InTOC'], df['TOCHeading'] = df.apply(lambda x: check_if_line_in_TOC(x.DocID, x.Text, toc_head_df), axis=1)
     df.to_csv(dataset, index=False)
 
 
@@ -162,7 +230,7 @@ def data_prep(df, y=False):
                      'Height', 'Left','Top', 'ContainsNum', 'Centrality', 'Heading', 'WordCount']
 
     df = pd.DataFrame(df, columns=original_cols)  # ordering as the fit, to not cause error in ColumnTranformer
-    X = df.drop(columns=['DocID', 'Top', 'Heading'])
+    X = df.drop(columns=['DocID', 'LineNum', 'WordsWidth', 'NormedLineNum', 'Top', 'Heading', 'Centrality'])
     if y:
         Y = df.Heading
         return X, Y
@@ -173,7 +241,7 @@ def data_prep(df, y=False):
 def train(data=pd.read_csv(settings.dataset_path + 'heading_id_intext_dataset.csv'),
           model_file=settings.heading_id_intext_model_file):
     X, Y = data_prep(data, y=True)
-    X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.25)
+    X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.20)
 
     clf = Pipeline([
         ('text', ColumnTransformer([
@@ -187,8 +255,18 @@ def train(data=pd.read_csv(settings.dataset_path + 'heading_id_intext_dataset.cs
 
     accuracy = accuracy_score(y_test, y_pred)
     print(accuracy)
-    report = classification_report(Y, clf.predict(X))
+    y_true, y_pred = Y, clf.predict(X)
+    report = classification_report(y_true, y_pred)
     print(report)
+    conf_matrix = confusion_matrix(y_true, y_pred)
+    print(conf_matrix)
+
+    temp = pd.DataFrame(data=data)
+    temp['y_pred'] = y_pred
+    temp['correct'] = temp.Heading == temp.y_pred
+    #cnb = Text2CNBPrediction().fit(X_train, y_train)
+    #temp['text_transform'] = cnb.transform(temp['Text'])
+    print([(a, x, y) for a, x, y in zip(data.Text, y_true, y_pred) if x!=y])
 
     #cnb_transformer = clf['union'].transformers[0][1]
     #print(cnb_transformer.accuracy(return_wrong=True))
@@ -226,9 +304,9 @@ if __name__ == '__main__':
     data_path = settings.dataset_path + 'heading_id_intext_dataset.csv'
     #data = pd.read_csv(data_path)
     #create_dataset(data_path)
-    edit_dataset(data_path)
+    #edit_dataset(data_path)
     data = pd.read_csv(data_path)
-    #train(data)
+    train(data)
     preds = classify(data)
     x = 0
     for i, row in data.iterrows():
