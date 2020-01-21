@@ -168,7 +168,6 @@ def create_dataset(datafile=settings.dataset_path + 'heading_id_intext_dataset.c
 # returns highest similarities to a heading
 # will have to add this method to heading_id_intext edit_dataset
 def compare_lines2headings(lines, headings):
-    #headings = self.headings
     if headings.shape[0] == 0:
         print('Headings are empty')
         return np.zeros(len(lines)), np.zeros(len(lines)), np.zeros(len(lines))
@@ -176,32 +175,19 @@ def compare_lines2headings(lines, headings):
     for line in lines:
         ln_similarities = []
         ln_words = line.lower().split()
-        #if 'tenure' in ln_words or 'geology' in ln_words:
-        #    print('oop break')
         for i, heading in headings.iterrows():  # save info whether the best comparison is to a heading or subheading
             hd_words = heading.Text.lower().split()
             # compare words
-            # match_words = [1 if x == y else 0 for x, y in zip(ln_words, hd_words)]  # needs word amounts to be equal
             similarity = textdistance.jaccard(ln_words, hd_words)  # intersection / union
             ln_similarities.append([similarity, heading.Heading, i])
-        #try:
         max = np.array(ln_similarities)[:, 0].argmax()
-        max_similarities.append(ln_similarities[max])
-        #except IndexError:
-        #    print(ln_similarities)
-        #    max_similarities.append([0,0,0])
+        bestsim = ln_similarities[max]
+        if bestsim[0] == 0:  # if basically find no similarity
+            bestsim = np.array([0, 0, 0])
+        max_similarities.append(bestsim)
     max_similarities = np.array(max_similarities)
-    #if len(lines) == 1:  # if only one line was given, return only one element of each (make it neat at the other end)
-    #    return max_similarities[0][0], max_similarities[0][1], max_similarities[0][2]
-    #else:
     return max_similarities[:, 0], max_similarities[:, 1], max_similarities[:,2]  # return similarity,type matched, and i of heading matched
 
-#
-# def check_if_line_in_TOC(docid, text, toc_df):
-#     # compare the line to its toc headings
-#     doc_toc = toc_df.loc[toc_df.DocID == float(docid)]
-#     return compare_lines2headings(text, doc_toc)
-#
 
 def edit_dataset(dataset=settings.dataset_path + 'heading_id_intext_dataset.csv'):
     df = pd.read_csv(dataset)
@@ -245,7 +231,7 @@ def data_prep(df, y=False):
                      'Height', 'Left','Top', 'ContainsNum', 'Centrality', 'Heading', 'WordCount', 'MatchesHeading','MatchesType', 'MatchesI']
 
     df = pd.DataFrame(df, columns=original_cols)  # ordering as the fit, to not cause error in ColumnTranformer
-    X = df.drop(columns=['DocID', 'LineNum', 'WordsWidth', 'NormedLineNum', 'Top', 'Heading', 'Centrality', 'MatchesType', 'MatchesI'])
+    X = df.drop(columns=['DocID', 'LineNum', 'WordsWidth', 'NormedLineNum', 'Top', 'Heading', 'Centrality',  'MatchesI']) #'MatchesType',
     if y:
         Y = df.Heading
         return X, Y
@@ -323,7 +309,7 @@ if __name__ == '__main__':
     data_path = settings.dataset_path + 'heading_id_intext_dataset.csv'
     #data = pd.read_csv(data_path)
     #create_dataset(data_path)
-    edit_dataset(data_path)
+    #edit_dataset(data_path)
     data = pd.read_csv(data_path)
     train(data)
     preds = classify(data)
