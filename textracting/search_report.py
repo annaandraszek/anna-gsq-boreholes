@@ -136,7 +136,7 @@ class Report():
         return df
 
     def create_identification_dataset(self): # dataset for identifying headings in TOC
-        columns = ['DocID', 'LineNum', 'Text']
+        columns = ['DocID', 'LineNum', 'Text']#, 'Width', 'Height', 'Left', 'Top']
         df = self.line_dataset.loc[self.line_dataset['PageNum'] == self.toc_page]
         df = df[columns]
         df.reset_index(inplace=True, drop=True)
@@ -364,9 +364,25 @@ def bookmark_report(report):
         elif row['Heading'] == 2:
             output.addBookmark(row['Text'], row['PageNum']-1, parent=section, fit='/FitB')  # catch if section doesn't exist?
 
+    refpg = output.getPage(1).mediaBox
+    width, height = refpg[2], refpg[3]
+
+    # add links between toc lines and their intext section
+    #self.headings_intext, self.subheadings, self.headings
+    toc_headings = pd.concat([report.headings, report.subheadings], ignore_index=True)
+    for i, row in report.headings_intext.iterrows():
+        if row.MatchesHeading == 0:
+            continue
+        toc_h = toc_headings.iloc[int(row.MatchesI)]
+        toc_bb = report.line_dataset.loc[(report.line_dataset.PageNum == report.toc_page) &
+                                         (report.line_dataset.LineNum == toc_h.LineNum)].iloc[0]
+        left = width * toc_bb['Left']
+        top = height * (1 - toc_bb['Top'])
+        rectangle = [left, top, left + (width * toc_bb['Width']), top + (height * toc_bb['Height'])]
+        output.addLink(report.toc_page-1, row.PageNum-1, rect=rectangle, fit='/FitB')  # creates link from toc heading to section page
+
     outfile = settings.get_report_name(report.docid, local_path=True, file_extension='_bookmarked.pdf')
     output.write(open(outfile, 'wb'))
-
 
 def save_report_sections(report):
     doc = docx.Document()
@@ -381,7 +397,7 @@ def save_report_sections(report):
 if __name__ == '__main__':
     # transform document pages into dataset of pages for toc classification, classify pages, and isolate toc
     # from toc page, transform content into dataset of headings for heading identification, identify headings, and return headings and subheadings
-    reports = [ '23508', '23732', '24352', '24526', '26853', '28066', '28184','28882', '30281', '31681'] #,
+    reports = [ '23732']#, '24352', '24526', '26853', '28066', '28184','28882', '30281', '31681', '23508', ] #,
 
     for report in reports:
         start = time.time()
