@@ -18,7 +18,7 @@ from PyPDF2 import PdfFileWriter, PdfFileReader
 import time
 import docx
 from heading_id_intext import Text2CNBPrediction, Num2Cyfra1, num2cyfra1
-
+import textdistance
 
 class Report():
     def __init__(self, docid):
@@ -34,6 +34,7 @@ class Report():
         self.section_content = self.get_sections()
         self.toc_heading_classes, self.text_heading_classes = self.classify_headings()
 
+
     def classify_headings(self):
         # classify both toc headings and text headings, but separately
         intext_dataset = self.headings_intext
@@ -41,10 +42,14 @@ class Report():
         lines = self.headings['LineNum']
         dataset = toc_dataset[toc_dataset['LineNum'].isin(self.headings['LineNum'])]
         self.toc_dataset = dataset.append(toc_dataset[toc_dataset['LineNum'].isin(self.subheadings['LineNum'])], ignore_index=True)
-        toc_res = heading_classification.classify(self.toc_dataset)
-        intext_res = heading_classification.classify(intext_dataset)
-        print(toc_res)
-        print(intext_res)
+        if toc_dataset.shape[0] > 0:
+            toc_res = heading_classification.classify(self.toc_dataset)
+            print(toc_res)
+        else: toc_res = []
+        if intext_dataset.shape[0] > 0:
+            intext_res = heading_classification.classify(intext_dataset)
+            print(intext_res)
+        else: intext_res = []
         return toc_res, intext_res
 
     def get_doc_lines(self):
@@ -141,6 +146,14 @@ class Report():
         #df = self.line_dataset.copy(deep=True)
         df = self.line_dataset.loc[self.line_dataset['PageNum'] != self.toc_page]
         df['ContainsNum'] = df.Text.apply(lambda x: heading_id_intext.contains_num(x))
+        if self.headings.shape[0] > 0:
+            self.headings['Text'] = self.headings.apply(lambda x: x.SectionPrefix + ' ' + x.SectionText, axis=1)
+            self.headings['Heading'] = 1
+        if self.subheadings.shape[0] > 0:
+            self.subheadings['Text'] = self.subheadings.apply(lambda x: x.SectionPrefix + ' ' + x.SectionText, axis=1)
+            self.subheadings['Heading'] = 2
+        headings = pd.concat([self.headings, self.subheadings], ignore_index=True)
+        df['MatchesHeading'], df['MatchesType'], df['MatchesI'] = heading_id_intext.compare_lines2headings(df.Text.values, headings)
         df['Heading'] = 0
         return df
 
@@ -275,10 +288,11 @@ def draw_report(report):
                     if re.search(reg, t):
                         pgnum_i = i
                         break
-                box = line['OriginalBBs'][pgnum_i]
-                left = width * box['Left']
-                top = height * box['Top']
-                draw.rectangle([left, top, left + (width * box['Width']), top + (height * box['Height'])],
+                if pgnum_i:
+                    box = line['OriginalBBs'][pgnum_i]
+                    left = width * box['Left']
+                    top = height * box['Top']
+                    draw.rectangle([left, top, left + (width * box['Width']), top + (height * box['Height'])],
                                outline='red')
 
             #original_marginal_bb = docinfo[pagestr][lineindex]['OriginalBBs'][index in marginal]
@@ -341,6 +355,7 @@ def bookmark_report(report):
     ptrs = report.headings_intext
     for page in input.pages:
         output.addPage(page)
+    output.addBookmark('Table of Contents', report.toc_page-1, fit='/FitB')
     for i, row in ptrs.iterrows():
         #page, line = row['PageNum'], row['LineNum']
         #lnbb = report.docinfo[page][line-1]['BoundingBox']
@@ -366,17 +381,19 @@ def save_report_sections(report):
 if __name__ == '__main__':
     # transform document pages into dataset of pages for toc classification, classify pages, and isolate toc
     # from toc page, transform content into dataset of headings for heading identification, identify headings, and return headings and subheadings
+    reports = [ '23508', '23732', '24352', '24526', '26853', '28066', '28184','28882', '30281', '31681'] #,
 
-    start = time.time()
-    r = Report('28184')
-    draw_report(r)
-    bookmark_report(r)
-    save_report_sections(r)
-    end = time.time()
-    print('time:', end - start)
-    #print('TOC Headings: \n')
-    #for string in r.doclines[str(r.toc_page)]:
-    #    print(string)
-    #print("In Text Headings: \n", r.headings)
-    #print("Subheadings: \n", r.subheadings)
-    #print_sections(r)
+    for report in reports:
+        start = time.time()
+        r = Report(report)
+        draw_report(r)
+        bookmark_report(r)
+        save_report_sections(r)
+        end = time.time()
+        print('time:', end - start)
+        #print('TOC Headings: \n')
+        #for string in r.doclines[str(r.toc_page)]:
+        #    print(string)
+        #print("In Text Headings: \n", r.headings)
+        #print("Subheadings: \n", r.subheadings)
+        #print_sections(r)

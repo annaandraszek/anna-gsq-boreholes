@@ -25,7 +25,7 @@ import pandas as pd
 import textdistance
 import spacy
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
-
+import numpy as np
 
 def num2cyfra1(string):
     s = ''
@@ -102,30 +102,6 @@ class Text2CNBPrediction(TransformerMixin, BaseEstimator):
     def get_feature_names(self):
         return self.feature_names_
 
-    # def accuracy(self, return_wrong=False):
-    #     pred = self.text_clf.predict(self.data)
-    #     right, wrong = 0, 0
-    #
-    #     if return_wrong:
-    #         wrong_preds_x = []
-    #         wrong_preds_y = []
-    #         wrong_preds_pred = []
-    #     for a, b, c in zip(self.y, pred, self.data):
-    #         if a == b:
-    #             right += 1
-    #         else:
-    #             wrong += 1
-    #             if return_wrong:
-    #                 wrong_preds_x.append(c)
-    #                 wrong_preds_y.append(a)
-    #                 wrong_preds_pred.append(b)
-    #
-    #     accuracy = right/(right+wrong)
-    #     if return_wrong:
-    #         wrong_dict = {'x': wrong_preds_x, 'y': wrong_preds_y, 'pred': wrong_preds_pred}
-    #         wrong_df = pd.DataFrame(data=wrong_dict)
-    #         return accuracy, wrong_df
-    #     return accuracy
 
 
 class Num2Cyfra1(TransformerMixin, BaseEstimator):
@@ -187,35 +163,74 @@ def create_dataset(datafile=settings.dataset_path + 'heading_id_intext_dataset.c
 #model = spacy.load('en_core_web_md')
 
 
-# string compare
-def line_matches_heading(line, heading):
-    # char compare tokens first, then compare tokens to tokens?
-    line_tokens = line.lower.split()
-    heading_tokens = heading.lower.split()
-    #return textdistance.jaccard(line_tokens, heading_tokens), heading  # just going to return the distance for now to see what's up
+# comparison of doc lines to toc headings
+# comparing each line to each heading so a lot of computation
+# returns highest similarities to a heading
+# will have to add this method to heading_id_intext edit_dataset
+def compare_lines2headings(lines, headings):
+    #headings = self.headings
+    if headings.shape[0] == 0:
+        print('Headings are empty')
+        return np.zeros(len(lines)), np.zeros(len(lines)), np.zeros(len(lines))
+    max_similarities = []
+    for line in lines:
+        ln_similarities = []
+        ln_words = line.lower().split()
+        #if 'tenure' in ln_words or 'geology' in ln_words:
+        #    print('oop break')
+        for i, heading in headings.iterrows():  # save info whether the best comparison is to a heading or subheading
+            hd_words = heading.Text.lower().split()
+            # compare words
+            # match_words = [1 if x == y else 0 for x, y in zip(ln_words, hd_words)]  # needs word amounts to be equal
+            similarity = textdistance.jaccard(ln_words, hd_words)  # intersection / union
+            ln_similarities.append([similarity, heading.Heading, i])
+        #try:
+        max = np.array(ln_similarities)[:, 0].argmax()
+        max_similarities.append(ln_similarities[max])
+        #except IndexError:
+        #    print(ln_similarities)
+        #    max_similarities.append([0,0,0])
+    max_similarities = np.array(max_similarities)
+    #if len(lines) == 1:  # if only one line was given, return only one element of each (make it neat at the other end)
+    #    return max_similarities[0][0], max_similarities[0][1], max_similarities[0][2]
+    #else:
+    return max_similarities[:, 0], max_similarities[:, 1], max_similarities[:,2]  # return similarity,type matched, and i of heading matched
 
-    # calculate vector of words in each sentence, average the sentence, then compute cosine similarity
-
-
-
-def check_if_line_in_TOC(docid, text, toc_df):
-    # compare the line to its toc headings
-    # must be >= X similar. can do some tests of this to find the right threshold and metric
-    doc_toc = toc_df.loc[toc_df.DocID == docid]
-    distances, headings = doc_toc.LineText.apply(lambda x: line_matches_heading(text, x))
-    i = distances.idmax
-    return distances[i], headings[i] # best match, and to whom just for me to compare
-    # most of these should be very low as they shouldn't be a heading
-
+#
+# def check_if_line_in_TOC(docid, text, toc_df):
+#     # compare the line to its toc headings
+#     doc_toc = toc_df.loc[toc_df.DocID == float(docid)]
+#     return compare_lines2headings(text, doc_toc)
+#
 
 def edit_dataset(dataset=settings.dataset_path + 'heading_id_intext_dataset.csv'):
     df = pd.read_csv(dataset)
     #df['WordCount'] = df.Text.apply(lambda x: len(x.split()))
     # need to reference heading_id_dataset.csv: DocId, LineText, Heading[0, 1, 2]
-    toc_df = pd.read_csv(settings.dataset_path + 'heading_id_dataset.csv', columns=['DocID', 'LineText', 'Heading'])
+    toc_df = pd.read_csv(settings.dataset_path + 'processed_heading_id_dataset.csv')#, columns=['DocID', 'LineText', 'Heading'])
     toc_head_df = toc_df.loc[toc_df.Heading > 0]
+    #df['MatchesHeading'], df['MatchesType'], df['MatchesI'] = pd.Series([]), pd.Series([]), pd.Series([])
+    toc_head_df['Text'] = toc_head_df.apply(lambda x: str(x.SectionPrefix) + ' ' + x.SectionText, axis=1)
+    series_mh = pd.Series()
+    series_mt = pd.Series()
+    series_mi = pd.Series()
 
-    df['InTOC'], df['TOCHeading'] = df.apply(lambda x: check_if_line_in_TOC(x.DocID, x.Text, toc_head_df), axis=1)
+    for docid in df.DocID.unique():
+        doc_toc = toc_head_df.loc[toc_head_df.DocID == float(docid)]
+        df_doc = df.loc[df.DocID == float(docid)]
+        matches_heading, matches_type, matches_i = compare_lines2headings(df_doc.Text, doc_toc)
+        print(len(matches_heading) == df_doc.shape[0], docid)
+        series_mh = series_mh.append(pd.Series(matches_heading), ignore_index=True)
+        series_mt = series_mt.append(pd.Series(matches_type), ignore_index=True)
+        series_mi = series_mi.append(pd.Series(matches_i), ignore_index=True)
+
+    df['MatchesHeading'], df['MatchesType'], df['MatchesI'] = series_mh, series_mt, series_mi
+
+    # try:
+    #     df['MatchesHeading'], df['MatchesType'], df['MatchesI'] = df.apply(
+    #     lambda x: check_if_line_in_TOC(x.DocID, [x.Text], toc_head_df), axis=1)
+    # except:
+    #     print('oopsie')
     df.to_csv(dataset, index=False)
 
 
@@ -227,10 +242,10 @@ def data_prep(df, y=False):
 #    df = df.apply(lambda x: rm_empty(x))
 #    df = df.dropna()
     original_cols = ['DocID', 'PageNum', 'LineNum', 'NormedLineNum', 'Text', 'Words2Width', 'WordsWidth', 'Width',
-                     'Height', 'Left','Top', 'ContainsNum', 'Centrality', 'Heading', 'WordCount']
+                     'Height', 'Left','Top', 'ContainsNum', 'Centrality', 'Heading', 'WordCount', 'MatchesHeading','MatchesType', 'MatchesI']
 
     df = pd.DataFrame(df, columns=original_cols)  # ordering as the fit, to not cause error in ColumnTranformer
-    X = df.drop(columns=['DocID', 'LineNum', 'WordsWidth', 'NormedLineNum', 'Top', 'Heading', 'Centrality'])
+    X = df.drop(columns=['DocID', 'LineNum', 'WordsWidth', 'NormedLineNum', 'Top', 'Heading', 'Centrality', 'MatchesType', 'MatchesI'])
     if y:
         Y = df.Heading
         return X, Y
@@ -308,7 +323,7 @@ if __name__ == '__main__':
     data_path = settings.dataset_path + 'heading_id_intext_dataset.csv'
     #data = pd.read_csv(data_path)
     #create_dataset(data_path)
-    #edit_dataset(data_path)
+    edit_dataset(data_path)
     data = pd.read_csv(data_path)
     train(data)
     preds = classify(data)

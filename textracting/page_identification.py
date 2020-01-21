@@ -156,9 +156,12 @@ def run_model():
 
 
 def get_page_marginals(marginals):
-    nn = NeuralNetwork()
-    p, r = nn.predict(marginals)#.original)
-    return r
+    if len(marginals) > 0:
+        nn = NeuralNetwork()
+        p, r = nn.predict(marginals)#.original)
+        return r
+    else:
+        return []
 
 
 if __name__ == "__main__":

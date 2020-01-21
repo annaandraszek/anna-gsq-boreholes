@@ -175,6 +175,8 @@ class NeuralNetwork():
 #   be done a few steps ahead of this to carry it through to here; in marginals identification
 def get_page_nums(marginals, ml_only=False): # given a dataset of marginals of the document
     page_marginals_mask = page_identification.get_page_marginals(marginals.Text)  # from all the marginals, get only those containing page numbers
+    if len(page_marginals_mask) <= 0:
+        return []
     page_marginals = marginals.loc[page_marginals_mask == 1]
     nn = NeuralNetwork('mask_nn', 'NN')
     trans_marginals = page_marginals.Text.apply(lambda x: transform_text(x, transform_all=False))
