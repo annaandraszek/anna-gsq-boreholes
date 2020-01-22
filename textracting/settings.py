@@ -6,15 +6,16 @@ dataset_path = 'datasets/'
 production_path = 'production/'
 toc_tree_model_file = model_path + 'toc_tree_model.pkl'
 fig_tree_model_file = model_path + 'fig_tree_model.pkl'
-headid_nb_model_file = model_path + 'cnb_head_id_model.pkl'
-marginals_model_file_tree = model_path +'marginals_tree_model.pkl'
-marginals_model_file_CNB = model_path +'marginals_CNB_model.pkl'
+#headid_nb_model_file = model_path + 'cnb_head_id_model.pkl'
+#marginals_model_file_tree = model_path +'marginals_tree_model.pkl'
+#marginals_model_file_CNB = model_path +'marginals_CNB_model.pkl'
 marginals_model_file_forest = model_path + 'marginals_forest_model_v2.pkl'
+heading_id_intext_model_file = model_path + 'heading_intext_CNB_model.pkl'
+heading_classification_model_file = model_path + 'heading_classification_CNB.pkl'
+
 marginals_id_dataset = dataset_path + 'identified_marginals_dataset.csv'
 marginals_id_trans_dataset = dataset_path + 'identified_trans_marginals_dataset.csv'
 page_extraction_dataset = dataset_path + 'page_extraction_dataset.csv'
-heading_id_intext_model_file = model_path + 'heading_intext_CNB_model.pkl'
-heading_classification_model_file = model_path + 'heading_classification_CNB.pkl'
 
 
 def get_s3_location(file_id, format='pdf'):

@@ -32,7 +32,7 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
         self.model_loc = self.model_path + self.model_name + '.h5'
         self.tok_loc = self.model_path + self.model_name + 'tokeniser.joblib'
 
-    def train(self, file='processed_heading_id_dataset_cyfra1.csv'):
+    def train(self, file=settings.dataset_path + 'processed_heading_id_dataset_cyfra1.csv'):
         df = pd.read_csv(file)
         self.X = df['SectionText']
         self.Y = df['Heading']
@@ -239,9 +239,9 @@ if __name__ == '__main__':
     #df = create_identification_dataset()
     #pre = 'cyfra1strona'
     #df = pre_process_id_dataset(pre)
-    #df.to_csv('processed_heading_id_dataset_' + pre + '.csv', index=False)
+    #df.to_csv(settings.dataset_path + 'processed_heading_id_dataset_' + pre + '.csv', index=False)
 
-    data = 'processed_heading_id_dataset_cyfra1.csv'
+    data = settings.dataset_path + 'processed_heading_id_dataset_cyfra1.csv'
     nn = NeuralNetwork()
     #nn.train(data)
     nn.load_model_from_file()
