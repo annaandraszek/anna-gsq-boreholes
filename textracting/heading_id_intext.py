@@ -303,7 +303,8 @@ def get_headings_intext(data):
     data['Heading'] = pred
     headings = data.loc[pred > 0]
     #return headings[['PageNum', 'LineNum', 'Text', 'Heading']]
-    return headings
+    return headings.loc[headings.MatchesHeading > 0]
+
 
 if __name__ == '__main__':
     data_path = settings.dataset_path + 'heading_id_intext_dataset.csv'
