@@ -378,7 +378,8 @@ def bookmark_report(report):
                                          (report.line_dataset.LineNum == toc_h.LineNum)].iloc[0]
         left = width * toc_bb['Left']
         top = height * (1 - toc_bb['Top'])
-        rectangle = [left, top, left + (width * toc_bb['Width']), top + (height * toc_bb['Height'])]
+        #rectangle = [left, top, left + (width * toc_bb['Width']), top + (height * toc_bb['Height'])]
+        rectangle = [left, top, left + (width * toc_bb['Width']), top - (height * toc_bb['Height'])]
         output.addLink(report.toc_page-1, row.PageNum-1, rect=rectangle, fit='/FitB')  # creates link from toc heading to section page
 
     outfile = settings.get_report_name(report.docid, local_path=True, file_extension='_bookmarked.pdf')
@@ -397,7 +398,7 @@ def save_report_sections(report):
 if __name__ == '__main__':
     # transform document pages into dataset of pages for toc classification, classify pages, and isolate toc
     # from toc page, transform content into dataset of headings for heading identification, identify headings, and return headings and subheadings
-    reports = [ '23732']#, '24352', '24526', '26853', '28066', '28184','28882', '30281', '31681', '23508', ] #,
+    reports = [ '24352']#, '24526', '26853', '28066', '28184','28882', '30281', '31681', '23508', ] #,'23732',
 
     for report in reports:
         start = time.time()
