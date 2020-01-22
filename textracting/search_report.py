@@ -349,7 +349,7 @@ def draw_report(report):
 # add bookmarks to sections and sub-bookmarks to subsections
 # if drawing report, after it has been drawn on. if not, need to download the report if it has not been converted from tif
 def bookmark_report(report):
-    report_file = settings.get_report_name(report.docid, local_path=True, file_extension='_boxed.pdf')
+    report_file = settings.get_report_name(report.docid, local_path=True, file_extension='.pdf')
     output = PdfFileWriter()
     input = PdfFileReader(open(report_file, 'rb'))
     ptrs = report.headings_intext
@@ -365,7 +365,7 @@ def bookmark_report(report):
             output.addBookmark(row['Text'], row['PageNum']-1, parent=section, fit='/FitB')  # catch if section doesn't exist?
 
     refpg = output.getPage(1).mediaBox
-    width, height = refpg[2], refpg[3]
+    width, height = float(refpg[2]), float(refpg[3])
 
     # add links between toc lines and their intext section
     #self.headings_intext, self.subheadings, self.headings
@@ -398,12 +398,12 @@ def save_report_sections(report):
 if __name__ == '__main__':
     # transform document pages into dataset of pages for toc classification, classify pages, and isolate toc
     # from toc page, transform content into dataset of headings for heading identification, identify headings, and return headings and subheadings
-    reports = [ '24352']#, '24526', '26853', '28066', '28184','28882', '30281', '31681', '23508', ] #,'23732',
+    reports = [ '24352', '24526']#, '26853', '28066', '28184','28882', '30281', '31681', '23508', ] #,'23732',
 
     for report in reports:
         start = time.time()
         r = Report(report)
-        draw_report(r)
+        #draw_report(r)
         bookmark_report(r)
         save_report_sections(r)
         end = time.time()

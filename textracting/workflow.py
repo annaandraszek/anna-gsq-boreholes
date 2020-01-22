@@ -25,6 +25,6 @@ if __name__ == '__main__':
         textmain.textract(docid, features=['TABLES', 'FORMS'])
         texttransforming.clean_and_restruct(docid)
         report = search_report.Report(docid)  # need every ml method here to be able to create a dataset with an unseen report
-        search_report.draw_report(report)
+        #search_report.draw_report(report)
         search_report.bookmark_report(report)
         search_report.save_report_sections(report)
