@@ -71,7 +71,7 @@ def save_kv_pairs(result, file_id):
 
 def clean_and_restruct(docid, save=True):
     json_file = settings.get_full_json_file(docid)
-    with open(json_file) as file:
+    with open(json_file, 'r') as file:
         json_doc = json.load(file)
     json_res = json2res(json_doc)
     pagelineinfo = get_pagelineinfo_map(json_res)  # takes json response
@@ -87,7 +87,7 @@ def clean_and_restruct(docid, save=True):
 # helps when want to use textshowing functions with existing json files instead of the textract response
 def json2res(jsondoc):
     all_blocks = []
-    for pages in jsondoc:
+    for pages in jsondoc:#['response']:
         all_blocks.extend(pages['Blocks'])
     res = {'Blocks': all_blocks}
     return res

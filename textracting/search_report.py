@@ -44,11 +44,11 @@ class Report():
         self.toc_dataset = dataset.append(toc_dataset[toc_dataset['LineNum'].isin(self.subheadings['LineNum'])], ignore_index=True)
         if toc_dataset.shape[0] > 0:
             toc_res = heading_classification.classify(self.toc_dataset)
-            print(toc_res)
+            #print(toc_res)
         else: toc_res = []
         if intext_dataset.shape[0] > 0:
             intext_res = heading_classification.classify(intext_dataset)
-            print(intext_res)
+            #print(intext_res)
         else: intext_res = []
         return toc_res, intext_res
 
@@ -198,48 +198,48 @@ class Report():
         content = []
         sections = []
         end = False
-        for page in range(start_page, len(self.doclines.items()) +2): # +1 because index starts at 1, +1 to include last element
-            try:
-                for linenum in range(len(self.doclines[str(page)])):
-                    if (page, linenum) not in self.marginals_set:  # if line is not a marginal
-                        line = self.doclines[str(page)][linenum]
-                        if page == end_page and linenum == end_line:  # if end of section
-                            section = {'Heading': name, 'Content': content}
-                            sections.append(section)
+        for page in range(start_page, len(self.doclines.items()) +1): # +1 because index starts at 1, +1 to include last element
+            #try:
+            for linenum in range(len(self.doclines[str(page)])):
+                if (page, linenum) not in self.marginals_set:  # if line is not a marginal
+                    line = self.doclines[str(page)][linenum]
+                    if page == end_page and linenum == end_line:  # if end of section
+                        section = {'Heading': name, 'Content': content}
+                        sections.append(section)
 
-                            if section_num != len(self.section_ptrs) - 1: # if there is a next section
-                                content = []
-                                content.append(line)
-                                section_num +=1
-                                ptr = self.section_ptrs.iloc[section_num]
-                                name = ptr['Text']
-
-                            if section_num != len(self.section_ptrs) - 1: # if next section is not last section
-                                next_section = self.section_ptrs.iloc[section_num + 1]
-                                end_page = next_section['PageNum']
-                                end_line = next_section['LineNum']
-
-                            else:   # if next section is last section
-                                end_page = len(self.doclines.items())+1
-                                end_line = len(self.doclines[str(end_page)])
-                                end = True
-
-                        elif end and page == end_page and linenum == end_line-1: # if current section is last section, current line is last line in whole doc
+                        if section_num != len(self.section_ptrs) - 1: # if there is a next section
+                            content = []
                             content.append(line)
-                            section = {'Heading': name, 'Content': content}
-                            sections.append(section)
+                            section_num +=1
+                            ptr = self.section_ptrs.iloc[section_num]
+                            name = ptr['Text']
 
-                        elif page == start_page and linenum < start_line:  # if before start line on start page
-                            continue
+                        if section_num != len(self.section_ptrs) - 1: # if next section is not last section
+                            next_section = self.section_ptrs.iloc[section_num + 1]
+                            end_page = next_section['PageNum']
+                            end_line = next_section['LineNum']
 
-                        elif page == end_page and linenum+1 == end_line:  # stop the heading line being added to the end of the previous section
-                            continue
+                        else:   # if next section is last section
+                            end_page = len(self.doclines.items())
+                            end_line = len(self.doclines[str(end_page)])
+                            end = True
 
-                        else:  # add line to content
-                            #line = self.doclines[str(page)][linenum]
-                            content.append(line)
-            except KeyError:
-                print('Page ' + str(page) + ' is missing')
+                    elif end and page == end_page and linenum == end_line-1: # if current section is last section, current line is last line in whole doc
+                        content.append(line)
+                        section = {'Heading': name, 'Content': content}
+                        sections.append(section)
+
+                    elif page == start_page and linenum < start_line:  # if before start line on start page
+                        continue
+
+                    elif page == end_page and linenum == end_line-1:  # stop the heading line being added to the end of the previous section
+                        continue
+
+                    else:  # add line to content
+                        #line = self.doclines[str(page)][linenum]
+                        content.append(line)
+            #except KeyError:
+            #    print('Page ' + str(page) + ' is missing')
         return sections
 
 
@@ -356,13 +356,17 @@ def bookmark_report(report):
     for page in input.pages:
         output.addPage(page)
     output.addBookmark('Table of Contents', report.toc_page-1, fit='/FitB')
+    section = None
     for i, row in ptrs.iterrows():
         #page, line = row['PageNum'], row['LineNum']
         #lnbb = report.docinfo[page][line-1]['BoundingBox']
         if row['Heading'] == 1:
             section = output.addBookmark(row['Text'], row['PageNum']-1, fit='/FitB')
         elif row['Heading'] == 2:
-            output.addBookmark(row['Text'], row['PageNum']-1, parent=section, fit='/FitB')  # catch if section doesn't exist?
+            if section:
+                output.addBookmark(row['Text'], row['PageNum']-1, parent=section, fit='/FitB')
+            else:
+                output.addBookmark(row['Text'], row['PageNum']-1, fit='/FitB')  # add as a heading if section doesn't exist
 
     refpg = output.getPage(1).mediaBox
     width, height = float(refpg[2]), float(refpg[3])
@@ -398,7 +402,7 @@ def save_report_sections(report):
 if __name__ == '__main__':
     # transform document pages into dataset of pages for toc classification, classify pages, and isolate toc
     # from toc page, transform content into dataset of headings for heading identification, identify headings, and return headings and subheadings
-    reports = [ '24352', '24526']#, '26853', '28066', '28184','28882', '30281', '31681', '23508', ] #,'23732',
+    reports = [ '57418']#'24352', '24526', '26853', '28066', '28184','28882', '30281', '31681', '23508', ] #,'23732',
 
     for report in reports:
         start = time.time()

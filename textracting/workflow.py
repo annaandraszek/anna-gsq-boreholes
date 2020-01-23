@@ -16,14 +16,15 @@ import textmain
 import textloading
 import search_report
 import texttransforming
+from heading_id_intext import Text2CNBPrediction, Num2Cyfra1, num2cyfra1  # have to load these to load the model
 
 if __name__ == '__main__':
-    docids = textloading.get_reportid_sample(5)
-    #docids = ['46517']
+    #docids = textloading.get_reportid_sample(5)
+    docids = ['81317']
     print(docids)
     for docid in docids:
-        textmain.textract(docid, features=['TABLES', 'FORMS'])
-        texttransforming.clean_and_restruct(docid)
+        #textmain.textract(docid, features=['TABLES', 'FORMS'])
+        #texttransforming.clean_and_restruct(docid)
         report = search_report.Report(docid)  # need every ml method here to be able to create a dataset with an unseen report
         #search_report.draw_report(report)
         search_report.bookmark_report(report)

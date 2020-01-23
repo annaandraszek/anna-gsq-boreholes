@@ -102,6 +102,9 @@ def report2textract(fname, bucket, features):
         s3.meta.client.upload_file(report_path, bucket, fname_out)
         fname = fname_out
     else:
+        new_dir = report_in.rsplit('/', 1)[0] + '/'
+        if not os.path.exists(new_dir):
+            os.makedirs(new_dir)
         textloading.download_report(fname, report_in)
 
     jobId = startJob(bucket, fname, features=features)
@@ -111,8 +114,9 @@ def report2textract(fname, bucket, features):
         if response[0]['JobStatus'] == 'FAILED':
             print(docid + ' failed, status message: ', response[0]['StatusMessage'])
         else:
-            fp = open(settings.get_full_json_file(docid), 'w')
-            json.dump(response, fp)
+            #json_response = {'response': response}
+            with open(settings.get_full_json_file(docid), 'w') as fp:
+                json.dump(response, fp)
             res_blocks = []
             for i in response:
                 res_blocks.extend(i['Blocks'])

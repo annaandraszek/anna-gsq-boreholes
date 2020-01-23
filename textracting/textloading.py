@@ -41,8 +41,8 @@ def download_reports(reports, local_location='reports/'):
 
 
 def download_report(fname, dest):
-    resource = boto3.resource('s3')
-    resource.meta.client.download_file('gsq-staging', fname, dest)
+    s3 = boto3.resource('s3')
+    s3.Bucket('gsq-staging').download_file(fname, dest)
 
 
 def get_reportid_sample(num=50):
