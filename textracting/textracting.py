@@ -11,13 +11,15 @@ import re
 import textloading
 import img2pdf
 import os
-
+import time
 
 def find_file(docid):  # for finding the file type of a report
     file_pre = settings.get_s3_location(docid, format=None)
     client = boto3.client('s3')
     #my_bucket = s3.Bucket('gsq-staging/QDEX')
     files = client.list_objects_v2(Bucket='gsq-staging', Prefix=file_pre)
+    if not 'Contents' in files.keys():
+        raise FileNotFoundError
     for file in files['Contents']:
         if file['Key'].startswith(file_pre + '.'):
             return file['Key']
@@ -116,6 +118,7 @@ def report2textract(fname, bucket, features):
         else:
             #json_response = {'response': response}
             with open(settings.get_full_json_file(docid), 'w') as fp:
+                time.sleep(3)  # sometimes the json doesn't get dumped fully, try to stop that
                 json.dump(response, fp)
             res_blocks = []
             for i in response:

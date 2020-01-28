@@ -224,7 +224,7 @@ def edit_dataset(dataset=settings.dataset_path + 'heading_id_intext_dataset.csv'
 #    return re.sub('^(|\s+)$', np.nan, str(string))
 
 
-def data_prep(df, y=False):
+def data_prep(df, y=False, limit_cols=None):
 #    df = df.apply(lambda x: rm_empty(x))
 #    df = df.dropna()
     original_cols = ['DocID', 'PageNum', 'LineNum', 'NormedLineNum', 'Text', 'Words2Width', 'WordsWidth', 'Width',
@@ -232,6 +232,8 @@ def data_prep(df, y=False):
 
     df = pd.DataFrame(df, columns=original_cols)  # ordering as the fit, to not cause error in ColumnTranformer
     X = df.drop(columns=['DocID', 'LineNum', 'WordsWidth', 'NormedLineNum', 'Top', 'Heading', 'Centrality',  'MatchesI']) #'MatchesType',
+    if limit_cols:
+        X = X.drop(columns=limit_cols)
     if y:
         Y = df.Heading
         return X, Y
@@ -241,6 +243,8 @@ def data_prep(df, y=False):
 
 def train(data=pd.read_csv(settings.dataset_path + 'heading_id_intext_dataset.csv'),
           model_file=settings.heading_id_intext_model_file):
+    if 'no_toc' in model_file:
+        X, Y = data_prep(data, y=True, limit_cols=['MatchesHeading', 'MatchesType']) # not MatchesI because it's already dropped
     X, Y = data_prep(data, y=True)
     X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.20)
 
@@ -298,12 +302,18 @@ def classify(data, model_file=settings.heading_id_intext_model_file):
     return pred
 
 
-def get_headings_intext(data):
-    pred = classify(data)
+def get_headings_intext(data, toc_page):
+    if not toc_page:
+        pred = classify(data, model_file=settings.heading_id_intext_model_file_no_toc)
+    else:
+        pred = classify(data)
     data['Heading'] = pred
     headings = data.loc[pred > 0]
     #return headings[['PageNum', 'LineNum', 'Text', 'Heading']]
-    return headings.loc[headings.MatchesHeading > 0]
+    if toc_page:
+        return headings.loc[headings.MatchesHeading > 0]
+    else:
+        return headings
 
 
 if __name__ == '__main__':
@@ -312,8 +322,8 @@ if __name__ == '__main__':
     #create_dataset(data_path)
     #edit_dataset(data_path)
     data = pd.read_csv(data_path)
-    train(data)
-    preds = classify(data)
+    train(data, model_file=settings.heading_id_intext_model_file_no_toc)
+    preds = classify(data, model_file=settings.heading_id_intext_model_file_no_toc)
     x = 0
     for i, row in data.iterrows():
         if preds[i] != row.Heading:

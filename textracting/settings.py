@@ -10,7 +10,10 @@ fig_tree_model_file = model_path + 'fig_tree_model.pkl'
 #marginals_model_file_tree = model_path +'marginals_tree_model.pkl'
 #marginals_model_file_CNB = model_path +'marginals_CNB_model.pkl'
 marginals_model_file_forest = model_path + 'marginals_forest_model_v2.pkl'
+
 heading_id_intext_model_file = model_path + 'heading_intext_CNB_model.pkl'
+heading_id_intext_model_file_no_toc = model_path + 'heading_intext_CNB_no_toc_model.pkl'
+
 heading_classification_model_file = model_path + 'heading_classification_CNB.pkl'
 
 marginals_id_dataset = dataset_path + 'identified_marginals_dataset.csv'

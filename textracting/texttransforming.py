@@ -344,8 +344,9 @@ def get_pagelineinfo_map(doc):
 
     for block in blocks:
         if block['BlockType'] == "PAGE":
-            if 'CHILD' in block['Relationships'][0]['Type']:
-                page_child_map[block['Page']] = block['Relationships'][0]['Ids']
+            if 'Relationships' in block.keys():
+                if 'CHILD' in block['Relationships'][0]['Type']:
+                    page_child_map[block['Page']] = block['Relationships'][0]['Ids']
         if block['BlockType'] == "LINE":
             if block['Id'] in page_child_map[block['Page']]:
                 if block['Page'] in pagelineinfo:

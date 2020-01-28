@@ -23,27 +23,49 @@ import textdistance
 class Report():
     def __init__(self, docid):
         self.docid = docid
-        self.toc_dataset_path = settings.production_path + docid + '_toc_dataset.csv'
+        #self.toc_dataset_path = settings.production_path + docid + '_toc_dataset.csv'
         self.docinfo = self.get_doc_info()
         self.doclines = self.get_doc_lines()
         self.line_dataset = self.create_line_dataset()
         self.toc_page = self.get_toc_page()
-        self.fig_pages = fig_classification.get_fig_pages(self.docid, self.docinfo, self.doclines)
-        self.line_dataset = self.create_line_dataset()
+        #self.fig_pages = fig_classification.get_fig_pages(self.docid, self.docinfo, self.doclines)
+        #self.line_dataset = self.create_line_dataset()
+
+        if self.toc_page:
+            self.headings, self.subheadings = self.get_headings()
+        else:
+            self.headings, self.subheadings = pd.DataFrame(), pd.DataFrame()
+        self.get_marginals()
+
         self.section_ptrs = self.get_section_ptrs()  # section_ptrs = [{HeadingText: , PageNum: , LineNum: }]
         self.section_content = self.get_sections()
-        self.toc_heading_classes, self.text_heading_classes = self.classify_headings()
+        #self.toc_heading_classes, self.text_heading_classes = self.classify_headings()
 
+    def get_marginals(self):
+        self.marginals = marginals_classification.get_marginals(
+            self.create_marginals_dataset())  # a df containing many columns, key: pagenum, text
+        self.marginals_set = set([(p, l) for p, l in zip(self.marginals.PageNum, self.marginals.LineNum)])
+        #self.page_nums = page_extraction.get_page_nums(self.marginals)
+
+    def get_section_ptrs(self):
+        self.headings_intext = heading_id_intext.get_headings_intext(self.create_intext_id_dataset(), self.toc_page)
+        section_ptrs = self.headings_intext.loc[self.headings_intext['Heading'] == 1]
+        #self.subsection_ptrs = self.headings_intext.loc[self.headings_intext['Heading'] == 2]
+        #self.subsection_ptrs.reset_index(inplace=True, drop=True)
+        section_ptrs.reset_index(inplace=True, drop=True)
+        return section_ptrs
 
     def classify_headings(self):
         # classify both toc headings and text headings, but separately
         intext_dataset = self.headings_intext
-        toc_dataset = self.line_dataset.loc[self.line_dataset['PageNum'] == self.toc_page]
-        lines = self.headings['LineNum']
-        dataset = toc_dataset[toc_dataset['LineNum'].isin(self.headings['LineNum'])]
-        self.toc_dataset = dataset.append(toc_dataset[toc_dataset['LineNum'].isin(self.subheadings['LineNum'])], ignore_index=True)
-        if toc_dataset.shape[0] > 0:
-            toc_res = heading_classification.classify(self.toc_dataset)
+        if (self.toc_page) and (self.headings.shape[0] > 0):
+            toc_dataset = self.line_dataset.loc[self.line_dataset['PageNum'] == self.toc_page]
+            dataset = toc_dataset[toc_dataset['LineNum'].isin(self.headings['LineNum'])]
+            if self.subheadings.shape[0] > 0:
+                toc_head_dataset = dataset.append(toc_dataset[toc_dataset['LineNum'].isin(self.subheadings['LineNum'])], ignore_index=True)
+            else:
+                toc_head_dataset = dataset
+            toc_res = heading_classification.classify(toc_head_dataset)
             #print(toc_res)
         else: toc_res = []
         if intext_dataset.shape[0] > 0:
@@ -54,13 +76,24 @@ class Report():
 
     def get_doc_lines(self):
         pagelines = {}
+        prev_pg = 0
         for page in self.docinfo.items():
             pagenum = page[0]
+            if int(pagenum) > prev_pg + 1:  # if there are empty pages, still add blank dict entries to avoid messing up len
+                empty_pagenum = prev_pg + 1
+                pagelines[str(empty_pagenum)] = []
+                while empty_pagenum < int(pagenum):
+                    empty_pagenum += 1
+                    pagelines[str(empty_pagenum)] = []
             info = page[1]
             lines = []
             for line in info:
                 lines.append(line['Text'])
             pagelines[pagenum] = lines
+            prev_pg = int(pagenum)
+
+
+
         return pagelines
 
     def get_doc_info(self):
@@ -86,10 +119,14 @@ class Report():
     def get_toc_page(self):
         data = self.create_toc_dataset()
         toc_pages = toc_classification.get_toc_pages(data)
-        toc = int(toc_pages['PageNum'].values[0])
+        try:
+            toc = int(toc_pages['PageNum'].values[0])
+        except IndexError:
+            print("TOC page doesn't exist")
+            toc = None
         return toc
 
-    def get_headings(self):
+    def get_headings(self):  # get headings from TOC
         df = self.create_identification_dataset()
         newdf = heading_identification.pre_process_id_dataset(pre='cyfra1', datafile=df, training=False)
         model = heading_identification.NeuralNetwork()
@@ -165,18 +202,6 @@ class Report():
         df['Marginal'] = 0
         df.drop(columns=['WordCount'], inplace=True)
         return df
-
-    def get_section_ptrs(self):
-        self.headings, self.subheadings = self.get_headings()
-        self.marginals = marginals_classification.get_marginals(self.create_marginals_dataset())  # a df containing many columns, key: pagenum, text
-        self.marginals_set = set([(p, l) for p, l in zip(self.marginals.PageNum, self.marginals.LineNum)])
-        self.page_nums = page_extraction.get_page_nums(self.marginals)
-        self.headings_intext = heading_id_intext.get_headings_intext(self.create_intext_id_dataset())
-        section_ptrs = self.headings_intext.loc[self.headings_intext['Heading'] == 1]
-        self.subsection_ptrs = self.headings_intext.loc[self.headings_intext['Heading'] == 2]
-        self.subsection_ptrs.reset_index(inplace=True, drop=True)
-        section_ptrs.reset_index(inplace=True, drop=True)
-        return section_ptrs
 
     def get_sections(self):
         # from section ptrs, section = section ptr, reading until the start of the next section
@@ -355,7 +380,10 @@ def bookmark_report(report):
     ptrs = report.headings_intext
     for page in input.pages:
         output.addPage(page)
-    output.addBookmark('Table of Contents', report.toc_page-1, fit='/FitB')
+
+    output.addBookmark('Title Page', 0, fit='/FitB')
+    if report.toc_page:
+        output.addBookmark('Table of Contents', report.toc_page-1, fit='/FitB')
     section = None
     for i, row in ptrs.iterrows():
         #page, line = row['PageNum'], row['LineNum']
@@ -368,23 +396,24 @@ def bookmark_report(report):
             else:
                 output.addBookmark(row['Text'], row['PageNum']-1, fit='/FitB')  # add as a heading if section doesn't exist
 
-    refpg = output.getPage(1).mediaBox
+    refpg = output.getPage(0).mediaBox
     width, height = float(refpg[2]), float(refpg[3])
 
     # add links between toc lines and their intext section
     #self.headings_intext, self.subheadings, self.headings
-    toc_headings = pd.concat([report.headings, report.subheadings], ignore_index=True)
-    for i, row in report.headings_intext.iterrows():
-        if row.MatchesHeading == 0:
-            continue
-        toc_h = toc_headings.iloc[int(row.MatchesI)]
-        toc_bb = report.line_dataset.loc[(report.line_dataset.PageNum == report.toc_page) &
-                                         (report.line_dataset.LineNum == toc_h.LineNum)].iloc[0]
-        left = width * toc_bb['Left']
-        top = height * (1 - toc_bb['Top'])
-        #rectangle = [left, top, left + (width * toc_bb['Width']), top + (height * toc_bb['Height'])]
-        rectangle = [left, top, left + (width * toc_bb['Width']), top - (height * toc_bb['Height'])]
-        output.addLink(report.toc_page-1, row.PageNum-1, rect=rectangle, fit='/FitB')  # creates link from toc heading to section page
+    if report.toc_page:
+        toc_headings = pd.concat([report.headings, report.subheadings], ignore_index=True)
+        for i, row in report.headings_intext.iterrows():
+            if row.MatchesHeading == 0:
+                continue
+            toc_h = toc_headings.iloc[int(row.MatchesI)]
+            toc_bb = report.line_dataset.loc[(report.line_dataset.PageNum == report.toc_page) &
+                                             (report.line_dataset.LineNum == toc_h.LineNum)].iloc[0]
+            left = width * toc_bb['Left']
+            top = height * (1 - toc_bb['Top'])
+            #rectangle = [left, top, left + (width * toc_bb['Width']), top + (height * toc_bb['Height'])]
+            rectangle = [left, top, left + (width * toc_bb['Width']), top - (height * toc_bb['Height'])]
+            output.addLink(report.toc_page-1, row.PageNum-1, rect=rectangle, fit='/FitB')  # creates link from toc heading to section page
 
     outfile = settings.get_report_name(report.docid, local_path=True, file_extension='_bookmarked.pdf')
     output.write(open(outfile, 'wb'))
