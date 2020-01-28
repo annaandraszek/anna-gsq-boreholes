@@ -17,7 +17,8 @@ import os
 
 
 def create_dataset():
-    df = pd.DataFrame(columns=['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'TOCPage'])
+    columns = ['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'PrevPageTOC', 'TOCPage']
+    df = pd.DataFrame(columns=columns)
     pageinfos = sorted(glob.glob('training/pageinfo/*'))
     pagelines = sorted(glob.glob('training/pagelines/*'))
 
@@ -30,14 +31,16 @@ def create_dataset():
         for info, lines, j, in zip(pi.items(), pl.items(), range(len(pi.items()))):
             toc = 0
             c = 0
+            prev_pg_toc = 0  # indicates in the previous page is a TOC - to find second pages of this
             for line in lines[1]:
                 if 'contents' in line.lower():
                     c = 1
                     if 'table of contents' in line.lower():
                         toc = 1
-
-            docset[j] = np.array([docid.strip('cr_'), info[1]['Page'], len(lines[1]), toc, c, 0])
-        pgdf = pd.DataFrame(data=docset, columns=['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'TOCPage'])
+                # if docset[j-1][3] == 1 or docset[j-1][4] == 1:
+                #     prev_pg_toc = 1
+            docset[j] = np.array([docid.strip('cr_'), info[1]['Page'], len(lines[1]), toc, c, prev_pg_toc, 0])
+        pgdf = pd.DataFrame(data=docset, columns=columns)
         df = df.append(pgdf, ignore_index=True)
     return df
 

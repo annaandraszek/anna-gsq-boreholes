@@ -34,9 +34,10 @@ def num2cyfra1(string):
     for c in string:
         if re.match(r'[0-9]', c):
             if prev_c != 'num':
-                s += ' cyfra' + str(i) + ' '
-                i += 1
-                prev_c = 'num'
+                if c != '0':  # to stop eg. 1.0 being tagged as cyfra1 punkt cyfra2 like a subheading
+                    s += ' cyfra' + str(i) + ' '
+                    i += 1
+                    prev_c = 'num'
         elif c == '.':
             s += ' punkt '
             prev_c = '.'
@@ -322,11 +323,13 @@ if __name__ == '__main__':
     #create_dataset(data_path)
     #edit_dataset(data_path)
     data = pd.read_csv(data_path)
-    train(data, model_file=settings.heading_id_intext_model_file_no_toc)
-    preds = classify(data, model_file=settings.heading_id_intext_model_file_no_toc)
-    x = 0
-    for i, row in data.iterrows():
-        if preds[i] != row.Heading:
-            print(row.DocID, '\t', row.PageNum, ',', row.LineNum, '\t', row.Text, ' | ', row.Heading, ' | ', preds[i])
-            x += 1
-    print('Wrong classifications: ', x)
+    model_files = [settings.heading_id_intext_model_file, settings.heading_id_intext_model_file_no_toc]
+    for file in model_files:
+        train(data, model_file=file)
+        preds = classify(data, model_file=file)
+        x = 0
+        for i, row in data.iterrows():
+            if preds[i] != row.Heading:
+                print(row.DocID, '\t', row.PageNum, ',', row.LineNum, '\t', row.Text, ' | ', row.Heading, ' | ', preds[i])
+                x += 1
+        print('Wrong classifications: ', x)

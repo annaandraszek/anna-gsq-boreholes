@@ -27,7 +27,8 @@ if __name__ == '__main__':
     #docids = textloading.get_reportid_sample(num=20, cutoffdate=pd.Timestamp(2000, 1, 1), rtype_exclude='WELCOM')
     training_folders = os.walk('training/QDEX/')
     training_docids = [x[0].split('\\')[-1] for x in training_folders]
-    docids = ['37038', '34597', '52161', '33201', '70562'] # '45198', '80507', '75082', '41583', '76890', '70158', '52182', '40124', '75275', '42133', '54223', '54437', '40826', '31743', '38400',
+    #docids = #['37038', '34597', '52161', '33201', '70562'] # '45198', '80507', '75082', '41583', '76890', '70158', '52182', '40124', '75275', '42133', '54223', '54437', '40826', '31743', '38400',
+    docids = ['31743', '37038', '42133', '52182']
 
     print(docids)
     for docid in docids:

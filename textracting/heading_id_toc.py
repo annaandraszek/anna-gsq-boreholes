@@ -88,7 +88,7 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
         self.model._make_predict_function()
 
 
-    def predict(self, strings):
+    def predict(self, strings, encode=False):
         if not os.path.exists(self.model_loc):
             self.train()
         try:
@@ -96,7 +96,8 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
         except AttributeError:
             self.load_model_from_file()
 
-        #encoded = [num2cyfra1(s) for s in strings]
+        if encode:
+            strings = [num2cyfra1(s) for s in strings]
         sequences = self.tok.texts_to_sequences(strings)
         #self.max_len
         sequences_matrix = sequence.pad_sequences(sequences, maxlen=256)
@@ -111,9 +112,17 @@ def num2cyfra1(string):
     for c in string:
         if re.match(r'[0-9]', c):
             if prev_c != 'num':
-                s += 'cyfra' + str(i) + ' '
-                i += 1
-                prev_c = 'num'
+                if c == '0':
+                    if prev_c == '.':
+                        continue
+                    else:
+                        s += 'cyfra' + str(i) + ' '
+                        i += 1
+                        prev_c = 'num'
+                else:
+                    s += 'cyfra' + str(i) + ' '
+                    i += 1
+                    prev_c = 'num'
         elif c == '.':
             s += 'punkt '
             prev_c = '.'
@@ -243,9 +252,9 @@ if __name__ == '__main__':
 
     data = settings.dataset_path + 'processed_heading_id_dataset_cyfra1.csv'
     nn = NeuralNetwork()
-    #nn.train(data)
+    nn.train(data)
     nn.load_model_from_file()
-    p, r = nn.predict(['4.3 drilling', 'Introduction 1', 'lirowjls', 'figure drilling', '5 . 9 . geology of culture 5', '1 . introduction', '8 . 1 introduction 7'])
+    p, r = nn.predict(['4.3 drilling', 'Introduction 1', 'lirowjls', 'figure drilling', '5 . 9 . geology of culture 5', '1 . introduction', '8 . 1 introduction 7'], encode=True)
         #['4.3 drilling', 'Introduction strona', 'lirowjls', 'figure drilling', '5 . 9 . geology of culture strona', '1 . introduction', '8 . 1 introduction strona'])
     print(p)
     print('------------------')

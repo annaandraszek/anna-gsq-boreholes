@@ -4,7 +4,7 @@ import numpy as np
 import toc_classification
 import settings
 import os
-import heading_identification
+import heading_id_toc
 import marginals_classification
 import page_extraction
 import fig_classification
@@ -128,8 +128,8 @@ class Report():
 
     def get_headings(self):  # get headings from TOC
         df = self.create_identification_dataset()
-        newdf = heading_identification.pre_process_id_dataset(pre='cyfra1', datafile=df, training=False)
-        model = heading_identification.NeuralNetwork()
+        newdf = heading_id_toc.pre_process_id_dataset(pre='cyfra1', datafile=df, training=False)
+        model = heading_id_toc.NeuralNetwork()
         x = newdf['SectionText']
         _, res = model.predict(x)
         columns = ['LineNum', 'SectionPrefix', 'SectionText', 'SectionPage']  #'PageNum',
@@ -138,8 +138,8 @@ class Report():
         for i, pred in zip(range(len(res)), res):
             if pred > 0:
                 heading = self.docinfo[str(self.toc_page)][i]
-                section_prefix, section_text = heading_identification.split_prefix(heading['Text'])
-                section_text, section_page = heading_identification.split_pagenum(section_text)
+                section_prefix, section_text = heading_id_toc.split_prefix(heading['Text'])
+                section_text, section_page = heading_id_toc.split_pagenum(section_text)
                 hrow = [heading['LineNum'], section_prefix, section_text, section_page]  # heading['PageNum'],
                 if pred == 1:
                     headings.loc[len(headings)] = hrow
