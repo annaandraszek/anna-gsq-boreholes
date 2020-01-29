@@ -70,8 +70,9 @@ def get_reportid_sample(num=50, submitter=None, rtype_exclude=None, cutoffdate=p
     reps.REPNO = reps.REPNO.astype(int)
     #cutoffdate = pd.Timestamp(1990, 1, 1)
     #time_mask = reps.REPDATE > cutoffdate
-    reps = reps.loc[reps.REPDATE > cutoffdate]
 
+    if cutoffdate:
+        reps = reps.loc[reps.REPDATE > cutoffdate]
     if submitter:
         reps = reps.loc[reps.SUBMITBY.str.contains(submitter) == True]
     if rtype_exclude:

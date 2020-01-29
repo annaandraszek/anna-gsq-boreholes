@@ -25,6 +25,8 @@ class Report():
         self.docid = docid
         #self.toc_dataset_path = settings.production_path + docid + '_toc_dataset.csv'
         self.docinfo = self.get_doc_info()
+        if len(self.docinfo.keys()) == 0:
+            return
         self.doclines = self.get_doc_lines()
         self.line_dataset = self.create_line_dataset()
         self.toc_page = self.get_toc_page()
@@ -374,6 +376,8 @@ def draw_report(report):
 # add bookmarks to sections and sub-bookmarks to subsections
 # if drawing report, after it has been drawn on. if not, need to download the report if it has not been converted from tif
 def bookmark_report(report):
+    if len(report.docinfo.keys()) == 0:
+        return
     report_file = settings.get_report_name(report.docid, local_path=True, file_extension='.pdf')
     output = PdfFileWriter()
     input = PdfFileReader(open(report_file, 'rb'))
@@ -419,6 +423,8 @@ def bookmark_report(report):
     output.write(open(outfile, 'wb'))
 
 def save_report_sections(report):
+    if len(report.docinfo.keys()) == 0:
+        return
     doc = docx.Document()
     for section in report.section_content:
         doc.add_heading(section['Heading'], 1)
