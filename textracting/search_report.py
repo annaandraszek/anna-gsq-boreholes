@@ -20,6 +20,7 @@ import docx
 from heading_id_intext import Text2CNBPrediction, Num2Cyfra1, num2cyfra1
 import textdistance
 
+
 class Report():
     def __init__(self, docid):
         self.docid = docid
