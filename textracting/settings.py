@@ -25,6 +25,7 @@ def get_s3_location(file_id, format='pdf'):
     return 'QDEX/' + file_id + '/' + get_report_name(file_id, file_extension=format)
 
 
+
 def get_report_name(file_id, local_path=False, file_extension=None):
     file = ''
     if local_path:
@@ -44,6 +45,11 @@ def get_file_from_training(folder, file_id, local_path, extension='.json'):
             file += get_report_name(file_id)
             return file + "_" + folder + extension
     return file + str(file_id) + "_" + folder + extension
+
+
+def get_bookmarked_file(file_id):
+    file = report_local_path + file_id + "/cr" + file_id + "_1_bookmarked.pdf"
+    return file
 
 
 def get_restructpageinfo_file(file_id, local_path=True):

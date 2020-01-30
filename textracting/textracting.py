@@ -115,6 +115,7 @@ def report2textract(fname, bucket, features):
         response = getJobResults(jobId)
         if response[0]['JobStatus'] == 'FAILED':
             print(docid + ' failed, status message: ', response[0]['StatusMessage'])
+            raise FileNotFoundError
         else:
             #json_response = {'response': response}
             with open(settings.get_full_json_file(docid), 'w') as fp:

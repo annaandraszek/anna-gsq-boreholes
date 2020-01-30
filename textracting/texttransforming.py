@@ -105,7 +105,7 @@ def get_clean_page(doc, file_id):
             lmargin = line['BoundingBox']['Left']
             if lmargin < 0.04:  #and line['Confidence'] < 90
                 if line['BoundingBox']['Width'] < 0.02:
-                    print(line['Text'])
+                    #print(line['Text'])
                     continue
             if pagenum in cleaned:
                 cleaned[pagenum].append(line)
