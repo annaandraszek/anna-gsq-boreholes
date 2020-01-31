@@ -24,15 +24,15 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
     epochs = 10
     batch_size = 50
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-    model_path = settings.model_path
+    #model_path = settings.model_path
     #model_name = 'heading_id_cyfra1'
 
     def __init__(self, model_name='cyfra1'):
         self.model_name = 'heading_id_' + model_name
-        self.model_loc = self.model_path + self.model_name + '.h5'
-        self.tok_loc = self.model_path + self.model_name + 'tokeniser.joblib'
+        self.model_loc = settings.get_model_path('heading_id_toc') #self.model_path + self.model_name + '.h5'
+        self.tok_loc = settings.get_model_path('heading_id_toc', tokeniser=True)#self.model_path + self.model_name + 'tokeniser.joblib'
 
-    def train(self, file=settings.dataset_path + 'processed_heading_id_dataset_cyfra1.csv'):
+    def train(self, file=settings.get_dataset_path('processed_heading_id_toc')):  #settings.dataset_path + 'processed_heading_id_dataset_cyfra1.csv'):
         df = pd.read_csv(file)
         self.X = df['SectionText']
         self.Y = df['Heading']
@@ -180,7 +180,7 @@ def num2strona(string):
     return s
 
 
-def pre_process_id_dataset(pre='cyfra', datafile=settings.dataset_path + "heading_id_dataset.csv", training=True):
+def pre_process_id_dataset(pre='cyfra1', datafile=settings.dataset_path + "heading_id_dataset.csv", training=True):
     if isinstance(datafile, pd.DataFrame):
         df = datafile
         df['LineText'] = df['Text']
@@ -217,11 +217,12 @@ def pre_process_id_dataset(pre='cyfra', datafile=settings.dataset_path + "headin
 
 def create_identification_dataset():
     df = pd.DataFrame(columns=['DocID', 'LineNum', 'LineText', 'Heading'])
-    lines_docs = sorted(glob.glob('training/restructpagelines/*'))
-    toc_pages = get_toc_pages()
+    lines_docs = sorted(glob.glob('training/restructpageinfo/*'))
+    toc_df = pd.read_csv(settings.get_dataset_path('toc'))
+    toc_pages = get_toc_pages(toc_df)
     for lines_doc in lines_docs:
         pages = json.load(open(lines_doc))
-        docid = int(lines_doc.split('\\')[-1].replace('_1_restructpagelines.json', '').strip('cr_'))
+        docid = int(lines_doc.split('\\')[-1].replace('_1_restructpageinfo.json', '').strip('cr_'))
         tocpg = toc_pages.loc[toc_pages['DocID'] == docid]
         try:
             page = tocpg.PageNum.values[0]
@@ -230,17 +231,17 @@ def create_identification_dataset():
                     docset = []
                     for line, i in zip(lines[1], range(len(lines[1]))):
                         heading = 0
-                        if re.match(r'^([0-9]+\.[0-9]+\s+\w+)', line):
+                        if re.match(r'^([0-9]+\.[0-9]+\s+\w+)', line['Text']):
                             heading = 2
-                        elif re.match(r'^[0-9]+\.*\s+\w+', line):
+                        elif re.match(r'^[0-9]+\.*\s+\w+', line['Text']):
                             heading = 1
 
-                        docset.append([docid, i, line, heading])
+                        docset.append([docid, i, line['Text'], heading])
                     pgdf = pd.DataFrame(data=docset, columns=['DocID', 'LineNum', 'LineText', 'Heading'])
                     df = df.append(pgdf, ignore_index=True)
         except IndexError:
             print("IndexError ", tocpg, docid)
-    df.to_csv("heading_id_dataset.csv", index=False)
+    #df.to_csv("heading_id_dataset.csv", index=False)
     return df
 
 

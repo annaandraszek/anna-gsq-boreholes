@@ -68,6 +68,7 @@ def create_dataset():
     unnormed = np.array(df['Centrality'])
     normalized = (unnormed - min(unnormed)) / (max(unnormed) - min(unnormed))
     df['Centrality'] = normalized
+    df['Marginal'] = 0
     return df
 
 
@@ -118,12 +119,12 @@ def data_prep(data, y=False):
     return X
 
 
-def train(data, model='forest'):
+def train(data=pd.read_csv(settings.get_dataset_path('marginal_lines'))): #, model='forest'):
     X, Y = data_prep(data, y=True)
     X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.33)
     #if 'forest' in model:
     clf = ensemble.RandomForestClassifier(n_estimators=12)
-    model_file = settings.marginals_model_file_forest
+    model_file = settings.get_model_path('marginal_lines') #settings.marginals_model_file_forest
     # elif 'CNB' in model:
     #     clf = naive_bayes.ComplementNB()
     #     model_file = settings.marginals_model_file_CNB

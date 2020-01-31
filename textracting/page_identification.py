@@ -25,14 +25,14 @@ class NeuralNetwork():
     epochs = 15
     batch_size = 15
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-    model_path = settings.model_path
+    #model_path = settings.model_path
 
     def __init__(self, model_name='trans'):
-        self.model_name = 'page_id_' + model_name
-        self.model_loc = self.model_path + self.model_name + '.h5'
-        self.tok_loc = self.model_path + self.model_name + 'tokeniser.joblib'
+        #self.model_name = 'page_id_' + model_name
+        self.model_loc = settings.get_model_path('page_id') #self.model_path + self.model_name + '.h5'
+        self.tok_loc = settings.get_model_path('page_id', tokeniser=True)  #self.model_path + self.model_name + 'tokeniser.joblib'
 
-    def train(self, file=settings.marginals_id_trans_dataset):
+    def train(self, file=settings.get_dataset_path('page_id') ):  #settings.marginals_id_trans_dataset):
         df = pd.read_csv(file)
         self.X = df['transformed']
         self.Y = df['tag']
@@ -135,11 +135,13 @@ def transform_text(str, transform_all=True):
 
 
 def create_dataset():
-    sourcefile = settings.marginals_id_dataset
+    sourcefile = settings.get_dataset_path('marginal_lines')
     texts = pd.read_csv(sourcefile, usecols=['Text'])
+    texts = texts.loc[texts['Marginal'] > 0]
     new_text = texts.Text.apply(lambda x: transform_text(x))
-    print(new_text)
-    new_text.to_csv(settings.marginals_id_trans_dataset, index=False)
+    #print(new_text)
+    #new_text.to_csv(settings.marginals_id_trans_dataset, index=False)
+    return new_text
 
 
 def run_model():

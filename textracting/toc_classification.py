@@ -19,27 +19,27 @@ import os
 def create_dataset():
     columns = ['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'PrevPageTOC', 'TOCPage']
     df = pd.DataFrame(columns=columns)
-    pageinfos = sorted(glob.glob('training/pageinfo/*'))
-    pagelines = sorted(glob.glob('training/pagelines/*'))
+    pageinfos = sorted(glob.glob('training/restructpageinfo/*'))
+    #pagelines = sorted(glob.glob('training/pagelines/*'))
 
-    for pagesinfo, pageslines, i in zip(pageinfos, pagelines, range(len(pageinfos))):
+    for pagesinfo in pageinfos:
         pi = json.load(open(pagesinfo))
-        pl = json.load(open(pageslines))
+        #pl = json.load(open(pageslines))
         docset = np.zeros((len(pi.items()), 6))
-        docid = pagesinfo.split('\\')[-1].replace('_1_pageinfo.json', '')
+        docid = pagesinfo.split('\\')[-1].replace('_1_restructpageinfo.json', '')
 
-        for info, lines, j, in zip(pi.items(), pl.items(), range(len(pi.items()))):
+        for info, j in zip(pi.items(), range(len(pi.items()))):
             toc = 0
             c = 0
             prev_pg_toc = 0  # indicates in the previous page is a TOC - to find second pages of this
-            for line in lines[1]:
-                if 'contents' in line.lower():
+            for line in info[1]:
+                if 'contents' in line['Text'].lower():
                     c = 1
-                    if 'table of contents' in line.lower():
+                    if 'table of contents' in line['Text'].lower():
                         toc = 1
                 # if docset[j-1][3] == 1 or docset[j-1][4] == 1:
                 #     prev_pg_toc = 1
-            docset[j] = np.array([docid.strip('cr_'), info[1]['Page'], len(lines[1]), toc, c, prev_pg_toc, 0])
+            docset[j] = np.array([docid.strip('cr_'), info[1]['Page'], len(info[1]), toc, c, prev_pg_toc, 0])
         pgdf = pd.DataFrame(data=docset, columns=columns)
         df = df.append(pgdf, ignore_index=True)
     return df
@@ -55,7 +55,7 @@ def data_prep(data, y=False):
     return X
 
 
-def train(data):
+def train(data=pd.read_csv(settings.get_dataset_path('toc'))):
     X, Y = data_prep(data, y=True)
     X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.33)
     clf = tree.DecisionTreeClassifier()
@@ -65,7 +65,7 @@ def train(data):
     print(accuracy)
     #tree.plot_tree(clf, feature_names=['PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord'], class_names=True, filled=True)
     #plt.show()
-    with open(settings.toc_tree_model_file, "wb") as file:
+    with open(settings.get_model_path('toc'), "wb") as file:
         pickle.dump(clf, file)
 
 

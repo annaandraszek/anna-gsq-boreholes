@@ -23,7 +23,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.base import BaseEstimator, TransformerMixin
 import pandas as pd
 import textdistance
-import spacy
+#import spacy
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 import numpy as np
 
@@ -123,8 +123,8 @@ def contains_num(x):
 
 
 # kinda awkward because you're creating it from another dataset...so you're depending on that one to be complete
-def create_dataset(datafile=settings.dataset_path + 'heading_id_intext_dataset.csv', docid=False):
-    sourcefile = settings.dataset_path + 'marginals_dataset_v2.csv'
+def create_dataset(datafile = settings.get_dataset_path('heading_id_intext'), docid=False): #datafile=settings.dataset_path + 'heading_id_intext_dataset.csv', docid=False):
+    sourcefile = settings.get_dataset_path('marginal_lines')
     df = pd.read_csv(sourcefile)
 
     if docid:
@@ -136,8 +136,8 @@ def create_dataset(datafile=settings.dataset_path + 'heading_id_intext_dataset.c
     df = df.drop(['Marginal'], axis=1)
     # find ALL the toc pages and remove their lines from the dataset
     # find ALL the fig pages and remove their lines from the dataset
-    toc_dataset = pd.read_csv(settings.dataset_path + 'toc_dataset.csv')
-    fig_dataset = pd.read_csv(settings.dataset_path + 'fig_dataset.csv')
+    toc_dataset = pd.read_csv(settings.get_dataset_path('toc'))
+    fig_dataset = pd.read_csv(settings.get_dataset_path('fig'))
     tocs = toc_dataset.loc[toc_dataset.TOCPage == 1]
     figs = fig_dataset.loc[fig_dataset.FigPage == 1]
     toc_tuples = [(id, page) for id, page in zip(tocs.DocID, tocs.PageNum)]
@@ -153,12 +153,27 @@ def create_dataset(datafile=settings.dataset_path + 'heading_id_intext_dataset.c
     # add column: line word count
     df['WordCount'] = df.Text.apply(lambda x: len(x.split()))
 
-    #print(new_df)
+    proc_df = pd.read_csv(settings.get_dataset_path('processed_heading_id_toc'))
+    proc_head_df = proc_df.loc[proc_df.Heading > 0]
+    proc_head_df['Text'] = proc_head_df.apply(lambda x: str(x.SectionPrefix) + ' ' + x.SectionText, axis=1)
+    series_mh = pd.Series()
+    series_mt = pd.Series()
+    series_mi = pd.Series()
+
+    for docid in df.DocID.unique():
+        doc_toc = proc_head_df.loc[proc_head_df.DocID == float(docid)]
+        df_doc = df.loc[df.DocID == float(docid)]
+        matches_heading, matches_type, matches_i = compare_lines2headings(df_doc.Text, doc_toc)
+        print(len(matches_heading) == df_doc.shape[0], docid)
+        series_mh = series_mh.append(pd.Series(matches_heading), ignore_index=True)
+        series_mt = series_mt.append(pd.Series(matches_type), ignore_index=True)
+        series_mi = series_mi.append(pd.Series(matches_i), ignore_index=True)
+
+    df['MatchesHeading'], df['MatchesType'], df['MatchesI'] = series_mh, series_mt, series_mi
     if not docid:
         df.to_csv(datafile, index=False)
     df['Heading'] = 0
     return df
-    # manually annotate, or, send to classifier
 
 
 #model = spacy.load('en_core_web_md')
@@ -242,11 +257,12 @@ def data_prep(df, y=False, limit_cols=None):
         return X
 
 
-def train(data=pd.read_csv(settings.dataset_path + 'heading_id_intext_dataset.csv'),
-          model_file=settings.heading_id_intext_model_file):
+def train(data=pd.read_csv(settings.get_dataset_path('heading_id_intext')), model_file=settings.get_model_path('heading_id_intext')):  #settings.dataset_path + 'heading_id_intext_dataset.csv'),
+          #model_file=settings.heading_id_intext_model_file):
     if 'no_toc' in model_file:
         X, Y = data_prep(data, y=True, limit_cols=['MatchesHeading', 'MatchesType']) # not MatchesI because it's already dropped
-    X, Y = data_prep(data, y=True)
+    else:
+        X, Y = data_prep(data, y=True)
     X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.20)
 
     clf = Pipeline([

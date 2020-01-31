@@ -10,6 +10,15 @@ import eli5
 # dataset is edited down version of heading_id_intext.csv, and annotated
 
 
+def create_dataset():
+    sourcefile = settings.get_dataset_path('heading_id_intext')
+    df = pd.read_csv(sourcefile)
+    df = df.loc[df['Heading'] > 0]
+    df = df.drop(columns=['Heading', 'MatchesHeading', 'MatchesType', 'MatchesI'])
+    df['HeadingClass'] = ''
+    return df
+
+
 def data_prep(df, y=False):
     X = df.Text
     if y:
@@ -18,7 +27,8 @@ def data_prep(df, y=False):
     return X
 
 
-def train(data, model_file=settings.heading_classification_model_file):
+def train(data=pd.read_csv(settings.get_dataset_path('heading_classification')),
+          model_file=settings.get_model_path('heading_classification')):  #settings.heading_classification_model_file):
     X, Y = data_prep(data, y=True)
     X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size = 0.20)
     clf = Pipeline([('tfidf', TfidfVectorizer(analyzer='word', ngram_range=(1,2))),#(token_pattern=r'([a-zA-Z]|[0-9])+')),

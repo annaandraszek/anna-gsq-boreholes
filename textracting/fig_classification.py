@@ -14,32 +14,32 @@ import matplotlib
 def create_dataset():
     df = pd.DataFrame(columns=['DocID', 'PageNum', 'MedConfidence', 'AvgConfidence', 'RangeConfidence', 'IQRConfidence','MedLineLen', 'ContainsFigWord', 'ContainsFigLn', 'FigPos', 'FigPage'])
     pageinfos = sorted(glob.glob('training/restructpageinfo/*'))
-    pagelines = sorted(glob.glob('training/restructpagelines/*'))
+    #pagelines = sorted(glob.glob('training/restructpagelines/*'))
 
-    for pagesinfo, pageslines in zip(pageinfos, pagelines):
+    for pagesinfo in pageinfos:
         #pagesinfo = 'training\\restructpageinfo\\cr_26114_1_restructpageinfo.json'
         #pageslines = 'training\\restructpagelines\\cr_26114_1_restructpagelines.json'
         pi = json.load(open(pagesinfo))
-        pl = json.load(open(pageslines))
+        #pl = json.load(open(pageslines))
         docset = np.zeros((len(pi.items()), 11))
         docid = pagesinfo.split('\\')[-1].replace('_1_restructpageinfo.json', '')
 
-        for info, lines, i in zip(pi.items(), pl.items(), range(len(pi))):
+        for info, i in zip(pi.items(), range(len(pi))):
             fig = 0
             figln = 0
             figlnpos = -1
             confs = []
             linelens = []
-            for line, inf, j in zip(lines[1], info[1], range(len(lines[1]))):
+            for inf, j in zip(info[1], range(len(info[1]))):
                 confs.append(inf['Confidence'])
-                linelens.append(len(line))
-                if 'figure' in line.lower():
+                linelens.append(len(inf['Text']))
+                if 'figure' in inf['Text'].lower():
                     fig = 1
                     if figlnpos == -1:
-                        figlnpos = j / len(lines[1])
-                    if re.search(r'Figure\s\d+\.*\s*\w*', line) or re.search(r'FIGURE\s\d+\.*\s*\w*', line):
+                        figlnpos = j / len(info[1])
+                    if re.search(r'Figure\s\d+\.*\s*\w*', inf['Text']) or re.search(r'FIGURE\s\d+\.*\s*\w*', inf['Text']):
                         figln = 1
-                        figlnpos = j / len(lines[1])
+                        figlnpos = j / len(info[1])
             medconf = np.median(np.array(confs))
             avgconf = np.average(np.array(confs))
             rangeconf = np.max(np.array(confs)) - np.min(np.array(confs))
@@ -103,7 +103,7 @@ def data_prep(data, y=False, limited_cols=None):
     return X
 
 
-def train(data, model_file=settings.fig_tree_model_file, limited_cols=None):
+def train(data=pd.read_csv(settings.get_dataset_path('fig')), model_file=settings.get_model_path('fig'), limited_cols=None):
     X, Y = data_prep(data, y=True, limited_cols=limited_cols)
     X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.33)
     clf = tree.DecisionTreeClassifier()

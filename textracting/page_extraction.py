@@ -45,16 +45,16 @@ class NeuralNetwork():
     epochs = 100
     batch_size = 30
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-    model_path = settings.model_path
+    #model_path = settings.model_path
 
     def __init__(self, model_name='mask_nn', model_type='NN'):
         self.model_name = 'page_ex_' + model_name
-        self.model_loc = self.model_path + self.model_name + '.h5'
-        self.tok_loc = self.model_path + self.model_name + 'tokeniser.joblib'
-        self.classes_loc = self.model_path + self.model_name + 'class_dict.joblib'
+        self.model_loc =  settings.get_model_path('page_extraction')  #self.model_path + self.model_name + '.h5'
+        self.tok_loc = settings.get_model_path('page_extraction', tokeniser=True) #self.model_path + self.model_name + 'tokeniser.joblib'
+        self.classes_loc = settings.get_model_path('page_extraction', classes=True)  #self.model_path + self.model_name + 'class_dict.joblib'
         self.mode_type = model_type
 
-    def train(self, file=settings.page_extraction_dataset):
+    def train(self, file=settings.get_dataset_path('page_extraction')):  #settings.page_extraction_dataset):
         df = pd.read_csv(file)
         self.X = df['transformed']
         self.Y = df['position']         # try with y position instead of y value
@@ -233,7 +233,7 @@ def run_model(model_name, model_type='NN'):
 
 
 def create_dataset():
-    sourcefile = settings.marginals_id_trans_dataset
+    sourcefile = settings.get_dataset_path('page_id')
     texts = pd.read_csv(sourcefile)
     page_texts = texts.loc[texts.tag == 1]
     page_texts.transformed = page_texts.original.apply(lambda x: transform_text(x, transform_all=False))
@@ -241,8 +241,8 @@ def create_dataset():
     page_texts = page_texts.drop(['tag'], axis=1)
     page_texts['pagenum'] = 0
 
-    page_texts.to_csv(settings.page_extraction_dataset, index=False)
-
+    #page_texts.to_csv(settings.page_extraction_dataset, index=False)
+    return page_texts
 
 if __name__ == '__main__':
     #create_dataset()

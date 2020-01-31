@@ -21,9 +21,42 @@ marginals_id_trans_dataset = dataset_path + 'identified_trans_marginals_dataset.
 page_extraction_dataset = dataset_path + 'page_extraction_dataset.csv'
 
 
+ml = {'toc': 'toc',
+      'fig': 'fig',
+      'head_id_toc': 'heading_id_toc',
+      'head_id_intext': 'heading_id_intext',
+      'head_id_intext_no_toc': None,
+      'proc_head_id_toc': None,
+      'marginals': 'marginal_lines',
+      'page_id': 'page_id',
+      'page_ex': 'page_extraction',
+      'head_class': ' heading_classification'}
+ml['proc_head_id_toc'] = 'processed_' + ml['head_id_toc']
+ml['head_id_intext_no_toc'] = ml['head_id_intext'] + '_no_toc'
+
+dataset_version = 'expansion1'
+def get_model_path(model, type=None, training_name=dataset_version, tokeniser=False, classes=False):
+    path = model_path + training_name + '/' + model
+    if type:
+        path += '_' + type
+    path += "_model"
+    if ('heading_id_toc' or 'page') in model and not tokeniser:
+        path += ".h5"
+    elif tokeniser:
+        path += '_tokeniser.joblib'
+    elif classes:
+        path += '_class_dict.joblib'
+    else:
+        path += '.pkl'
+    return path
+
+
+def get_dataset_path(dataset, training_name=dataset_version):
+    return dataset_path + training_name + '/' + dataset + '_dataset.csv'
+
+
 def get_s3_location(file_id, format='pdf'):
     return 'QDEX/' + file_id + '/' + get_report_name(file_id, file_extension=format)
-
 
 
 def get_report_name(file_id, local_path=False, file_extension=None):
