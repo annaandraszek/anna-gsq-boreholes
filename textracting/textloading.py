@@ -3,15 +3,15 @@
 
 import random
 #from textracting import report2textract
-import boto3
-import glob
-import img2pdf
+#import boto3
+#import glob
+#import img2pdf
 import pandas as pd
-import settings
+#import settings
 import boto3
 import os
-import logging
-from botocore.exceptions import ClientError
+#import logging
+#from botocore.exceptions import ClientError
 from datetime import timedelta, date
 
 def list2strs(lst):

@@ -10,14 +10,14 @@ from keras.models import load_model
 import tensorflow as tf
 import joblib
 from sklearn.model_selection import train_test_split
-from keras.models import Sequential
+#from keras.models import Sequential
 from keras.layers import LSTM, Dense, Dropout, Embedding, Flatten
-from keras.utils import to_categorical
+#from keras.utils import to_categorical
 import numpy as np
 os.environ['KMP_WARNINGS'] = '0'
 from keras.models import Sequential
-from keras import layers
-from six.moves import range
+#from keras import layers
+#from six.moves import range
 import re
 
 

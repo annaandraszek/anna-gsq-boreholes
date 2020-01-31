@@ -2,9 +2,9 @@
 # Running textract on documents in S3
 
 import boto3
-import time
+#import time
 import json
-import textmain
+#import textmain
 import texttransforming
 import settings
 import re

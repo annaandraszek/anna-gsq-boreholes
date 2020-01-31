@@ -1,7 +1,7 @@
 from toc_classification import get_toc_pages
 import glob
 import json
-from keras.layers import LSTM, Activation, Dense, Dropout, TimeDistributed, Input, Embedding
+from keras.layers import LSTM, Dense, Dropout, Embedding
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing import sequence
 from keras.models import load_model

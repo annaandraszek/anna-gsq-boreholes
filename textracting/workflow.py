@@ -24,7 +24,7 @@ import time
 import csv
 import datetime
 import argparse
-import numpy as np
+#import numpy as np
 import warnings
 import pickle as pkl
 
@@ -52,7 +52,7 @@ if __name__ == '__main__':
     not_exit = True
     while not_exit:
         mode = 'sample'  # default behaviour is random sampling
-        if args:
+        if args:  # always going to be true
             warnings.filterwarnings("ignore")
         if args.save:
             mode = 'save'
@@ -79,7 +79,8 @@ if __name__ == '__main__':
             docids = args.id
             mode = 'given'
 
-        if mode == "sample" or mode == "given":
+        mode = "testing"
+        if mode == "sample" or mode == "given" or mode == "testing":
             if mode == 'sample':
                 print("Running in sample mode. Num samples: " + str(num_sample) + " Cutoff date: " + str(cutoffdate) +
                       " Excluding: " + str(rtype_exclude))
@@ -88,6 +89,10 @@ if __name__ == '__main__':
 
             elif mode == 'given':
                 print("Running in 'given' mode")
+
+            elif mode == "testing":
+                print("Running in testing mode")
+                docids = ['69419']
 
             training_folders = os.walk('training/QDEX/')
             training_docids = [x[0].split('\\')[-1] for x in training_folders]

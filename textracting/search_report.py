@@ -6,8 +6,8 @@ import settings
 import os
 import heading_id_toc
 import marginals_classification
-import page_extraction
-import fig_classification
+#import page_extraction
+#import fig_classification
 import heading_id_intext
 import heading_classification
 os.environ['KMP_AFFINITY'] = 'noverbose'
@@ -18,7 +18,7 @@ from PyPDF2 import PdfFileWriter, PdfFileReader
 import time
 import docx
 from heading_id_intext import Text2CNBPrediction, Num2Cyfra1, num2cyfra1
-import textdistance
+#import textdistance
 
 
 class Report():
@@ -386,6 +386,14 @@ def bookmark_report(report):
     for page in input.pages:
         output.addPage(page)
 
+    # if len(input.outlines) > 0:  # add existing bookmarks
+    #     for o in input.outlines:
+    #         title = o["/Title"]
+    #         page = o.page.idnum
+    #         type = o["/Type"]
+    #         output.addBookmark()
+
+
     output.addBookmark('Title Page', 0, fit='/FitB')
     if report.toc_page:
         output.addBookmark('Table of Contents', report.toc_page-1, fit='/FitB')
@@ -420,8 +428,11 @@ def bookmark_report(report):
             rectangle = [left, top, left + (width * toc_bb['Width']), top - (height * toc_bb['Height'])]
             output.addLink(report.toc_page-1, row.PageNum-1, rect=rectangle, fit='/FitB')  # creates link from toc heading to section page
 
-    outfile = settings.get_report_name(report.docid, local_path=True, file_extension='_bookmarked.pdf')
+    #outfile = settings.get_report_name(report.docid, local_path=True, file_extension='_bookmarked.pdf')
+    outfile = settings.get_bookmarked_file(report.docid)
+    print(outfile)
     output.write(open(outfile, 'wb'))
+
 
 def save_report_sections(report):
     if len(report.docinfo.keys()) == 0:

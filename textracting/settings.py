@@ -48,7 +48,7 @@ def get_file_from_training(folder, file_id, local_path, extension='.json'):
 
 
 def get_bookmarked_file(file_id):
-    file = report_local_path + file_id + "/cr" + file_id + "_1_bookmarked.pdf"
+    file = report_local_path + file_id + "/cr_" + file_id + "_1_bookmarked.pdf"
     return file
 
 
