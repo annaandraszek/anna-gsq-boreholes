@@ -34,6 +34,7 @@ ml = {'toc': 'toc',
 ml['proc_head_id_toc'] = 'processed_' + ml['head_id_toc']
 ml['head_id_intext_no_toc'] = ml['head_id_intext'] + '_no_toc'
 
+
 dataset_version = 'expansion1'
 def get_model_path(model, type=None, training_name=dataset_version, tokeniser=False, classes=False):
     path = model_path + training_name + '/' + model
@@ -49,6 +50,13 @@ def get_model_path(model, type=None, training_name=dataset_version, tokeniser=Fa
     else:
         path += '.pkl'
     return path
+
+
+def get_report_page_path(report_id, page):
+    rep = get_report_name(report_id, local_path=True, file_extension=".pdf")
+    page_file = rep.split('.pdf')[0]
+    page_file += '_page' + str(page) + '.png'
+    return page_file
 
 
 def get_dataset_path(dataset, training_name=dataset_version):

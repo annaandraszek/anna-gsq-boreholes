@@ -13,7 +13,7 @@ import matplotlib
 
 def create_dataset():
     df = pd.DataFrame(columns=['DocID', 'PageNum', 'MedConfidence', 'AvgConfidence', 'RangeConfidence', 'IQRConfidence','MedLineLen', 'ContainsFigWord', 'ContainsFigLn', 'FigPos', 'FigPage'])
-    pageinfos = sorted(glob.glob('training/restructpageinfo/*'))
+    pageinfos = sorted(glob.glob('training/restructpageinfo/*.json'))
     #pagelines = sorted(glob.glob('training/restructpagelines/*'))
 
     for pagesinfo in pageinfos:
@@ -103,7 +103,8 @@ def data_prep(data, y=False, limited_cols=None):
     return X
 
 
-def train(data=pd.read_csv(settings.get_dataset_path('fig')), model_file=settings.get_model_path('fig'), limited_cols=None):
+def train(datafile=settings.get_dataset_path('fig'), model_file=settings.get_model_path('fig'), limited_cols=None):
+    data = pd.read_csv(datafile)
     X, Y = data_prep(data, y=True, limited_cols=limited_cols)
     X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.33)
     clf = tree.DecisionTreeClassifier()

@@ -257,8 +257,9 @@ def data_prep(df, y=False, limit_cols=None):
         return X
 
 
-def train(data=pd.read_csv(settings.get_dataset_path('heading_id_intext')), model_file=settings.get_model_path('heading_id_intext')):  #settings.dataset_path + 'heading_id_intext_dataset.csv'),
+def train(datafile=settings.get_dataset_path('heading_id_intext'), model_file=settings.get_model_path('heading_id_intext')):  #settings.dataset_path + 'heading_id_intext_dataset.csv'),
           #model_file=settings.heading_id_intext_model_file):
+    data = pd.read_csv(datafile)
     if 'no_toc' in model_file:
         X, Y = data_prep(data, y=True, limit_cols=['MatchesHeading', 'MatchesType']) # not MatchesI because it's already dropped
     else:

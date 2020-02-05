@@ -119,7 +119,8 @@ def data_prep(data, y=False):
     return X
 
 
-def train(data=pd.read_csv(settings.get_dataset_path('marginal_lines'))): #, model='forest'):
+def train(datafile=settings.get_dataset_path('marginal_lines')): #, model='forest'):
+    data = pd.read_csv(datafile)
     X, Y = data_prep(data, y=True)
     X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.33)
     #if 'forest' in model:
