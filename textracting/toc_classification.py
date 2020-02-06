@@ -27,6 +27,9 @@ import re
 import img2pdf
 import time
 
+columns = ['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf',
+           'PrevPageTOC', 'TOCPage', 'TagMethod']
+
 
 def save_report_pages(docid):
     report_path = settings.get_report_name(docid, local_path=True, file_extension='.pdf')
@@ -53,7 +56,7 @@ def save_report_pages(docid):
 
 
 def create_dataset():
-    columns = ['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'PrevPageTOC', 'TOCPage']
+    #columns = ['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf', 'PrevPageTOC', 'TOCPage']
     df = pd.DataFrame(columns=columns)
     pageinfos = sorted(glob.glob('training/restructpageinfo/*.json'))
     #pagelines = sorted(glob.glob('training/pagelines/*'))
@@ -67,15 +70,18 @@ def create_dataset():
         for info, j in zip(pi.items(), range(len(pi.items()))):
             toc = 0
             c = 0
+            listof = 0
             prev_pg_toc = 0  # indicates in the previous page is a TOC - to find second pages of this
             for line in info[1]:
                 if 'contents' in line['Text'].lower():
                     c = 1
                     if 'table of contents' in line['Text'].lower():
                         toc = 1
+                if 'list of' in line['Text'].lower():
+                    listof = 1
                 # if docset[j-1][3] == 1 or docset[j-1][4] == 1:
                 #     prev_pg_toc = 1
-            docset[j] = np.array([docid, info[0], len(info[1]), toc, c, prev_pg_toc, None])
+            docset[j] = np.array([docid, info[0], len(info[1]), toc, c, listof, prev_pg_toc, None, None])
         pgdf = pd.DataFrame(data=docset, columns=columns)
         df = df.append(pgdf, ignore_index=True)
 
@@ -83,6 +89,7 @@ def create_dataset():
     if os.path.exists(prev_toc_dataset):
         prev = pd.read_csv(prev_toc_dataset, dtype=int)
         df['TOCPage'] = df.apply(lambda x: assign_y(x, prev), axis=1)
+        df['TagMethod'].loc[df['TOCPage'] == df['TOCPage']] = "legacy"
     return df
 
 
@@ -101,7 +108,8 @@ def assign_y(x, prev):
 def data_prep(data, y=False, limit_cols=None):
     #data = data.drop(['Comments'], axis=1)
     #data = data.dropna()
-    X = data[['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'PrevPageTOC']]
+    X = data.drop(columns=['TOCPage', 'TagMethod'])
+    #X = data[['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf', 'PrevPageTOC']]
     if limit_cols:
         X = X.drop(columns=limit_cols)
     if y:
@@ -110,17 +118,16 @@ def data_prep(data, y=False, limit_cols=None):
     return X
 
 
-def train(datafile=settings.get_dataset_path('toc')):
-    data = pd.read_csv(datafile, dtype="Int64")
-    classes = [0, 1]
+def train(datafile=settings.get_dataset_path('toc'), all=False):
+    data = pd.read_csv(datafile)
+    data[['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf',
+          'PrevPageTOC', 'TOCPage']] = data[['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf',
+           'PrevPageTOC', 'TOCPage']].astype("Int64")
+    data['TagMethod'] = data['TagMethod'].astype("string")
+    classes = [0, 1, 2]
 
     unlabelled = data.loc[data['TOCPage'].isnull()]
     labelled = data.dropna(subset=['TOCPage'])  # assume that will contain 0, 1 values
-
-
-    #initial_idx = np.random.choice(range(len(X_train)), size=n_initial, replace=False)
-    #X_initial, y_initial = X_train.iloc[initial_idx], y_train.iloc[initial_idx]
-    #X_pool, y_pool = X_train.loc[~X_train.index.isin(initial_idx)].to_numpy(), y_train.loc[~y_train.index.isin(initial_idx)].to_numpy()  #np.delete(X_train, initial_idx, axis=0), np.delete(y_train, initial_idx, axis=0)
 
     if len(unlabelled) > 0:
         X_initial, Y_initial = data_prep(labelled, y=True, limit_cols=['DocID'])
@@ -136,18 +143,19 @@ def train(datafile=settings.get_dataset_path('toc')):
         learner = ActiveLearner(estimator=tree.DecisionTreeClassifier(),  #RandomForestClassifier(),
                                 query_strategy=uncertainty_sampling,
                                 X_training=X_train, y_training=y_train.astype(int))
-        n_queries = 10
+        if all:
+            n_queries = unlabelled.shape[0]
+        else:
+            n_queries = 10
         accuracy_scores = [learner.score(X_test, y_test.astype(int))]
         preds = []
         #anno_df = data.copy(deep=True)
         query_idx, query_inst = learner.query(X_pool, n_instances=n_queries)
         y_new = np.zeros(n_queries, dtype=int)
         for i in range(n_queries):
+            print("queries: ", n_queries)
             print("Waiting to display next page....")
             display.clear_output(wait=True)
-            #print("Found page to query...")
-            # display the TOC page to the user - visual inspection - very different from the model getting stats about the page
-            # need docid to be able to show this
             pred = learner.predict(query_inst[i].reshape(1, -1))
             preds.append(pred[0])
             display_page(int(ref_docids.iloc[query_idx[i]]), int(query_inst[i][0]))  #docid, pagenum
@@ -164,12 +172,9 @@ def train(datafile=settings.get_dataset_path('toc')):
                 except:
                     continue
             y_new[i] = y
-            #y_new = np.array([y], dtype=int)
             print()
-            #print(data.at[ref_idx[query_idx[i]], 'TOCPage'])
             data.at[ref_idx[query_idx[i]], 'TOCPage'] = y  # save value to copy of data
-            #print(data.at[ref_idx[query_idx[i]], 'TOCPage'])
-            #X_pool, y_pool = np.delete(X_pool, query_idx, axis=0), np.delete(y_pool, query_idx, axis=0)
+            data.at[ref_idx[query_idx[i]], 'TagMethod'] = 'manual'
 
         learner.teach(query_inst, y_new)  # reshape 1, -1
         accuracy_scores.append(learner.score(X_test, y_test.astype(int)))
@@ -198,9 +203,6 @@ def train(datafile=settings.get_dataset_path('toc')):
         y_pred = learner.predict(X_test)
         accuracy = sklearn.metrics.accuracy_score(y_test, y_pred)
         print(accuracy)
-        # tree.plot_tree(clf, feature_names=['PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord'], class_names=True, filled=True)
-        # plt.show()
-
     with open(settings.get_model_path('toc'), "wb") as file:
         pickle.dump(learner, file)
     print("End of training stage. Re-run to train again")
@@ -215,10 +217,11 @@ def tag_prevpagetoc():
         d, p = row.DocID, row.PageNum + 1
         try:
             view = df[(df['DocID'] == d) & (df['PageNum'] == p)]
-            idx = view.index.values
-            df.loc[idx, 'PrevPageTOC'] = 1
-            #view['PrevPageTOC'] = 1  # will this save?
-            df.loc[idx, 'TOCPage'] = None  # reset to tag again
+            idx = view.index.values  # should only be one indice
+            for i in idx:
+                df.at[i, 'PrevPageTOC'] = 1
+                if (df.at[i, 'TagMethod'] == 'auto') & (df.at[i, 'TOCPage'] == 0):  # only overwrite automatically tagged # if page already isn't 0, don't None
+                    df.at[i, 'TOCPage'] = None  # reset to tag again
         except IndexError:  # there is no next page
             continue
 
@@ -235,23 +238,32 @@ def display_page(docid, page):
 def automatically_tag():
     source = settings.get_dataset_path('toc')
     df = pd.read_csv(source)
+    df = df.reset_index(drop=True)
     new_tags = classify_page(df)
-    df['TOCPage'] = new_tags
+    #idx = df.loc[((df['TagMethod'] != 'legacy') != (df['TOCPage'] == df['TOCPage'])) & (df['TagMethod'] != 'manual')].index.values #= new_tags.loc[(df['TagMethod'] != 'legacy') & (df['TagMethod'] != 'manual')]
+    idx = df.loc[(df['TagMethod'] == 'auto') | (df['TOCPage'] != df['TOCPage'])].index.values  # join of auto and TOCPage==None
+    df.loc[idx, 'TOCPage'] = new_tags[idx]
+    df.loc[idx, 'TagMethod'] = 'auto'
+    print(len(idx), " automatically tagged")
+    #df['TagMethod'].loc[(df['TagMethod'] != 'legacy') & (df['TagMethod'] != 'manual')] = 'auto'
     df.to_csv(settings.get_dataset_path('toc'), index=False)
 
 
 def check_tags(show=False):
     source = settings.get_dataset_path('toc')
     df = pd.read_csv(source)
-    test = df.loc[(df['ContainsContentsWord'] == 1) | (df['ContainsTOCPhrase'] == 1)]
+    test = df.loc[(df['ContainsContentsWord'] == 1) | (df['ContainsTOCPhrase'] == 1) | (df['ContainsListOf'] == 1)]
     bad = test.loc[test['TOCPage'] == 0]
-    print("Samples with 'Contents' or 'Table of Contents' but not tagged as TOC: ")
-    print("count: ", bad.shape)
+    print("Samples with 'Contents' or 'Table of Contents' or 'List of' but not tagged as TOC, or ListOf: ")
+    c = 0
     for i, row in bad.iterrows():
         if show:
             print(i, row)
             display_page(row.DocID, row.PageNum)
-        df.at[i, 'TOCPage'] = None
+        if df.at[i, 'TagMethod'] != 'manual':  # can edit auto or legacy
+            df.at[i, 'TOCPage'] = None
+            c += 1
+    print("count: ", c)
     df.to_csv(source, index=False)
 
 
@@ -293,4 +305,11 @@ if __name__ == "__main__":
 
     #toc_pages = get_toc_pages()
     #print(toc_pages)
-    save_report_pages('4412')
+    #save_report_pages('4412')
+    # train()
+    automatically_tag()
+    # check_tags()
+    # train(all=True)
+    # tag_prevpagetoc()
+    # train(all=True)
+

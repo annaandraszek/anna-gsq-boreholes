@@ -99,6 +99,7 @@ def test():
     toc_classification.train()
 
 
+
 if __name__ == "__main__":
     test()
     # bad_dir = "training/restructpageinfo/bad_criteria/"
