@@ -11,6 +11,7 @@ import glob
 import re
 import os
 import time
+import matplotlib.pyplot as plt
 
 #def check_report_criteria():  # check if going to use restruct page info file
     # check if reportid is correct type: not WELCOM
@@ -88,6 +89,18 @@ def train_models_pt3():
     heading_classification.train()  # commenting this out now as I don't use it
 
 
+def accuracy_dif(scores):
+    if len(scores) < 3:
+        return False
+    scores.append(0)
+    c1 = [x for x in scores].insert(0, 0)  # inserts 0 value at front to push list one index along
+    score_diffs = c1 - scores
+    score_diffs.pop(0), score_diffs.pop(-1)  # pop front and end as they don't contain proper values
+    print(score_diffs)
+    plt.plot(score_diffs)
+    return False  # just see how it's going, return True once the difference between the scores gets negligible
+
+
 def test():
     ds = time.time()
     toc_df = toc_classification.create_dataset()
@@ -96,8 +109,19 @@ def test():
     save_dataset(toc_df, 'toc')
     ss = time.time()
     print ("time to save dataset: ", ss - de)
-    toc_classification.train()
+    accuracies = []
 
+    while not accuracy_dif(accuracies):
+        time.sleep(15)
+        toc_classification.train()
+        toc_classification.automatically_tag()
+        toc_classification.check_tags()
+        toc_classification.train(n_queries=5)
+        toc_classification.automatically_tag()
+        toc_classification.tag_prevpagetoc()
+        toc_classification.train(n_queries=5)
+        accuracy = toc_classification.train(n_queries=0)  # evaluate mode
+        accuracies.append(accuracy)
 
 
 if __name__ == "__main__":

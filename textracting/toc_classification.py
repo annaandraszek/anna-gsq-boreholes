@@ -114,11 +114,11 @@ def data_prep(data, y=False, limit_cols=None):
         X = X.drop(columns=limit_cols)
     if y:
         Y = data.TOCPage
-        return X, Y
-    return X
+        return X, Y  #.astype(pd.Int64Dtype()), Y.astype(pd.Int64Dtype())
+    return X  #.astype(pd.Int64Dtype())
 
 
-def train(datafile=settings.get_dataset_path('toc'), all=False):
+def train(datafile=settings.get_dataset_path('toc'), n_queries=10):
     data = pd.read_csv(datafile)
     data[['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf',
           'PrevPageTOC', 'TOCPage']] = data[['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf',
@@ -129,7 +129,13 @@ def train(datafile=settings.get_dataset_path('toc'), all=False):
     unlabelled = data.loc[data['TOCPage'].isnull()]
     labelled = data.dropna(subset=['TOCPage'])  # assume that will contain 0, 1 values
 
-    if len(unlabelled) > 0:
+    if n_queries=='all':
+        n_queries = unlabelled.shape[0]
+
+    elif isinstance(n_queries, int) & (len(unlabelled) < n_queries):  # if less unlabelled than want to sample, reduce sample size
+        n_queries = len(unlabelled)
+
+    if n_queries > 0:
         X_initial, Y_initial = data_prep(labelled, y=True, limit_cols=['DocID'])
 
         ref_docids = unlabelled.DocID  # removing docids from X, but keeping them around in this to ref
@@ -139,27 +145,29 @@ def train(datafile=settings.get_dataset_path('toc'), all=False):
 
         X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X_initial, Y_initial, test_size = 0.90)
 
-
-        learner = ActiveLearner(estimator=tree.DecisionTreeClassifier(),  #RandomForestClassifier(),
+        learner = ActiveLearner(estimator=RandomForestClassifier(),
                                 query_strategy=uncertainty_sampling,
                                 X_training=X_train, y_training=y_train.astype(int))
-        if all:
-            n_queries = unlabelled.shape[0]
-        else:
-            n_queries = 10
+
         accuracy_scores = [learner.score(X_test, y_test.astype(int))]
         preds = []
         #anno_df = data.copy(deep=True)
         query_idx, query_inst = learner.query(X_pool, n_instances=n_queries)
         y_new = np.zeros(n_queries, dtype=int)
         for i in range(n_queries):
-            print("queries: ", n_queries)
             print("Waiting to display next page....")
             display.clear_output(wait=True)
             pred = learner.predict(query_inst[i].reshape(1, -1))
             preds.append(pred[0])
             display_page(int(ref_docids.iloc[query_idx[i]]), int(query_inst[i][0]))  #docid, pagenum
-            time.sleep(2)
+            time.sleep(1)  # sometimes the input box doesn't show, i think because it doesn't have the time
+
+            print("queries: ", n_queries)
+            if i == 0:
+                print("predict proba of all samples")
+                print(learner.predict_proba(query_inst))
+            else:
+                print("predict proba of this sample: ", learner.predict_proba([query_inst[i]]))
             print("Prediction: ", pred)
             print('Is this page a Table of Contents?')
             #print(pg_path)
@@ -181,24 +189,17 @@ def train(datafile=settings.get_dataset_path('toc'), all=False):
         print("End of annotation. Samples, predictions, annotations: ")
         print(ref_docids.iloc[query_idx].values, np.concatenate((query_inst, np.array([preds]).T, y_new.reshape(-1, 1)), axis=1))
 
-        with plt.style.context('seaborn-white'):
-            plt.figure(figsize=(10, 5))
-            plt.title('Accuracy of the classifier during the active learning')
-            plt.plot(range(2), accuracy_scores)
-            plt.scatter(range(2), accuracy_scores)
-            plt.xlabel('number of queries')
-            plt.ylabel('accuracy')
-            plt.show()
-
+        accuracy = accuracy_scores[-1]
         data.to_csv(datafile, index=False)  # save slightly more annotated dataset
 
-    elif len(unlabelled) == 0:
+    else:
         print("no unlabelled samples, training normally")
+        data = data.dropna(subset=['TOCPage'])
         X, Y = data_prep(data, y=True, limit_cols=['DocID'])
-        X, Y = X.astype(int), Y.astype(int)
+        X, Y = X.astype(int), Y.astype(int)  # pd's Int64 dtype accepts NaN
         X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.20)
 
-        learner = tree.DecisionTreeClassifier()
+        learner = RandomForestClassifier() #tree.DecisionTreeClassifier()
         learner = learner.fit(X_train, y_train)
         y_pred = learner.predict(X_test)
         accuracy = sklearn.metrics.accuracy_score(y_test, y_pred)
@@ -206,26 +207,33 @@ def train(datafile=settings.get_dataset_path('toc'), all=False):
     with open(settings.get_model_path('toc'), "wb") as file:
         pickle.dump(learner, file)
     print("End of training stage. Re-run to train again")
+    return accuracy
 
 
 def tag_prevpagetoc():
     source = settings.get_dataset_path('toc')
     df = pd.read_csv(source)
     tocdf = df.loc[df['TOCPage'] == 1]
-
+    count = 0
     for i, row in tocdf.iterrows():
         d, p = row.DocID, row.PageNum + 1
-        try:
-            view = df[(df['DocID'] == d) & (df['PageNum'] == p)]
-            idx = view.index.values  # should only be one indice
-            for i in idx:
-                df.at[i, 'PrevPageTOC'] = 1
-                if (df.at[i, 'TagMethod'] == 'auto') & (df.at[i, 'TOCPage'] == 0):  # only overwrite automatically tagged # if page already isn't 0, don't None
-                    df.at[i, 'TOCPage'] = None  # reset to tag again
-        except IndexError:  # there is no next page
+        #try:
+        view = df[(df['DocID'] == d) & (df['PageNum'] == p)]
+        idx = view.index.values  # should only be one indice
+        if len(idx) == 0:
             continue
-
+        i = idx[0]
+            #print("len idx: ", len(idx))  # debug check
+            #for i in idx:
+        if df.at[i, 'PrevPageTOC'] != 1:
+            df.at[i, 'PrevPageTOC'] = 1
+            count += 1
+            if (df.at[i, 'TagMethod'] == 'auto') & (df.at[i, 'TOCPage'] == 0):  # only overwrite automatically tagged # if page already isn't 0, don't None
+                df.at[i, 'TOCPage'] = None  # reset to tag again
+        #except IndexError:  # there is no next page
+        #    continue
     df.to_csv(settings.get_dataset_path('toc'), index=False)
+    return count
 
 
 def display_page(docid, page):
