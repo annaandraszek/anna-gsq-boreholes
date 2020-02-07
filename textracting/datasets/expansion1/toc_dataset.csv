@@ -603,11 +603,11 @@ DocID,PageNum,NumChildren,ContainsTOCPhrase,ContainsContentsWord,ContainsListOf,
 23508,7,30,0,0,1,1,2.0,auto
 23508,8,34,0,0,1,0,2.0,auto
 23508,9,11,0,0,1,0,2.0,auto
-23508,10,38,0,0,1,0,2.0,auto
+23508,10,38,0,0,1,0,2.0,manual
 23508,11,38,0,0,1,0,2.0,manual
-23508,12,39,0,0,1,0,2.0,auto
-23508,13,6,0,0,1,0,2.0,auto
-23508,14,5,0,0,1,0,2.0,auto
+23508,12,39,0,0,1,0,2.0,manual
+23508,13,6,0,0,1,0,2.0,manual
+23508,14,5,0,0,1,0,2.0,manual
 23508,15,32,0,0,0,0,0.0,auto
 23508,16,33,0,0,0,0,0.0,auto
 23508,17,8,0,0,0,0,0.0,auto
@@ -1422,7 +1422,7 @@ DocID,PageNum,NumChildren,ContainsTOCPhrase,ContainsContentsWord,ContainsListOf,
 30937,13,38,0,0,0,0,0.0,auto
 30937,14,32,0,0,0,0,0.0,auto
 30937,15,39,0,0,0,0,0.0,auto
-30937,16,39,0,1,0,0,0.0,auto
+30937,16,39,0,1,0,0,0.0,manual
 30937,17,9,0,0,0,1,0.0,manual
 30937,18,37,0,0,0,0,0.0,auto
 30937,19,14,0,0,0,0,0.0,auto
@@ -1858,7 +1858,7 @@ DocID,PageNum,NumChildren,ContainsTOCPhrase,ContainsContentsWord,ContainsListOf,
 40352,13,19,0,0,0,0,0.0,auto
 40352,14,28,0,0,0,0,0.0,auto
 40352,15,24,0,0,0,0,0.0,auto
-40352,16,35,0,0,1,0,2.0,auto
+40352,16,35,0,0,1,0,0.0,manual
 40352,17,18,0,0,0,0,0.0,auto
 40352,18,22,0,0,0,0,0.0,auto
 40352,19,2,0,0,0,0,0.0,auto
@@ -2007,7 +2007,7 @@ DocID,PageNum,NumChildren,ContainsTOCPhrase,ContainsContentsWord,ContainsListOf,
 41982,8,4,0,0,0,0,0.0,auto
 41982,9,28,0,0,0,0,0.0,auto
 41982,10,27,0,0,0,0,0.0,auto
-41982,11,27,0,1,0,0,0.0,auto
+41982,11,27,0,1,0,0,0.0,manual
 41982,12,31,0,0,0,1,0.0,manual
 41982,13,25,0,0,0,0,0.0,auto
 41982,14,25,0,0,0,0,0.0,auto
@@ -2278,7 +2278,7 @@ DocID,PageNum,NumChildren,ContainsTOCPhrase,ContainsContentsWord,ContainsListOf,
 48118,22,77,0,1,0,0,0.0,manual
 48118,23,80,0,0,0,1,0.0,manual
 48118,24,75,0,0,0,0,0.0,auto
-48118,25,75,0,1,0,0,0.0,auto
+48118,25,75,0,1,0,0,0.0,manual
 48118,26,75,0,0,0,1,0.0,manual
 48118,27,82,0,0,0,0,0.0,auto
 48118,28,88,0,0,0,0,0.0,auto
@@ -2339,13 +2339,13 @@ DocID,PageNum,NumChildren,ContainsTOCPhrase,ContainsContentsWord,ContainsListOf,
 48670,36,65,0,0,0,0,0.0,auto
 48670,39,52,0,0,0,0,0.0,auto
 48670,40,63,0,0,0,0,0.0,auto
-48670,41,70,0,0,1,0,2.0,auto
+48670,41,70,0,0,1,0,0.0,manual
 48670,42,72,0,0,0,0,0.0,auto
 48670,43,68,0,0,0,0,0.0,auto
 48670,44,62,0,0,0,0,0.0,auto
 48670,45,72,0,0,0,0,0.0,auto
 48670,46,68,0,0,0,0,0.0,auto
-48670,47,69,0,0,1,0,2.0,auto
+48670,47,69,0,0,1,0,0.0,manual
 48670,48,68,0,0,0,0,0.0,auto
 48670,49,71,0,0,0,0,0.0,auto
 48670,50,83,0,0,0,0,0.0,auto
@@ -2996,7 +2996,7 @@ DocID,PageNum,NumChildren,ContainsTOCPhrase,ContainsContentsWord,ContainsListOf,
 58954,11,19,0,0,0,0,0.0,auto
 58954,12,24,0,0,0,0,0.0,auto
 58954,13,28,0,0,0,0,0.0,auto
-58954,14,32,0,0,1,0,2.0,auto
+58954,14,32,0,0,1,0,0.0,manual
 58954,15,28,0,0,0,0,0.0,auto
 58954,16,22,0,0,0,0,0.0,auto
 58954,17,31,0,0,0,0,0.0,auto
@@ -3006,7 +3006,7 @@ DocID,PageNum,NumChildren,ContainsTOCPhrase,ContainsContentsWord,ContainsListOf,
 58954,21,30,0,0,0,0,0.0,auto
 58954,22,36,0,0,0,0,0.0,auto
 58954,23,10,0,0,0,0,0.0,auto
-58954,24,22,0,1,0,0,1.0,auto
+58954,24,22,0,1,0,0,0.0,manual
 58954,25,37,0,0,0,1,0.0,auto
 58954,26,36,0,0,0,0,0.0,auto
 58954,27,36,0,1,0,0,0.0,manual
@@ -3021,7 +3021,7 @@ DocID,PageNum,NumChildren,ContainsTOCPhrase,ContainsContentsWord,ContainsListOf,
 58954,36,51,0,0,0,0,0.0,auto
 58954,37,9,0,0,0,0,0.0,auto
 58954,38,28,0,0,0,0,0.0,auto
-58954,39,33,0,0,1,0,2.0,auto
+58954,39,33,0,0,1,0,0.0,manual
 58954,40,12,0,0,0,0,0.0,auto
 593,1,11,0,0,0,0,0.0,auto
 593,2,7,0,0,0,0,0.0,auto
@@ -3383,7 +3383,7 @@ DocID,PageNum,NumChildren,ContainsTOCPhrase,ContainsContentsWord,ContainsListOf,
 63273,7,48,0,0,0,0,0.0,auto
 63273,8,42,0,0,0,0,0.0,auto
 63273,9,49,0,0,0,0,0.0,auto
-63273,10,52,0,0,1,0,2.0,auto
+63273,10,52,0,0,1,0,0.0,manual
 63273,11,51,0,0,1,0,0.0,manual
 63273,12,40,0,0,1,0,2.0,auto
 63273,13,49,0,0,0,0,0.0,auto
@@ -3445,11 +3445,11 @@ DocID,PageNum,NumChildren,ContainsTOCPhrase,ContainsContentsWord,ContainsListOf,
 67252,7,49,0,0,0,0,0.0,auto
 67252,8,43,0,0,0,0,0.0,auto
 67252,9,39,0,0,0,0,0.0,auto
-67252,10,48,0,0,1,0,2.0,auto
+67252,10,48,0,0,1,0,0.0,manual
 67252,11,36,0,0,0,0,0.0,auto
 67252,12,50,0,0,0,0,0.0,auto
 67252,13,26,0,0,0,0,0.0,auto
-67252,14,14,0,0,1,0,2.0,auto
+67252,14,14,0,0,1,0,0.0,manual
 67252,15,16,0,0,0,0,0.0,auto
 67792,1,14,0,0,0,0,0.0,legacy
 67792,2,10,0,0,0,0,0.0,legacy
@@ -3488,7 +3488,7 @@ DocID,PageNum,NumChildren,ContainsTOCPhrase,ContainsContentsWord,ContainsListOf,
 68876,7,41,0,0,0,0,0.0,auto
 68876,8,42,0,0,0,0,0.0,auto
 68876,9,7,0,0,0,0,0.0,auto
-68876,10,38,0,1,0,0,0.0,auto
+68876,10,38,0,1,0,0,0.0,manual
 68876,11,42,0,0,0,1,0.0,manual
 68876,12,36,0,0,0,0,0.0,auto
 69189,1,15,0,0,0,0,0.0,auto
@@ -3517,7 +3517,7 @@ DocID,PageNum,NumChildren,ContainsTOCPhrase,ContainsContentsWord,ContainsListOf,
 69630,7,65,0,0,0,0,0.0,auto
 69630,8,48,0,0,0,0,0.0,auto
 69630,9,35,0,0,0,0,0.0,auto
-69630,10,33,0,0,1,0,2.0,auto
+69630,10,33,0,0,1,0,0.0,manual
 69630,11,34,0,0,0,0,0.0,auto
 69630,12,34,0,0,0,0,0.0,auto
 69630,13,33,0,0,0,0,0.0,auto
@@ -3529,7 +3529,7 @@ DocID,PageNum,NumChildren,ContainsTOCPhrase,ContainsContentsWord,ContainsListOf,
 70158,1,22,0,0,0,0,0.0,auto
 70158,2,28,0,0,0,0,0.0,auto
 70158,3,32,0,0,0,0,0.0,auto
-70158,4,17,0,1,0,0,1.0,auto
+70158,4,17,0,1,0,0,0.0,auto
 70158,5,38,0,0,0,1,0.0,auto
 70158,6,36,0,0,0,0,0.0,auto
 70158,7,34,0,0,0,0,0.0,auto
@@ -3549,7 +3549,7 @@ DocID,PageNum,NumChildren,ContainsTOCPhrase,ContainsContentsWord,ContainsListOf,
 70562,12,4,0,0,0,0,0.0,auto
 70562,13,29,0,0,0,0,0.0,auto
 70562,14,34,0,0,0,0,0.0,auto
-70562,15,16,0,1,0,0,1.0,auto
+70562,15,16,0,1,0,0,0.0,manual
 71225,1,19,0,0,0,0,0.0,auto
 71225,2,19,0,0,0,0,0.0,auto
 71225,3,20,1,1,1,0,1.0,auto
@@ -3787,7 +3787,7 @@ DocID,PageNum,NumChildren,ContainsTOCPhrase,ContainsContentsWord,ContainsListOf,
 77347,9,49,0,0,0,0,0.0,auto
 77347,10,20,0,0,0,0,0.0,auto
 77347,11,21,0,0,0,0,0.0,auto
-77347,12,43,0,1,0,0,0.0,auto
+77347,12,43,0,1,0,0,0.0,manual
 77347,13,33,0,0,0,1,0.0,manual
 77347,14,38,0,0,0,0,0.0,auto
 77347,15,31,0,0,0,0,0.0,auto
@@ -4769,7 +4769,7 @@ DocID,PageNum,NumChildren,ContainsTOCPhrase,ContainsContentsWord,ContainsListOf,
 92768,217,31,0,0,0,0,0.0,auto
 92768,218,28,0,0,0,0,0.0,auto
 92768,219,13,0,0,0,0,0.0,auto
-92768,220,24,0,1,0,0,1.0,auto
+92768,220,24,0,1,0,0,0.0,auto
 92768,221,13,0,0,0,1,0.0,auto
 92768,222,30,0,0,0,0,0.0,auto
 92768,223,53,0,0,0,0,0.0,auto
@@ -4896,7 +4896,7 @@ DocID,PageNum,NumChildren,ContainsTOCPhrase,ContainsContentsWord,ContainsListOf,
 92768,344,29,0,0,0,0,0.0,auto
 92768,345,2,0,0,0,0,0.0,auto
 92768,346,6,0,0,0,0,0.0,auto
-92768,347,47,0,1,1,0,0.0,auto
+92768,347,47,0,1,1,0,1.0,manual
 92768,348,26,0,0,1,1,2.0,auto
 92768,349,30,0,1,0,0,0.0,manual
 92768,350,37,0,0,0,1,0.0,manual
@@ -4909,11 +4909,11 @@ DocID,PageNum,NumChildren,ContainsTOCPhrase,ContainsContentsWord,ContainsListOf,
 92768,357,40,0,1,0,0,0.0,manual
 92768,358,37,0,0,0,0,0.0,auto
 92768,359,18,0,0,0,0,0.0,auto
-92768,360,32,0,1,0,0,0.0,auto
+92768,360,32,0,1,0,0,0.0,manual
 92768,361,54,0,0,0,1,0.0,manual
 92768,362,19,0,0,0,0,0.0,auto
 92768,363,25,0,0,0,0,0.0,auto
-92768,364,24,0,1,0,0,1.0,auto
+92768,364,24,0,1,0,0,0.0,auto
 92768,365,29,0,0,0,1,0.0,auto
 92768,366,36,0,0,0,0,0.0,auto
 92768,367,21,0,0,0,0,0.0,auto

@@ -13,6 +13,16 @@ import matplotlib
 import seaborn as sns
 import graphviz
 
+from pdf2image import convert_from_path, exceptions
+from PIL import ImageDraw, Image
+from IPython import display
+import textloading
+import textracting
+import re
+import img2pdf
+import time
+import active_learning
+
 
 def contains_num(string):
     if re.search(r'(\s|^)[0-9]+(\s|$)', string):
@@ -32,10 +42,24 @@ def contains_page(string):
     return 0
 
 
+columns = ['DocID', 'PageNum', 'LineNum', 'NormedLineNum','Text', 'Words2Width', 'WordsWidth', 'Width', 'Height',
+           'Left', 'Top', 'ContainsNum', 'ContainsTab', 'ContainsPage', 'Centrality', 'Marginal']
+
+
+def assign_y(x, prev):
+    d, p = int(x['DocID']), int(x['PageNum'])
+    y = (prev['Marginal'].loc[(prev['DocID'] == d) & (prev['PageNum'] == p)])
+    if len(y) == 0:
+        return None
+    elif len(y) == 1:
+        return y.values[0]
+    else:
+        print("more rows than 1? ")
+        print(y.values)
+
+
 def create_dataset():
-    columns = ['DocID', 'PageNum', 'LineNum', 'NormedLineNum','Text', 'Words2Width', 'WordsWidth', 'Width', 'Height', 'Left', 'Top', 'ContainsNum',
-               'ContainsTab', 'ContainsPage', 'Centrality']
-    pageinfos = glob.glob('training/restructpageinfo/*')
+    pageinfos = glob.glob('training/restructpageinfo/*.json')
     df = pd.DataFrame(columns=columns)
     for pagesinfo in pageinfos:
         pi = json.load(open(pagesinfo))
@@ -69,12 +93,17 @@ def create_dataset():
     normalized = (unnormed - min(unnormed)) / (max(unnormed) - min(unnormed))
     df['Centrality'] = normalized
     df['Marginal'] = 0
+
+    prev_dataset = settings.dataset_path + 'marginals_dataset_v2.csv'
+    if os.path.exists(prev_dataset):
+        prev = pd.read_csv(prev_dataset)
+        df['Marginal'] = df.apply(lambda x: assign_y(x, prev), axis=1)
+        df['TagMethod'].loc[df['Marginal'] == df['Marginal']] = "legacy"
+
     return df
 
 
 def create_individual_dataset(docid):
-    columns = ['DocID', 'PageNum', 'LineNum', 'NormedLineNum','Text', 'Words2Width', 'WordsWidth', 'Width', 'Height', 'Left', 'Top', 'ContainsNum',
-               'ContainsTab', 'ContainsPage', 'Centrality', 'Marginal']
     pageinfo = settings.get_restructpageinfo_file(docid)
     pi = json.load(open(pageinfo))
     df = pd.DataFrame(columns=columns)
@@ -108,72 +137,36 @@ def create_individual_dataset(docid):
     return df
 
 
-def data_prep(data, y=False):
-    data.dropna(inplace=True)
+def data_prep(data, y=False, limit_cols=None):
+    #data.dropna(inplace=True)
     data.drop(data[data['Width'] < 0].index, inplace=True)
-    X = data.drop(['DocID', 'LineNum', 'Text', 'Marginal'], axis=1)  # PageNum?
+    X = data.drop(columns=['Text', 'Marginal', 'TagMethod'])  # PageNum?
     #X = X.drop(['Words2Width'], axis=1)  # temporarily
+    if limit_cols:
+        X = X.drop(columns=limit_cols)
     if y:
         Y = data['Marginal']
         return X, Y
     return X
 
 
-def train(datafile=settings.get_dataset_path('marginal_lines')): #, model='forest'):
+def train(datafile=settings.get_dataset_path('marginal_lines'), n_queries=10): #, model='forest'):
     data = pd.read_csv(datafile)
-    X, Y = data_prep(data, y=True)
-    X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.33)
-    #if 'forest' in model:
-    clf = ensemble.RandomForestClassifier(n_estimators=12)
-    model_file = settings.get_model_path('marginal_lines') #settings.marginals_model_file_forest
-    # elif 'CNB' in model:
-    #     clf = naive_bayes.ComplementNB()
-    #     model_file = settings.marginals_model_file_CNB
-    # else:
-    #     clf = tree.DecisionTreeClassifier()
-    #     model_file = settings.marginals_model_file_tree
-    clf = clf.fit(X_train, y_train)
-    y_pred = clf.predict(X_test)
-    accuracy = sklearn.metrics.accuracy_score(y_test, y_pred)
-    print(accuracy)
-    #tree.plot_tree(clf, feature_names=['PageNum', 'NormedLineNum', 'WordsWidth', 'Width', 'Height', 'Left', 'Top', 'ContainsNum',
-    #           'ContainsTab', 'ContainsPage', 'Centrality', ], class_names=True, filled=True)
-    #plt.show()
-    #plt.savefig(settings.result_path + 'marginals_tree.png')
+    y_column = 'Marginal'
+    estimator = ensemble.RandomForestClassifier()
 
-    # if 'tree' in model:
-    #     dot_data = tree.export_graphviz(clf,  feature_names=['PageNum', 'NormedLineNum', 'Words2Width', 'WordsWidth', 'Width', 'Height',
-    #                                                          'Left', 'Top', 'ContainsNum', 'ContainsTab', 'ContainsPage',
-    #                                                          'Centrality', ], class_names=True, filled=True,
-    #                                     max_depth=4) # out_file=settings.result_path + 'marginals_tree.png',
-    #     graph = graphviz.Source(dot_data)
-    #     graph.render("marginals")#.jpeg")
+    accuracy, learner = active_learning.train(data, y_column, n_queries, estimator, datafile)
 
-
-    #cm = sklearn.metrics.confusion_matrix(y_test, y_pred)
-    cm = sklearn.metrics.plot_confusion_matrix(clf, X_test, y_test)
-    print(cm.confusion_matrix)
-    #df_cm = pd.DataFrame(cm)
-    #sns.heatmap(df_cm, annot=True)
-    #plt.show()
-    with open(model_file, "wb") as file:
-        pickle.dump(clf, file)
-
-    # display the wrong predictions
-    y_test = y_test.reset_index(drop=True)
-    X_test = X_test.reset_index(drop=True)
-    #print(y_pred.size, y_test.size, X_test.size)
-    pd.set_option('display.max_columns', None)
-    pd.set_option('display.width', None)
-    for i in range(y_pred.size):
-        if y_pred[i] != y_test[i]:
-            print('Predicted: ', y_pred[i], 'Actual: ', y_test[i], '\nX: ', X_test.iloc[[i]])
+    with open(settings.get_model_path('marginal_lines'), "wb") as file:
+        pickle.dump(learner, file)
+    print("End of training stage. Re-run to train again")
+    return accuracy
 
 
 def classify(data):
-    if not os.path.exists(settings.marginals_model_file_forest):
+    if not os.path.exists(settings.get_model_path('marginal_lines')):
         train(data)
-    with open(settings.marginals_model_file_forest, "rb") as file:
+    with open(settings.get_model_path('marginal_lines'), "rb") as file:
         model = pickle.load(file)
     data = data_prep(data)
     pred = model.predict(data)

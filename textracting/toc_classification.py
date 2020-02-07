@@ -17,42 +17,15 @@ import pickle
 import os
 from modAL.models import ActiveLearner
 from modAL.uncertainty import uncertainty_sampling, margin_sampling
-from pdf2image import convert_from_path, exceptions
 from PIL import ImageDraw, Image
 import matplotlib.pyplot as plt
 from IPython import display
-import textloading
-import textracting
-import re
-import img2pdf
-import time
+import active_learning
+
 
 columns = ['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf',
            'PrevPageTOC', 'TOCPage', 'TagMethod']
 
-
-def save_report_pages(docid):
-    report_path = settings.get_report_name(docid, local_path=True, file_extension='.pdf')
-    try:
-        images = convert_from_path(report_path)
-    except exceptions.PDFPageCountError:
-        fname = textracting.find_file(docid)
-        rep_folder = (settings.get_report_name(docid, local_path=True)).split('cr')[0]
-        if not os.path.exists(rep_folder):
-            os.mkdir(rep_folder)
-
-        if '.tif' in fname:
-            report_in = re.sub('.pdf', '.tif', report_path)
-            textloading.download_report(fname, report_in)
-            with open(report_path, "wb") as f:
-                f.write(img2pdf.convert(open(report_in, "rb")))
-        else:
-            textloading.download_report(fname, report_path)
-        images = convert_from_path(report_path)
-
-    for i in range(len(images)):
-        pgpath = settings.get_report_page_path(docid, i+1)
-        images[i].save(pgpath)
 
 
 def create_dataset():
@@ -124,86 +97,26 @@ def train(datafile=settings.get_dataset_path('toc'), n_queries=10):
           'PrevPageTOC', 'TOCPage']] = data[['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf',
            'PrevPageTOC', 'TOCPage']].astype("Int64")
     data['TagMethod'] = data['TagMethod'].astype("string")
-    classes = [0, 1, 2]
+    #classes = [0, 1, 2]
+    y_column = 'TOCPage'
+    estimator = RandomForestClassifier()
+    #X_initial, Y_initial, X_pool, y_pool, ref_docids, ref_idx = active_learning.al_data_prep(data, 'TOCPage')
+    # unlabelled = data[y_column].loc[data[y_column] != data[y_column]]
+    #
+    # if n_queries=='all':
+    #     n_queries = len(unlabelled)
+    #
+    # elif isinstance(n_queries, int) & (len(unlabelled) < n_queries):  # if less unlabelled than want to sample, reduce sample size
+    #     n_queries = len(unlabelled)
+    #
+    # if n_queries > 0:
+    #     updated_data, accuracy, learner = active_learning.active_learning(data, n_queries, y_column, estimator=estimator)
+    #     updated_data.to_csv(datafile, index=False)  # save slightly more annotated dataset
+    #
+    # else:
+    #     accuracy, learner = active_learning.passive_learning(data, y_column, estimator)
+    accuracy, learner = active_learning.train(data, y_column, n_queries, estimator, datafile)
 
-    unlabelled = data.loc[data['TOCPage'].isnull()]
-    labelled = data.dropna(subset=['TOCPage'])  # assume that will contain 0, 1 values
-
-    if n_queries=='all':
-        n_queries = unlabelled.shape[0]
-
-    elif isinstance(n_queries, int) & (len(unlabelled) < n_queries):  # if less unlabelled than want to sample, reduce sample size
-        n_queries = len(unlabelled)
-
-    if n_queries > 0:
-        X_initial, Y_initial = data_prep(labelled, y=True, limit_cols=['DocID'])
-
-        ref_docids = unlabelled.DocID  # removing docids from X, but keeping them around in this to ref
-        X_pool, y_pool = data_prep(unlabelled, y=True, limit_cols=['DocID'])
-        ref_idx = X_pool.index.values
-        X_pool, y_pool = X_pool.to_numpy(), y_pool.to_numpy()
-
-        X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X_initial, Y_initial, test_size = 0.90)
-
-        learner = ActiveLearner(estimator=RandomForestClassifier(),
-                                query_strategy=uncertainty_sampling,
-                                X_training=X_train, y_training=y_train.astype(int))
-
-        accuracy_scores = [learner.score(X_test, y_test.astype(int))]
-        preds = []
-        #anno_df = data.copy(deep=True)
-        query_idx, query_inst = learner.query(X_pool, n_instances=n_queries)
-        y_new = np.zeros(n_queries, dtype=int)
-        for i in range(n_queries):
-            print("Waiting to display next page....")
-            display.clear_output(wait=True)
-            pred = learner.predict(query_inst[i].reshape(1, -1))
-            preds.append(pred[0])
-            display_page(int(ref_docids.iloc[query_idx[i]]), int(query_inst[i][0]))  #docid, pagenum
-            time.sleep(1)  # sometimes the input box doesn't show, i think because it doesn't have the time
-
-            print("queries: ", n_queries)
-            if i == 0:
-                print("predict proba of all samples")
-                print(learner.predict_proba(query_inst))
-            else:
-                print("predict proba of this sample: ", learner.predict_proba([query_inst[i]]))
-            print("Prediction: ", pred)
-            print('Is this page a Table of Contents?')
-            #print(pg_path)
-            y = -1
-            while y not in classes:
-                print("Enter one of: ", str(classes))
-                y = input()
-                try:
-                    y = int(y)  # set it as int here instead of on input to avoid error breaking execution when input is bad
-                except:
-                    continue
-            y_new[i] = y
-            print()
-            data.at[ref_idx[query_idx[i]], 'TOCPage'] = y  # save value to copy of data
-            data.at[ref_idx[query_idx[i]], 'TagMethod'] = 'manual'
-
-        learner.teach(query_inst, y_new)  # reshape 1, -1
-        accuracy_scores.append(learner.score(X_test, y_test.astype(int)))
-        print("End of annotation. Samples, predictions, annotations: ")
-        print(ref_docids.iloc[query_idx].values, np.concatenate((query_inst, np.array([preds]).T, y_new.reshape(-1, 1)), axis=1))
-
-        accuracy = accuracy_scores[-1]
-        data.to_csv(datafile, index=False)  # save slightly more annotated dataset
-
-    else:
-        print("no unlabelled samples, training normally")
-        data = data.dropna(subset=['TOCPage'])
-        X, Y = data_prep(data, y=True, limit_cols=['DocID'])
-        X, Y = X.astype(int), Y.astype(int)  # pd's Int64 dtype accepts NaN
-        X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.20)
-
-        learner = RandomForestClassifier() #tree.DecisionTreeClassifier()
-        learner = learner.fit(X_train, y_train)
-        y_pred = learner.predict(X_test)
-        accuracy = sklearn.metrics.accuracy_score(y_test, y_pred)
-        print(accuracy)
     with open(settings.get_model_path('toc'), "wb") as file:
         pickle.dump(learner, file)
     print("End of training stage. Re-run to train again")
@@ -235,12 +148,6 @@ def tag_prevpagetoc():
     df.to_csv(settings.get_dataset_path('toc'), index=False)
     return count
 
-
-def display_page(docid, page):
-    pg_path = settings.get_report_page_path(int(docid), int(page))  # docid, page
-    image = Image.open(pg_path)
-    display.display(image)
-    print(pg_path)
 
 
 def automatically_tag():
@@ -314,8 +221,8 @@ if __name__ == "__main__":
     #toc_pages = get_toc_pages()
     #print(toc_pages)
     #save_report_pages('4412')
-    # train()
-    automatically_tag()
+    train(n_queries=5)
+    #automatically_tag()
     # check_tags()
     # train(all=True)
     # tag_prevpagetoc()

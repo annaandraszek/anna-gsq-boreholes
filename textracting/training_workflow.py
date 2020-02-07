@@ -36,8 +36,8 @@ def create_training_sets_pt1(): # creating of training sets, up to their annotat
     toc_df = toc_classification.create_dataset()
     save_dataset(toc_df, 'toc')
 
-    fig_df = fig_classification.create_dataset()
-    save_dataset(fig_df, 'fig')
+    # fig_df = fig_classification.create_dataset()
+    # save_dataset(fig_df, 'fig')
 
     heading_id_toc_df = heading_id_toc.create_identification_dataset()
     save_dataset(heading_id_toc_df, 'heading_id_toc')
@@ -50,24 +50,24 @@ def create_training_sets_pt2():
     proc_df = heading_id_toc.pre_process_id_dataset(datafile=settings.get_dataset_path('heading_id_toc'))
     save_dataset(proc_df, 'processed_heading_id_toc')
 
-    page_id_df = page_identification.create_dataset()
-    save_dataset(page_id_df, 'page_id')
+    # page_id_df = page_identification.create_dataset()
+    # save_dataset(page_id_df, 'page_id')
 
     heading_id_intext_df = heading_id_intext.create_dataset()
     save_dataset(heading_id_intext_df, 'heading_id_intext')
 
 
-def create_training_sets_pt3():
-    page_ex_df = page_extraction.create_dataset()
-    save_dataset(page_ex_df, 'page_extraction')
-
-    heading_class_df = heading_classification.create_dataset()
-    save_dataset(heading_class_df, 'heading_classification')
+# def create_training_sets_pt3():
+#     page_ex_df = page_extraction.create_dataset()
+#     save_dataset(page_ex_df, 'page_extraction')
+#
+#     heading_class_df = heading_classification.create_dataset()
+#     save_dataset(heading_class_df, 'heading_classification')
 
 
 def train_models_pt1():  # run model training. output report of how they all did
     toc_classification.train()
-    fig_classification.train()
+    # fig_classification.train()
     marginals_classification.train()
 
 
@@ -75,18 +75,18 @@ def train_models_pt2():
     heading_id_toc_nn = heading_id_toc.NeuralNetwork()
     heading_id_toc_nn.train()
 
-    page_id_nn = page_identification.NeuralNetwork()
-    page_id_nn.train()
+    # page_id_nn = page_identification.NeuralNetwork()
+    # page_id_nn.train()
 
     heading_id_intext.train()
     heading_id_intext.train(model_file=settings.get_model_path('heading_id_intext_no_toc'))
 
 
-def train_models_pt3():
-    page_ex_nn = page_extraction.NeuralNetwork()
-    page_ex_nn.train()
-
-    heading_classification.train()  # commenting this out now as I don't use it
+# def train_models_pt3():
+#     page_ex_nn = page_extraction.NeuralNetwork()
+#     page_ex_nn.train()
+#
+#     heading_classification.train()  # commenting this out now as I don't use it
 
 
 def accuracy_dif(scores):
