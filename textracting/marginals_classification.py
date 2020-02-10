@@ -87,6 +87,7 @@ def create_dataset():
     if os.path.exists(prev_dataset):
         prev = pd.read_csv(prev_dataset)
         df['Marginal'] = df.apply(lambda x: assign_y(x, prev), axis=1)
+        df['Marginal'].loc[df['Marginal'] == 2] = 1  # removing the [2] class
         df['TagMethod'].loc[df['Marginal'] == df['Marginal']] = "legacy"
 
     return df
@@ -126,11 +127,12 @@ def create_individual_dataset(docid):
     return df
 
 
-# def edit_dataset():
-#     file = settings.get_dataset_path('marginal_lines')
-#     data = pd.read_csv(file)
+def edit_dataset():
+    file = settings.get_dataset_path('marginal_lines')
+    data = pd.read_csv(file)
+    data['Marginal'].loc[data['Marginal'] == 2] = 1
 #     data['NormedLineNum'].loc[data['NormedLineNum'] != data['NormedLineNum']] = 0  # values where NormedLineNum == None
-#     data.to_csv(file, index=False)
+    data.to_csv(file, index=False)
 
 
 def data_prep(data, y=False, limit_cols=None):
@@ -149,18 +151,10 @@ import time
 
 
 def train(datafile=settings.get_dataset_path('marginal_lines'), n_queries=10): #, model='forest'):
-    tme = time.time()
-    print("mtime0: ", tme)
     data = pd.read_csv(datafile)
-    print("mtime1: ", time.time() - tme)
-    tme = time.time()
     y_column = 'Marginal'
     estimator = ensemble.RandomForestClassifier()
-    print("mtime2: ", time.time() - tme)
-    tme = time.time()
     accuracy, learner = active_learning.train(data, y_column, n_queries, estimator, datafile, limit_cols=['Text'])
-    print("mtime3: ", time.time() - tme)
-    tme = time.time()
     with open(settings.get_model_path('marginal_lines'), "wb") as file:
         pickle.dump(learner, file)
     print("End of training stage. Re-run to train again")
@@ -198,5 +192,5 @@ if __name__ == "__main__":
     #classes = classify(data)
     #data['Marginal'] = classes
     #data.to_csv(settings.dataset_path + 'marginals_dataset_v2_tagged.csv', index=False)
-    #edit_dataset()
-    train()
+    edit_dataset()
+    #train()

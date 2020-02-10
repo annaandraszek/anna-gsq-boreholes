@@ -45,11 +45,10 @@ def display_page(docid, page, line=None):
     image = Image.open(pg_path)
     width, height = image.size
 
-
     if line:
         draw = ImageDraw.Draw(image, 'RGBA')
-        draw.line([(1, 1), (1, height-1)], fill="blue", width=3)  # draw parallel lines down the page
-        draw.line([(width-1, 1), (width-1, height-1)], fill="blue", width=3)
+        draw.line([(1, 1), (1, height-3)], fill="blue", width=3)  # draw parallel lines down the page
+        draw.line([(width-3, 1), (width-3, height-3)], fill="blue", width=3)
 
         docinfofile = settings.get_restructpageinfo_file(docid)
         docinfo = json.load(open(docinfofile, "r"))
@@ -70,13 +69,13 @@ def display_page(docid, page, line=None):
             change = top
             top = 0
             bottom -= change
-            draw.line([(1, 1), (width-1, 1)], fill="blue", width=3)
+            draw.line([(1, 1), (width-3, 1)], fill="blue", width=3)
 
         elif bottom > height:
             change = bottom - height
             bottom = height
-            top += change
-            draw.line([(1, height-1), (width-1, height-1)], fill="blue", width=3)
+            top -= change
+            draw.line([(1, height-3), (width-3, height-3)], fill="blue", width=3)
 
         draw.rectangle([ln_left, ln_top, ln_left + (width * box['Width']), ln_top + (height * box['Height'])], outline='green')
 
