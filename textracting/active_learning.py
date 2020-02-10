@@ -43,9 +43,13 @@ def get_input(classes):
 def display_page(docid, page, line=None):
     pg_path = settings.get_report_page_path(int(docid), int(page))  # docid, page
     image = Image.open(pg_path)
+    width, height = image.size
+
 
     if line:
-        width, height = image.size
+        draw = ImageDraw.Draw(image, 'RGBA')
+        draw.line([(1, 1), (1, height-1)], fill="blue", width=3)  # draw parallel lines down the page
+        draw.line([(width-1, 1), (width-1, height-1)], fill="blue", width=3)
 
         docinfofile = settings.get_restructpageinfo_file(docid)
         docinfo = json.load(open(docinfofile, "r"))
@@ -66,13 +70,14 @@ def display_page(docid, page, line=None):
             change = top
             top = 0
             bottom -= change
+            draw.line([(1, 1), (width-1, 1)], fill="blue", width=3)
 
         elif bottom > height:
             change = bottom - height
             bottom = height
             top += change
+            draw.line([(1, height-1), (width-1, height-1)], fill="blue", width=3)
 
-        draw = ImageDraw.Draw(image, 'RGBA')
         draw.rectangle([ln_left, ln_top, ln_left + (width * box['Width']), ln_top + (height * box['Height'])], outline='green')
 
         crop_image = image.crop((left, top, right, bottom))
@@ -89,20 +94,18 @@ def display_page(docid, page, line=None):
     print(pg_path)
 
 
-def active_learning(data, n_queries, y_column, estimator=RandomForestClassifier, limit_cols=None):
+def active_learning(data, n_queries, y_column, estimator=RandomForestClassifier(), limit_cols=None):
     line = False
     if y_column in ['Marginal', 'Heading']:  # covers marginal_lines, heading_id_toc, heading_id_intext
         line = True  # determines if a line or page is to to be displayed
-    classes = set(data[y_column].values)  #todo: check type
-
+    classes = pd.unique(data[y_column].values)  #todo: check type
     X_initial, Y_initial, X_pool, y_pool, ref_docids, ref_idx = al_data_prep(data, y_column, limit_cols)
     X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X_initial, Y_initial,
-                                                                                test_size=0.90)
-    learner = ActiveLearner(estimator=estimator(), #ensemble.RandomForestClassifier(),
+                                                                               test_size=0.90)
+    learner = ActiveLearner(estimator=estimator, #ensemble.RandomForestClassifier(),
                             query_strategy=uncertainty_sampling,
                             X_training=X_train, y_training=y_train.astype(int))
     accuracy_scores = [learner.score(X_test, y_test.astype(int))]
-    preds = []
     query_idx, query_inst = learner.query(X_pool, n_instances=n_queries)
     y_new = np.zeros(n_queries, dtype=int)
     for i in range(n_queries):
@@ -111,13 +114,13 @@ def active_learning(data, n_queries, y_column, estimator=RandomForestClassifier,
         y_new[i] = y
         data.at[ref_idx[idx], y_column] = y  # save value to copy of data
         data.at[ref_idx[idx], 'TagMethod'] = 'manual'
-
     learner.teach(query_inst, y_new)  # reshape 1, -1
     accuracy_scores.append(learner.score(X_test, y_test.astype(int)))
+    preds = learner.predict(X_test)
     #print("End of annotation. Samples, predictions, annotations: ")
     #print(ref_docids.iloc[query_idx].values,
     #      np.concatenate((query_inst, np.array([preds]).T, y_new.reshape(-1, 1)), axis=1))
-
+    print(sklearn.metrics.confusion_matrix(preds, y_test.astype(int)))
     accuracy = accuracy_scores[-1]
     return data, accuracy, learner
 

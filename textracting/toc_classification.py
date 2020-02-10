@@ -97,24 +97,8 @@ def train(datafile=settings.get_dataset_path('toc'), n_queries=10):
           'PrevPageTOC', 'TOCPage']] = data[['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf',
            'PrevPageTOC', 'TOCPage']].astype("Int64")
     data['TagMethod'] = data['TagMethod'].astype("string")
-    #classes = [0, 1, 2]
     y_column = 'TOCPage'
     estimator = RandomForestClassifier()
-    #X_initial, Y_initial, X_pool, y_pool, ref_docids, ref_idx = active_learning.al_data_prep(data, 'TOCPage')
-    # unlabelled = data[y_column].loc[data[y_column] != data[y_column]]
-    #
-    # if n_queries=='all':
-    #     n_queries = len(unlabelled)
-    #
-    # elif isinstance(n_queries, int) & (len(unlabelled) < n_queries):  # if less unlabelled than want to sample, reduce sample size
-    #     n_queries = len(unlabelled)
-    #
-    # if n_queries > 0:
-    #     updated_data, accuracy, learner = active_learning.active_learning(data, n_queries, y_column, estimator=estimator)
-    #     updated_data.to_csv(datafile, index=False)  # save slightly more annotated dataset
-    #
-    # else:
-    #     accuracy, learner = active_learning.passive_learning(data, y_column, estimator)
     accuracy, learner = active_learning.train(data, y_column, n_queries, estimator, datafile)
 
     with open(settings.get_model_path('toc'), "wb") as file:
@@ -149,21 +133,6 @@ def tag_prevpagetoc():
     return count
 
 
-
-def automatically_tag():
-    source = settings.get_dataset_path('toc')
-    df = pd.read_csv(source)
-    df = df.reset_index(drop=True)
-    new_tags = classify_page(df)
-    #idx = df.loc[((df['TagMethod'] != 'legacy') != (df['TOCPage'] == df['TOCPage'])) & (df['TagMethod'] != 'manual')].index.values #= new_tags.loc[(df['TagMethod'] != 'legacy') & (df['TagMethod'] != 'manual')]
-    idx = df.loc[(df['TagMethod'] == 'auto') | (df['TOCPage'] != df['TOCPage'])].index.values  # join of auto and TOCPage==None
-    df.loc[idx, 'TOCPage'] = new_tags[idx]
-    df.loc[idx, 'TagMethod'] = 'auto'
-    print(len(idx), " automatically tagged")
-    #df['TagMethod'].loc[(df['TagMethod'] != 'legacy') & (df['TagMethod'] != 'manual')] = 'auto'
-    df.to_csv(settings.get_dataset_path('toc'), index=False)
-
-
 def check_tags(show=False):
     source = settings.get_dataset_path('toc')
     df = pd.read_csv(source)
@@ -174,7 +143,7 @@ def check_tags(show=False):
     for i, row in bad.iterrows():
         if show:
             print(i, row)
-            display_page(row.DocID, row.PageNum)
+            active_learning.display_page(row.DocID, row.PageNum)
         if df.at[i, 'TagMethod'] != 'manual':  # can edit auto or legacy
             df.at[i, 'TOCPage'] = None
             c += 1

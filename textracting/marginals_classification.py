@@ -3,24 +3,10 @@ import pandas as pd
 import json
 import glob
 import settings
-import re
-from sklearn import tree, naive_bayes, ensemble
-import sklearn
-import matplotlib.pyplot as plt
+from sklearn import ensemble
 import pickle
 import os
-import matplotlib
-import seaborn as sns
-import graphviz
-
-from pdf2image import convert_from_path, exceptions
-from PIL import ImageDraw, Image
-from IPython import display
-import textloading
-import textracting
 import re
-import img2pdf
-import time
 import active_learning
 
 
@@ -43,12 +29,12 @@ def contains_page(string):
 
 
 columns = ['DocID', 'PageNum', 'LineNum', 'NormedLineNum','Text', 'Words2Width', 'WordsWidth', 'Width', 'Height',
-           'Left', 'Top', 'ContainsNum', 'ContainsTab', 'ContainsPage', 'Centrality', 'Marginal']
+           'Left', 'Top', 'ContainsNum', 'ContainsTab', 'ContainsPage', 'Centrality', 'Marginal', 'TagMethod']
 
 
 def assign_y(x, prev):
-    d, p = int(x['DocID']), int(x['PageNum'])
-    y = (prev['Marginal'].loc[(prev['DocID'] == d) & (prev['PageNum'] == p)])
+    d, p, l = int(x['DocID']), int(x['PageNum']), int(x['LineNum'])
+    y = (prev['Marginal'].loc[(prev['DocID'] == d) & (prev['PageNum'] == p) & (prev['LineNum'] == l)])
     if len(y) == 0:
         return None
     elif len(y) == 1:
@@ -83,10 +69,13 @@ def create_dataset():
                 words2width = line['WordsWidth'] / bb['Width']
                 docset.append([docid, int(page), line['LineNum'], 0, line['Text'], words2width, line['WordsWidth'],
                                bb['Width'], bb['Height'], bb['Left'], bb['Top'], contains_num, contains_tab,
-                               contains_page, centrality])
+                               contains_page, centrality, None, None])
 
             temp = pd.DataFrame(data=docset, columns=columns)
-            temp['NormedLineNum'] = (temp['LineNum'] - min(temp['LineNum'])) / (max(temp['LineNum']) - min(temp['LineNum']))
+            if (max(temp['LineNum']) - min(temp['LineNum'])) == 0:  # only one line # avoid NaN from div by 0
+                temp['NormedLineNum'] = 0
+            else:
+                temp['NormedLineNum'] = (temp['LineNum'] - min(temp['LineNum'])) / (max(temp['LineNum']) - min(temp['LineNum']))
             df = df.append(temp, ignore_index=True)
 
     unnormed = np.array(df['Centrality'])
@@ -137,6 +126,13 @@ def create_individual_dataset(docid):
     return df
 
 
+# def edit_dataset():
+#     file = settings.get_dataset_path('marginal_lines')
+#     data = pd.read_csv(file)
+#     data['NormedLineNum'].loc[data['NormedLineNum'] != data['NormedLineNum']] = 0  # values where NormedLineNum == None
+#     data.to_csv(file, index=False)
+
+
 def data_prep(data, y=False, limit_cols=None):
     #data.dropna(inplace=True)
     data.drop(data[data['Width'] < 0].index, inplace=True)
@@ -149,14 +145,22 @@ def data_prep(data, y=False, limit_cols=None):
         return X, Y
     return X
 
+import time
+
 
 def train(datafile=settings.get_dataset_path('marginal_lines'), n_queries=10): #, model='forest'):
+    tme = time.time()
+    print("mtime0: ", tme)
     data = pd.read_csv(datafile)
+    print("mtime1: ", time.time() - tme)
+    tme = time.time()
     y_column = 'Marginal'
     estimator = ensemble.RandomForestClassifier()
-
-    accuracy, learner = active_learning.train(data, y_column, n_queries, estimator, datafile)
-
+    print("mtime2: ", time.time() - tme)
+    tme = time.time()
+    accuracy, learner = active_learning.train(data, y_column, n_queries, estimator, datafile, limit_cols=['Text'])
+    print("mtime3: ", time.time() - tme)
+    tme = time.time()
     with open(settings.get_model_path('marginal_lines'), "wb") as file:
         pickle.dump(learner, file)
     print("End of training stage. Re-run to train again")
@@ -186,11 +190,13 @@ if __name__ == "__main__":
     #df.to_csv(settings.dataset_path + 'marginals_dataset_v2.csv', index=False)
 
     #matplotlib.rcParams['figure.figsize'] = (20, 20)
-    file = 'marginals_dataset_v2.csv'
-    data = pd.read_csv(settings.dataset_path + file)
-    get_marginals(data)
+    #file = 'marginals_dataset_v2.csv'
+    #data = pd.read_csv(settings.dataset_path + file)
+    #get_marginals(data)
     #train(data, model='forest')
 
     #classes = classify(data)
     #data['Marginal'] = classes
     #data.to_csv(settings.dataset_path + 'marginals_dataset_v2_tagged.csv', index=False)
+    #edit_dataset()
+    train()

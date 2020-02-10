@@ -12,6 +12,7 @@ import re
 import os
 import time
 import matplotlib.pyplot as plt
+import active_learning
 
 #def check_report_criteria():  # check if going to use restruct page info file
     # check if reportid is correct type: not WELCOM
@@ -114,10 +115,10 @@ def test():
     while not accuracy_dif(accuracies):
         time.sleep(15)
         toc_classification.train()
-        toc_classification.automatically_tag()
+        active_learning.automatically_tag('toc', toc_classification.classify_page, 'TOCPage')
         toc_classification.check_tags()
         toc_classification.train(n_queries=5)
-        toc_classification.automatically_tag()
+        active_learning.automatically_tag('toc', toc_classification.classify_page, 'TOCPage')
         toc_classification.tag_prevpagetoc()
         toc_classification.train(n_queries=5)
         accuracy = toc_classification.train(n_queries=0)  # evaluate mode
