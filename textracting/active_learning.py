@@ -77,7 +77,7 @@ def display_page(docid, page, line=None):
             top -= change
             draw.line([(1, height-3), (width-3, height-3)], fill="blue", width=3)
 
-        draw.rectangle([ln_left, ln_top, ln_left + (width * box['Width']), ln_top + (height * box['Height'])], outline='green')
+        draw.rectangle([ln_left, ln_top, ln_left + (width * box['Width']), ln_top + (height * box['Height'])], outline='green', width=2)
 
         crop_image = image.crop((left, top, right, bottom))
         #crop_ln_top = crop_height * box['Top']
@@ -91,6 +91,7 @@ def display_page(docid, page, line=None):
     # crop page to about 1/3 of it to make it more focused on the line
 
     print(pg_path)
+    if line: print("line: ", line)
 
 
 def active_learning(data, n_queries, y_column, estimator=RandomForestClassifier(), limit_cols=None):
@@ -98,21 +99,26 @@ def active_learning(data, n_queries, y_column, estimator=RandomForestClassifier(
     if y_column in ['Marginal', 'Heading']:  # covers marginal_lines, heading_id_toc, heading_id_intext
         line = True  # determines if a line or page is to to be displayed
     classes = pd.unique(data[y_column].values)  #todo: check type
-    X_initial, Y_initial, X_pool, y_pool, ref_docids, ref_idx = al_data_prep(data, y_column, limit_cols)
+    X_initial, Y_initial, X_pool, y_pool, refs = al_data_prep(data, y_column, limit_cols)
     X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X_initial, Y_initial,
-                                                                               test_size=0.90)
+                                                                               test_size=0.50)
     learner = ActiveLearner(estimator=estimator, #ensemble.RandomForestClassifier(),
                             query_strategy=uncertainty_sampling,
                             X_training=X_train, y_training=y_train.astype(int))
     accuracy_scores = [learner.score(X_test, y_test.astype(int))]
     query_idx, query_inst = learner.query(X_pool, n_instances=n_queries)
     y_new = np.zeros(n_queries, dtype=int)
+    time.sleep(5)
     for i in range(n_queries):
         idx = query_idx[i]
-        y = al_input_loop(learner, query_inst[i], ref_docids.iloc[idx], n_queries, classes, line=line)
+        #page=int(query_inst[i][0])
+        page = refs['pagenums'].iloc[idx]
+        if line:
+            line=refs['linenums'].iloc[idx]
+        y = al_input_loop(learner, query_inst[i], refs['docids'].iloc[idx], n_queries, classes, page=page, line=line)
         y_new[i] = y
-        data.at[ref_idx[idx], y_column] = y  # save value to copy of data
-        data.at[ref_idx[idx], 'TagMethod'] = 'manual'
+        data.at[refs['idx'][idx], y_column] = y  # save value to copy of data
+        data.at[refs['idx'][idx], 'TagMethod'] = 'manual'
     learner.teach(query_inst, y_new)  # reshape 1, -1
     accuracy_scores.append(learner.score(X_test, y_test.astype(int)))
     preds = learner.predict(X_test)
@@ -131,7 +137,7 @@ def passive_learning(data, y_column, estimator=sklearn.ensemble.RandomForestClas
     if limit_cols:
         default_drop.extend(limit_cols)
     X, Y = data_prep(data, limit_cols=default_drop, y_column=y_column)
-    X, Y = X.astype(int), Y.astype(int)  # pd's Int64 dtype accepts NaN  # but Int64 dtype is "unknown"
+    #X, Y = X.astype(int), Y.astype(int)  # pd's Int64 dtype accepts NaN  # but Int64 dtype is "unknown"  # need to change this line to accept with str input, not sure how
     X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size=0.20)
 
     learner = estimator.fit(X_train, y_train)
@@ -177,14 +183,14 @@ def automatically_tag(type, classification_function, y_column):
     df.to_csv(settings.get_dataset_path(type), index=False)
 
 
-def al_input_loop(learner, inst, docid, n_queries, classes, line=None):
+def al_input_loop(learner, inst, docid, n_queries, classes, page=None, line=None):
     print("Waiting to display next....")
     display.clear_output(wait=True)
+    print(inst)
     pred = learner.predict(inst.reshape(1, -1))
     #preds.append(pred[0])
-    if line:
-        line = int(inst[1])
-    display_page(int(docid), int(inst[0]), line)  # docid, pagenum, line
+
+    display_page(int(docid), page, line)  # docid, pagenum, line
 
     time.sleep(1)  # sometimes the input box doesn't show, i think because it doesn't have the time
 
@@ -213,11 +219,21 @@ def al_data_prep(data, y_column, limit_cols=None):  # to generalise further, sho
     labelled = data.dropna(subset=[y_column])  # assume that will contain 0, 1 values
     X_initial, Y_initial = data_prep(labelled, limit_cols=limit_cols, y_column=y_column)
 
+    refs = {}
     ref_docids = unlabelled.DocID  # removing docids from X, but keeping them around in this to ref
+    refs['docids'] = ref_docids
+    if y_column in ['Heading', 'Marginal']:
+        ref_pagenums = unlabelled.PageNum
+        refs['pagenums'] = ref_pagenums
+    if y_column in 'Heading':
+        ref_linenums = unlabelled.LineNum
+        refs['linenums'] = ref_linenums
+
     X_pool, y_pool = data_prep(unlabelled, limit_cols=limit_cols, y_column=y_column)
     ref_idx = X_pool.index.values
+    refs['idx'] = ref_idx
     X_pool, y_pool = X_pool.to_numpy(), y_pool.to_numpy()
-    return X_initial, Y_initial, X_pool, y_pool, ref_docids, ref_idx
+    return X_initial, Y_initial, X_pool, y_pool, refs
 
 
 def save_report_pages(docid):

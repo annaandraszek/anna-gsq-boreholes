@@ -41,9 +41,9 @@ def get_model_path(model, type=None, training_name=dataset_version, tokeniser=Fa
     if type:
         path += '_' + type
     path += "_model"
-    if ('heading_id_toc' or 'page') in model and not tokeniser:
-        path += ".h5"
-    elif tokeniser:
+    #if ('heading_id_toc' or 'page') in model and not tokeniser:
+        #path += ".h5"
+    if tokeniser:
         path += '_tokeniser.joblib'
     elif classes:
         path += '_class_dict.joblib'

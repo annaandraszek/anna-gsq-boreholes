@@ -20,6 +20,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from keras.wrappers.scikit_learn import KerasClassifier
 from sklearn.preprocessing import LabelBinarizer
 from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
+import active_learning
 
 
 class Text2Seq(TransformerMixin, BaseEstimator):
@@ -28,12 +29,15 @@ class Text2Seq(TransformerMixin, BaseEstimator):
         self.labelbin = LabelBinarizer()
 
     def fit(self, x, y=None):
-        self.tok.fit_on_texts(x)
-        # sequences = NN.tok.texts_to_sequences(x)
-        # sequences_matrix = sequence.pad_sequences(sequences, maxlen=NN.max_len)
-        # y_binary = to_categorical(y)
-
-        #
+        if isinstance(x, list):  # when the AL does predict proba, gives a single sample inside a 1-element list
+            if len(x) != 1:
+                print("x is longer than one sample, ", x)  # check in case it gives multiple samples and this code is wrong??
+            x = x[0]
+        if isinstance(x, np.ndarray):
+            x = pd.Series(data=x.T[0])
+        if isinstance(x, pd.DataFrame):  # may be df or ndarray
+            x = x['SectionText']
+        self.tok.fit_on_texts(x)  # have to specify the column to give it a series
 
         if y is not None:
             self.labelbin.fit(y)
@@ -41,6 +45,14 @@ class Text2Seq(TransformerMixin, BaseEstimator):
         return self
 
     def transform(self, x, y=None):
+        if isinstance(x, pd.DataFrame):  # may be df or ndarray
+            x = x['SectionText']
+        if isinstance(x, list):  # when the AL does predict proba, gives a single sample inside a 1-element list
+            if len(x) != 1:
+                print("x is longer than one sample, ", x)  # check in case it gives multiple samples and this code is wrong??
+            x = x[0]
+        if isinstance(x, np.ndarray):
+            x = pd.Series(data=x.T[0])  # make array 1D before it can be a series
         sequences = self.tok.texts_to_sequences(x)
         sequences_matrix = sequence.pad_sequences(sequences)
 
@@ -51,18 +63,12 @@ class Text2Seq(TransformerMixin, BaseEstimator):
         return sequences_matrix
 
 
-    #
-    # def get_feature_names(self):
-    #     return self.feature_names_
-
-
-
 class NeuralNetwork(): #give this arguments like: model type, train/test file
     #max_words = 900
     #max_len = 15
     #y_dict = {}
-    epochs = 10
-    batch_size = 50
+    epochs = 20
+    batch_size = 30
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
     #model_path = settings.model_path
     #model_name = 'heading_id_cyfra1'
@@ -70,60 +76,42 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
     def __init__(self, model_name='cyfra1'):
         self.model_name = 'heading_id_' + model_name
         self.model_loc = settings.get_model_path('heading_id_toc') #self.model_path + self.model_name + '.h5'
-        self.tok_loc = settings.get_model_path('heading_id_toc', tokeniser=True)#self.model_path + self.model_name + 'tokeniser.joblib'
+        #self.tok_loc = settings.get_model_path('heading_id_toc', tokeniser=True)#self.model_path + self.model_name + 'tokeniser.joblib'
 
-    def train(self, file=settings.get_dataset_path('processed_heading_id_toc')):  #settings.dataset_path + 'processed_heading_id_dataset_cyfra1.csv'):
-        df = pd.read_csv(file)
-        self.X = df['SectionText']
-        self.Y = df['Heading']
+    def train(self, datafile=settings.get_dataset_path('proc_heading_id_toc'), n_queries=10):  #settings.dataset_path + 'processed_heading_id_dataset_cyfra1.csv'):
+        df = pd.read_csv(datafile)
+        #self.X = df['SectionText']
+        #self.Y = df['Heading']
         self.max_words, self.max_len = check_maxlens(df)
-        #self.tok = Tokenizer(num_words=self.max_words)
-        #self.model = self.LSTM() #StackedLSTM()
+
         lstm = KerasClassifier(build_fn=self.LSTM, batch_size=self.batch_size, epochs=self.epochs,
                   validation_split=0.2)
-        X_train, X_test, Y_train, Y_test = train_test_split(self.X, self.Y, test_size=0.15)
+        #X_train, X_test, Y_train, Y_test = train_test_split(self.X, self.Y, test_size=0.15)
 
         clf = Pipeline([
             ('transform', Text2Seq()),
-            #('labelbin', LabelBinarizer()),
             ('lstm', lstm)
         ], verbose=True)
 
-        #self.tok.fit_on_texts(X_train)
-        #sequences = self.tok.texts_to_sequences(X_train)
-        #sequences_matrix = sequence.pad_sequences(sequences, maxlen=self.max_len)
-        #y_binary = to_categorical(Y_train)
-        clf = clf.fit(X_train, Y_train)
-        #clf.lstm.summary()
+        #clf = clf.fit(X_train, Y_train)
 
-        #self.model.summary()
-        #self.model.fit(sequences_matrix, y_binary, batch_size=self.batch_size, epochs=self.epochs,
-        #          validation_split=0.2) #, callbacks=[EarlyStopping(monitor='val_loss',min_delta=0.0001)]
-
-        #test_sequences = self.tok.texts_to_sequences(X_test)
-        #test_sequences_matrix = sequence.pad_sequences(test_sequences, maxlen=self.max_len)
-
-        #accr = self.model.evaluate(test_sequences_matrix, to_categorical(Y_test))
-        self.model = clf
-        preds = clf.predict(X_test)
-        accr = accuracy_score(Y_test, preds)
-        print("Test set accuracy: ", accr)
+        #self.model = clf
+        #preds = clf.predict(X_test)
+        #accr = accuracy_score(Y_test, preds)
+        #print("Test set accuracy: ", accr)
         #print('Test set\n  Loss: {:0.3f}\n  Accuracy: {:0.3f}'.format(accr[0], accr[1]))
         #self.model.save(self.model_loc)
+
+        y_column = 'Heading'
+        estimator = clf
+        accuracy, learner = active_learning.train(df, y_column, n_queries, estimator, datafile, limit_cols=['PageNum', 'LineNum'])
+        self.model = learner
         with open(self.model_loc, "wb") as file:
-            joblib.dump(clf, file)
+            joblib.dump(learner, file)
         # joblib.dump(self.tok, self.tok_loc)
 
-
-    # def StackedLSTM(self):
-    #     # Stacked LSTM for sequence classification from https://keras.io/getting-started/sequential-model-guide/
-    #     model = Sequential()
-    #     model.add(LSTM(32, return_sequences=True, input_shape=self.max_len))
-    #     model.add(LSTM(32, return_sequences=True))
-    #     model.add(LSTM(32))
-    #     model.add(Dense(10, activation='softmax'))
-    #     model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['accuracy', 'categorical_accuracy'])
-    #     return model
+        print("End of training stage. Re-run to train again")
+        return accuracy
 
     def LSTM(self):
         model = Sequential()
@@ -140,8 +128,6 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
 
     def load_model_from_file(self):
         self.model = joblib.load(self.model_loc)  #load_model(self.model_loc)
-        #self.tok = joblib.load(self.tok_loc)
-       # self.model._make_predict_function()
 
 
     def predict(self, strings, encode=False):
@@ -154,9 +140,6 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
 
         if encode:
             strings = [num2cyfra1(s) for s in strings]
-        #sequences = self.tok.texts_to_sequences(strings)
-        #self.max_len
-        #sequences_matrix = sequence.pad_sequences(sequences, maxlen=256)
         predictions = self.model.predict(strings)
         return predictions, np.argmax(predictions, axis=0)
 
@@ -243,11 +226,13 @@ def pre_process_id_dataset(pre='cyfra1', datafile=settings.get_dataset_path('hea
     else:
         df = pd.read_csv(datafile)
     # break up the LineText column into SectionPrefix, SectionText, and SectionPage
-    newdf = pd.DataFrame(columns=['DocID', 'LineNum', 'SectionPrefix', 'SectionText', 'SectionPage'])
+    newdf = pd.DataFrame(columns=['DocID', 'PageNum', 'LineNum', 'SectionPrefix', 'SectionText', 'SectionPage'])
     newdf.DocID = df.DocID
+    newdf.PageNum = df.PageNum
     newdf.LineNum = df.LineNum
     if training:
         newdf['Heading'] = df.Heading
+        newdf['TagMethod'] = df.TagMethod
 
     newdf.SectionPrefix, newdf.SectionText = zip(*df.LineText.map(split_prefix))
     newdf.SectionText, newdf.SectionPage = zip(*newdf.SectionText.map(split_pagenum))
@@ -272,7 +257,7 @@ def pre_process_id_dataset(pre='cyfra1', datafile=settings.get_dataset_path('hea
 
 
 def create_identification_dataset():
-    columns = ['DocID', 'LineNum', 'LineText', 'Heading', 'TagMethod']
+    columns = ['DocID', 'PageNum', 'LineNum', 'LineText', 'Heading', 'TagMethod']
     df = pd.DataFrame(columns=columns)
     lines_docs = sorted(glob.glob('training/restructpageinfo/*'))
     toc_df = pd.read_csv(settings.get_dataset_path('toc'))
@@ -293,7 +278,7 @@ def create_identification_dataset():
                         elif re.match(r'^[0-9]+\.*\s+\w+', line['Text']):
                             heading = 1
 
-                        docset.append([docid, i, line['Text'], heading, None])
+                        docset.append([docid, page, i, line['Text'], heading, None])
                     pgdf = pd.DataFrame(data=docset, columns=columns)
                     df = df.append(pgdf, ignore_index=True)
         except IndexError:
@@ -306,7 +291,6 @@ def create_identification_dataset():
         df['Heading'] = df.apply(lambda x: assign_y(x, prev), axis=1)
         df['TagMethod'].loc[df['Heading'] == df['Heading']] = "legacy"
     df.to_csv(settings.get_dataset_path('heading_id_toc'), index=False)
-
     return df
 
 
@@ -318,19 +302,20 @@ def assign_y(x, prev):
     elif len(y) == 1:
         return y.values[0]
     else:
-        print("more rows than 1? ")
+        print("more rows than 1")  # very possible now that multiple toc pages are possible and legacy doesn't have pagenum to compare against
         print(y.values)
 
 
 if __name__ == '__main__':
-    #df = create_identification_dataset()
+    create_identification_dataset()
     #pre = 'cyfra1strona'
-    #df = pre_process_id_dataset(pre)
+    df = pre_process_id_dataset()  #pre)
+    df.to_csv(settings.get_dataset_path('proc_heading_id_toc'), index=False)
     #df.to_csv(settings.dataset_path + 'processed_heading_id_dataset_' + pre + '.csv', index=False)
 
-    data = settings.dataset_path + 'processed_heading_id_dataset_cyfra1.csv'
+    data = settings.get_dataset_path('proc_heading_id_toc')
     nn = NeuralNetwork()
-    #nn.train(data)
+    nn.train(data)
     # nn.load_model_from_file()
     p, r = nn.predict(['4.0 drilling', 'Introduction 1', 'lirowjls', 'figure drilling', '5 . 9 . geology of culture 5', '1 . 0 introduction', '8 . 1 introduction 7'], encode=True)
     #     #['4.3 drilling', 'Introduction strona', 'lirowjls', 'figure drilling', '5 . 9 . geology of culture strona', '1 . introduction', '8 . 1 introduction strona'])
@@ -339,5 +324,5 @@ if __name__ == '__main__':
     print(r)
 
     #create_identification_dataset()
-    #df = pre_process_id_dataset()
-    #df.to_csv(settings.get_dataset_path('proc_heading_id_toc'), index=False)
+    # df = pre_process_id_dataset()
+    # df.to_csv(settings.get_dataset_path('proc_heading_id_toc'), index=False)

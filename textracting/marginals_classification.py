@@ -147,8 +147,6 @@ def data_prep(data, y=False, limit_cols=None):
         return X, Y
     return X
 
-import time
-
 
 def train(datafile=settings.get_dataset_path('marginal_lines'), n_queries=10): #, model='forest'):
     data = pd.read_csv(datafile)

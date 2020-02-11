@@ -10,7 +10,6 @@
 import re
 import settings
 import sklearn
-from sklearn.pipeline import Pipeline
 from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.compose import ColumnTransformer
@@ -137,14 +136,14 @@ def create_dataset(datafile = settings.get_dataset_path('heading_id_intext'), do
     # find ALL the toc pages and remove their lines from the dataset
     # find ALL the fig pages and remove their lines from the dataset
     toc_dataset = pd.read_csv(settings.get_dataset_path('toc'))
-    fig_dataset = pd.read_csv(settings.get_dataset_path('fig'))
+   # fig_dataset = pd.read_csv(settings.get_dataset_path('fig'))
     tocs = toc_dataset.loc[toc_dataset.TOCPage == 1]
-    figs = fig_dataset.loc[fig_dataset.FigPage == 1]
+    #figs = fig_dataset.loc[fig_dataset.FigPage == 1]
     toc_tuples = [(id, page) for id, page in zip(tocs.DocID, tocs.PageNum)]
-    fig_tuples = [(id, page) for id, page in zip(figs.DocID, figs.PageNum)]
+    #fig_tuples = [(id, page) for id, page in zip(figs.DocID, figs.PageNum)]
     to_drop = []
     for i, row in df.iterrows():
-        if (row.DocID, row.PageNum) in toc_tuples or (row.DocID, row.PageNum) in fig_tuples:
+        if (row.DocID, row.PageNum) in toc_tuples: #or (row.DocID, row.PageNum) in fig_tuples:
             to_drop.append(i)
     df = df.drop(index=to_drop)
 
@@ -170,6 +169,14 @@ def create_dataset(datafile = settings.get_dataset_path('heading_id_intext'), do
         series_mi = series_mi.append(pd.Series(matches_i), ignore_index=True)
 
     df['MatchesHeading'], df['MatchesType'], df['MatchesI'] = series_mh, series_mt, series_mi
+    df['TagMethod'] = None
+    prev_dataset = settings.dataset_path + 'heading_id_intext_dataset.csv'
+    if os.path.exists(prev_dataset):
+        prev = pd.read_csv(prev_dataset)
+        df['Heading'].loc[(prev['DocID'] == df['DocID']) & (prev['PageNum'] == df['PageNum']) & (prev['LineNum'] == df['LineNum'])] = prev['Heading']
+        df['TagMethod'].loc[df['Heading'] == df['Heading']] = "legacy"
+
+
     if not docid:
         df.to_csv(datafile, index=False)
     df['Heading'] = 0
