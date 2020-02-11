@@ -104,6 +104,7 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
         #test_sequences_matrix = sequence.pad_sequences(test_sequences, maxlen=self.max_len)
 
         #accr = self.model.evaluate(test_sequences_matrix, to_categorical(Y_test))
+        self.model = clf
         preds = clf.predict(X_test)
         accr = accuracy_score(Y_test, preds)
         print("Test set accuracy: ", accr)
@@ -138,9 +139,9 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
 
 
     def load_model_from_file(self):
-        self.model = load_model(self.model_loc)
-        self.tok = joblib.load(self.tok_loc)
-        self.model._make_predict_function()
+        self.model = joblib.load(self.model_loc)  #load_model(self.model_loc)
+        #self.tok = joblib.load(self.tok_loc)
+       # self.model._make_predict_function()
 
 
     def predict(self, strings, encode=False):
@@ -153,11 +154,11 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
 
         if encode:
             strings = [num2cyfra1(s) for s in strings]
-        sequences = self.tok.texts_to_sequences(strings)
+        #sequences = self.tok.texts_to_sequences(strings)
         #self.max_len
-        sequences_matrix = sequence.pad_sequences(sequences, maxlen=256)
-        predictions = self.model.predict(sequences_matrix)
-        return predictions, np.argmax(predictions, axis=1)
+        #sequences_matrix = sequence.pad_sequences(sequences, maxlen=256)
+        predictions = self.model.predict(strings)
+        return predictions, np.argmax(predictions, axis=0)
 
 
 def num2cyfra1(string):
@@ -329,13 +330,13 @@ if __name__ == '__main__':
 
     data = settings.dataset_path + 'processed_heading_id_dataset_cyfra1.csv'
     nn = NeuralNetwork()
-    nn.train(data)
+    #nn.train(data)
     # nn.load_model_from_file()
-    # p, r = nn.predict(['4.3 drilling', 'Introduction 1', 'lirowjls', 'figure drilling', '5 . 9 . geology of culture 5', '1 . introduction', '8 . 1 introduction 7'], encode=True)
+    p, r = nn.predict(['4.0 drilling', 'Introduction 1', 'lirowjls', 'figure drilling', '5 . 9 . geology of culture 5', '1 . 0 introduction', '8 . 1 introduction 7'], encode=True)
     #     #['4.3 drilling', 'Introduction strona', 'lirowjls', 'figure drilling', '5 . 9 . geology of culture strona', '1 . introduction', '8 . 1 introduction strona'])
-    # print(p)
-    # print('------------------')
-    # print(r)
+    print(p)
+    print('------------------')
+    print(r)
 
     #create_identification_dataset()
     #df = pre_process_id_dataset()
