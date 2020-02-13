@@ -10,73 +10,33 @@ import pickle
 import os
 import matplotlib.pyplot as plt
 import matplotlib
+import machine_learning_helper as mlh
+import active_learning as al
+from sklearn.ensemble import RandomForestClassifier
 
-def create_dataset():
-    df = pd.DataFrame(columns=['DocID', 'PageNum', 'MedConfidence', 'AvgConfidence', 'RangeConfidence', 'IQRConfidence','MedLineLen', 'ContainsFigWord', 'ContainsFigLn', 'FigPos', 'FigPage'])
-    pageinfos = sorted(glob.glob('training/restructpageinfo/*.json'))
-    #pagelines = sorted(glob.glob('training/restructpagelines/*'))
-
-    for pagesinfo in pageinfos:
-        #pagesinfo = 'training\\restructpageinfo\\cr_26114_1_restructpageinfo.json'
-        #pageslines = 'training\\restructpagelines\\cr_26114_1_restructpagelines.json'
-        pi = json.load(open(pagesinfo))
-        #pl = json.load(open(pageslines))
-        docset = np.zeros((len(pi.items()), 11))
-        docid = pagesinfo.split('\\')[-1].replace('_1_restructpageinfo.json', '')
-
-        for info, i in zip(pi.items(), range(len(pi))):
-            fig = 0
-            figln = 0
-            figlnpos = -1
-            confs = []
-            linelens = []
-            for inf, j in zip(info[1], range(len(info[1]))):
-                confs.append(inf['Confidence'])
-                linelens.append(len(inf['Text']))
-                if 'figure' in inf['Text'].lower():
-                    fig = 1
-                    if figlnpos == -1:
-                        figlnpos = j / len(info[1])
-                    if re.search(r'Figure\s\d+\.*\s*\w*', inf['Text']) or re.search(r'FIGURE\s\d+\.*\s*\w*', inf['Text']):
-                        figln = 1
-                        figlnpos = j / len(info[1])
-            medconf = np.median(np.array(confs))
-            avgconf = np.average(np.array(confs))
-            rangeconf = np.max(np.array(confs)) - np.min(np.array(confs))
-            medlineln = np.median(np.array(linelens))
-
-            q75, q25 = np.percentile(np.array(confs), [75, 25])
-            iqr = q75 - q25
-
-            docset[i] = np.array([docid.strip('cr_'), info[0], medconf, avgconf, rangeconf, iqr, medlineln, fig, figln, figlnpos, 0])
-        pgdf = pd.DataFrame(data=docset, columns=['DocID', 'PageNum', 'MedConfidence', 'AvgConfidence', 'RangeConfidence', 'IQRConfidence','MedLineLen', 'ContainsFigWord', 'ContainsFigLn', 'FigPos', 'FigPage'])
-        df = df.append(pgdf, ignore_index=True)
-    return df
+y_column = 'FigPage'
+columns = ['DocID', 'PageNum', 'MedConfidence', 'AvgConfidence', 'RangeConfidence', 'IQRConfidence','MedLineLen', 'ContainsFigWord', 'ContainsFigLn', 'FigPos', y_column]
+limited_cols = ['DocID']
 
 
-def create_individual_dataset(docid, docinfo, doclines):
-    #pagesinfo = settings.get_restructpageinfo_file(docid)
-    #pageslines = settings.get_restructpagelines_file(docid)
-    pi = docinfo #json.load(open(pagesinfo))
-    #pl = json.load(open(pageslines))
-    docset = np.zeros((len(pi.items()), 11))
-
-    for info, lines, i in zip(pi.items(), doclines.items(), range(len(pi))):
+def write_to_dataset(pi, docid):
+    docset = np.zeros((len(pi.items()), len(columns)))
+    for info, i in zip(pi.items(), range(len(pi))):
         fig = 0
         figln = 0
         figlnpos = -1
         confs = []
         linelens = []
-        for line, inf, j in zip(lines[1], info[1], range(len(lines[1]))):
+        for inf, j in zip(info[1], range(len(info[1]))):
             confs.append(inf['Confidence'])
-            linelens.append(len(line))
-            if 'figure' in line.lower():
+            linelens.append(len(inf['Text']))
+            if 'figure' in inf['Text'].lower():
                 fig = 1
                 if figlnpos == -1:
-                    figlnpos = j / len(lines[1])
-                if re.search(r'Figure\s\d+\.*\s*\w*', line) or re.search(r'FIGURE\s\d+\.*\s*\w*', line):
+                    figlnpos = j / len(info[1])
+                if re.search(r'Figure\s\d+\.*\s*\w*', inf['Text']) or re.search(r'FIGURE\s\d+\.*\s*\w*', inf['Text']):
                     figln = 1
-                    figlnpos = j / len(lines[1])
+                    figlnpos = j / len(info[1])
         medconf = np.median(np.array(confs))
         avgconf = np.average(np.array(confs))
         rangeconf = np.max(np.array(confs)) - np.min(np.array(confs))
@@ -86,65 +46,37 @@ def create_individual_dataset(docid, docinfo, doclines):
         iqr = q75 - q25
 
         docset[i] = np.array([docid.strip('cr_'), info[0], medconf, avgconf, rangeconf, iqr, medlineln, fig, figln, figlnpos, 0])
-    df = pd.DataFrame(docset, columns=['DocID', 'PageNum', 'MedConfidence', 'AvgConfidence', 'RangeConfidence',
-                                'IQRConfidence','MedLineLen', 'ContainsFigWord', 'ContainsFigLn', 'FigPos', 'FigPage'])
+    return docset
+
+
+def create_dataset():
+    df = pd.DataFrame(columns=columns)
+    pageinfos = sorted(glob.glob('training/restructpageinfo/*.json'))
+
+    for pagesinfo in pageinfos:
+        pi = json.load(open(pagesinfo))
+        #docset = np.zeros((len(pi.items()), 11))
+        docid = pagesinfo.split('\\')[-1].replace('_1_restructpageinfo.json', '')
+        docset = write_to_dataset(pi, docid)
+        pgdf = pd.DataFrame(data=docset, columns=columns)
+        df = df.append(pgdf, ignore_index=True)
     return df
 
 
-def data_prep(data, y=False, limited_cols=None):
-    X = data.drop(['DocID', 'FigPage'], axis=1)
-
-    if limited_cols:
-        X = X.drop(limited_cols, axis=1)
-
-    if y:
-        Y = data['FigPage']
-        return X, Y
-    return X
+def create_individual_dataset(docid, docinfo, doclines):
+    pi = docinfo
+    docset = write_to_dataset(pi, docid)
+    df = pd.DataFrame(docset, columns=columns)
+    return df
 
 
-def train(datafile=settings.get_dataset_path('fig'), model_file=settings.get_model_path('fig'), limited_cols=None):
+def train(datafile=settings.get_dataset_path('fig'), model_file=settings.get_model_path('fig'), n_queries=10):
     data = pd.read_csv(datafile)
-    X, Y = data_prep(data, y=True, limited_cols=limited_cols)
-    X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.33)
-    clf = tree.DecisionTreeClassifier()
-    clf = clf.fit(X_train, y_train)
-    y_pred = clf.predict(X_test)
-    accuracy = sklearn.metrics.accuracy_score(y_test, y_pred)
+    clf = RandomForestClassifier() #tree.DecisionTreeClassifier()
+    accuracy, clf = al.active_learning(data, n_queries, y_column, estimator=clf, limit_cols=limited_cols)
     print(accuracy)
-    #tree.plot_tree(clf, feature_names=['PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord'], class_names=True, filled=True)
-    #plt.show()
     with open(model_file, "wb") as file:
         pickle.dump(clf, file)
-
-
-def train_several(X_train, X_test, y_train, y_test, limited_col=None):
-    if limited_col:
-        col = limited_col
-        xtra = X_train.drop([col], axis=1)
-        xtes = X_test.drop([col], axis=1)
-
-        clf = tree.DecisionTreeClassifier()
-        clf = clf.fit(xtra, y_train)
-        y_pred = clf.predict(xtes)
-        accuracy = sklearn.metrics.accuracy_score(y_test, y_pred)
-        print(accuracy)
-        tree.plot_tree(clf, feature_names=xtra.columns, class_names=['Not figure', 'Figure'], filled=True)
-        plt.savefig('fig_tree_' + limited_col + '.png')
-        with open("-" + col + '_' + settings.fig_tree_model_file, "wb") as file:
-            pickle.dump(clf, file)
-    else:
-        # control
-        clf = tree.DecisionTreeClassifier()
-        clf = clf.fit(X_train, y_train)
-        y_pred = clf.predict(X_test)
-        accuracy = sklearn.metrics.accuracy_score(y_test, y_pred)
-        print(accuracy)
-        tree.plot_tree(clf, feature_names=X_train.columns, class_names=['Not figure', 'Figure'], filled=True)
-        plt.savefig('fig_tree_1.png')
-        model_file = settings.fig_tree_model_file
-        with open(model_file, "wb") as file:
-            pickle.dump(clf, file)
 
 
 def classify_page(data):
@@ -152,7 +84,7 @@ def classify_page(data):
         train(data)
     with open(settings.fig_tree_model_file, "rb") as file:
         model = pickle.load(file)
-    data = data_prep(data)
+    data = mlh.data_prep(data, limit_cols=limited_cols)
     pred = model.predict(data)
     return pred
 
@@ -179,10 +111,6 @@ if __name__ == "__main__":
     X = data.drop(['DocID', 'FigPage'], axis=1)
     Y = data['FigPage']
     X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.33)
-
-    train_several(X_train, X_test, y_train, y_test)
-    train_several(X_train, X_test, y_train, y_test, limited_col='MedConfidence')
-    train_several(X_train, X_test, y_train, y_test, limited_col='AvgConfidence')
 
     #fig_pages = get_fig_pages()
     #print(fig_pages)

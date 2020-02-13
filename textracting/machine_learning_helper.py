@@ -60,6 +60,13 @@ def add_legacy_y(prev_dataset, df, y_column, line=False, page=True):
     return df
 
 
+def classify(data, model_name, limit_cols, mode=settings.dataset_version):
+    with open(settings.get_model_path(model_name, mode), "rb") as file:
+        model = pickle.load(file)
+    data = data_prep(data, limit_cols=limit_cols)
+    pred = model.predict(data)
+    return pred
+
 #
 # def classify(data, model_file, training_function):
 #     if not os.path.exists(model_file):

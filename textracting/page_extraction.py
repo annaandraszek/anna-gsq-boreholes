@@ -109,22 +109,6 @@ class NeuralNetwork():
                       metrics=['accuracy'])
         return model
 
-    # def LSTM(self):
-    #     model = Sequential()
-    #     model.add(Embedding(input_length=self.max_len, input_dim=self.max_words + 1, output_dim=self.max_len))  # 256))
-    #     #model.add(LSTM(48, return_sequences=True))
-    #     model.add(LSTM(192))
-    #     model.add(Dropout(0.1))
-    #     #model.add(Flatten())
-    #     model.add(Dense(self.max_len, activation='softmax'))
-    #
-    #     model.compile(loss='categorical_crossentropy',
-    #                   optimizer='rmsprop',
-    #                   metrics=['accuracy'])
-    #     return model
-
-
-
     def load_model_from_file(self):
         self.model = load_model(self.model_loc)
         self.tok = joblib.load(self.tok_loc)

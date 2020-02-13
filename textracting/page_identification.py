@@ -21,6 +21,7 @@ from keras.models import Sequential
 from keras.layers import LSTM, Dense, Dropout, Embedding
 from keras.utils import to_categorical
 
+
 class NeuralNetwork():
     epochs = 15
     batch_size = 15

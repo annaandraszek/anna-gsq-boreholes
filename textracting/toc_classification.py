@@ -16,9 +16,11 @@ import os
 import active_learning
 import machine_learning_helper as mlh
 
-columns = ['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf',
-           'PrevPageTOC', 'TOCPage', 'TagMethod']
 
+y_column = 'TOCPage'
+columns = ['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf',
+           'PrevPageTOC', y_column, 'TagMethod']
+estimator = RandomForestClassifier()
 
 def create_dataset():
     df = pd.DataFrame(columns=columns)
@@ -45,50 +47,18 @@ def create_dataset():
         df = df.append(pgdf, ignore_index=True)
 
     prev_toc_dataset = settings.dataset_path + 'toc_dataset.csv'
-    y_column = 'TOCPage'
+    #y_column = 'TOCPage'
     df = mlh.add_legacy_y(prev_toc_dataset, df, y_column)
-    # if os.path.exists(prev_toc_dataset):
-    #     prev = pd.read_csv(prev_toc_dataset, dtype=int)
-    #     df[y_column] = df.apply(lambda x: mlh.assign_y(x, prev, y_column), axis=1)
-    #     df['TagMethod'].loc[df[y_column] == df[y_column]] = "legacy"
     return df
 
 
-# def assign_y(x, prev):
-#     d, p = int(x['DocID']), int(x['PageNum'])
-#     y = (prev['TOCPage'].loc[(prev['DocID'] == d) & (prev['PageNum'] == p)])
-#     if len(y) == 0:
-#         return None
-#     elif len(y) == 1:
-#         return y.values[0]
-#     else:
-#         print("more rows than 1? ")
-#         print(y.values)
-
-
-def data_prep(data, y=False, limit_cols=None):
-    #data = data.drop(['Comments'], axis=1)
-    #data = data.dropna()
-    X = data.drop(columns=['TOCPage'])  #, 'TagMethod'])
-    #X = data[['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf', 'PrevPageTOC']]
-    if limit_cols:
-        X = X.drop(columns=limit_cols)
-    if y:
-        Y = data.TOCPage
-        return X, Y  #.astype(pd.Int64Dtype()), Y.astype(pd.Int64Dtype())
-    return X  #.astype(pd.Int64Dtype())
-
-
 def train(datafile=settings.get_dataset_path('toc'), n_queries=10):
-    data = pd.read_csv(datafile, )
+    data = pd.read_csv(datafile)
     data[['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf',
           'PrevPageTOC', 'TOCPage']] = data[['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf',
            'PrevPageTOC', 'TOCPage']].astype("Int64")
     data['TagMethod'] = data['TagMethod'].astype("string")
-    y_column = 'TOCPage'
-    estimator = RandomForestClassifier()
     accuracy, learner = active_learning.train(data, y_column, n_queries, estimator, datafile)
-
     with open(settings.get_model_path('toc'), "wb") as file:
         pickle.dump(learner, file)
     print("End of training stage. Re-run to train again")
@@ -98,7 +68,7 @@ def train(datafile=settings.get_dataset_path('toc'), n_queries=10):
 def tag_prevpagetoc():
     source = settings.get_dataset_path('toc')
     df = pd.read_csv(source)
-    tocdf = df.loc[df['TOCPage'] == 1]
+    tocdf = df.loc[df[y_column] == 1]
     count = 0
     for i, row in tocdf.iterrows():
         d, p = row.DocID, row.PageNum + 1
@@ -110,8 +80,8 @@ def tag_prevpagetoc():
         if df.at[i, 'PrevPageTOC'] != 1:
             df.at[i, 'PrevPageTOC'] = 1
             count += 1
-            if (df.at[i, 'TagMethod'] == 'auto') & (df.at[i, 'TOCPage'] == 0):  # only overwrite automatically tagged # if page already isn't 0, don't None
-                df.at[i, 'TOCPage'] = None  # reset to tag again
+            if (df.at[i, 'TagMethod'] == 'auto') & (df.at[i, y_column] == 0):  # only overwrite automatically tagged # if page already isn't 0, don't None
+                df.at[i, y_column] = None  # reset to tag again
     df.to_csv(settings.get_dataset_path('toc'), index=False)
     return count
 
@@ -120,7 +90,7 @@ def check_tags(show=False):
     source = settings.get_dataset_path('toc')
     df = pd.read_csv(source)
     test = df.loc[(df['ContainsContentsWord'] == 1) | (df['ContainsTOCPhrase'] == 1) | (df['ContainsListOf'] == 1)]
-    bad = test.loc[test['TOCPage'] == 0]
+    bad = test.loc[test[y_column] == 0]
     print("Samples with 'Contents' or 'Table of Contents' or 'List of' but not tagged as TOC, or ListOf: ")
     c = 0
     for i, row in bad.iterrows():
@@ -128,26 +98,23 @@ def check_tags(show=False):
             print(i, row)
             active_learning.display_page(row.DocID, row.PageNum)
         if df.at[i, 'TagMethod'] != 'manual':  # can edit auto or legacy
-            df.at[i, 'TOCPage'] = None
+            df.at[i, y_column] = None
             c += 1
     print("count: ", c)
     df.to_csv(source, index=False)
 
 
-def classify_page(data):
-    if not os.path.exists(settings.get_model_path('toc')):
-        train(data)
-    with open(settings.get_model_path('toc'), "rb") as file:
-        model = pickle.load(file)
-    data = data_prep(data, limit_cols=['DocID'])
-    pred = model.predict(data)
-    return pred
+def classify_page(data, mode=settings.dataset_version):
+    if mode == settings.dataset_version:
+        if not os.path.exists(settings.get_model_path('toc')):
+            train(data)
+    return mlh.classify(data, 'toc', mode=mode, limit_cols=['DocID'])
 
 
-def get_toc_pages(df):
+def get_toc_pages(df, mode=settings.dataset_version):
     #data_file = settings.production_path + docid + '_toc_dataset.csv'
     #df = pd.read_csv(data_file)
-    classes = classify_page(df)
+    classes = classify_page(df, mode)  #classify_page(df)
     mask = np.array([True if i==1 else False for i in classes])
     toc_pages = df[mask]
     return toc_pages

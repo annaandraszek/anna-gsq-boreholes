@@ -121,7 +121,7 @@ class Report():
 
     def get_toc_page(self):
         data = self.create_toc_dataset()
-        toc_pages = toc_classification.get_toc_pages(data)
+        toc_pages = toc_classification.get_toc_pages(data, mode=settings.production)
         try:
             toc = int(toc_pages['PageNum'].values[0])
         except IndexError:

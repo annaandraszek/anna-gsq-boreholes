@@ -83,27 +83,15 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
 
     def train(self, datafile=settings.get_dataset_path('proc_heading_id_toc'), n_queries=10):  #settings.dataset_path + 'processed_heading_id_dataset_cyfra1.csv'):
         df = pd.read_csv(datafile)
-        #self.X = df['SectionText']
-        #self.Y = df['Heading']
         self.max_words, self.max_len = check_maxlens(df)
 
         lstm = KerasClassifier(build_fn=self.LSTM, batch_size=self.batch_size, epochs=self.epochs,
                   validation_split=0.2)
-        #X_train, X_test, Y_train, Y_test = train_test_split(self.X, self.Y, test_size=0.15)
 
         clf = Pipeline([
             ('transform', Text2Seq()),
             ('lstm', lstm)
         ], verbose=True)
-
-        #clf = clf.fit(X_train, Y_train)
-
-        #self.model = clf
-        #preds = clf.predict(X_test)
-        #accr = accuracy_score(Y_test, preds)
-        #print("Test set accuracy: ", accr)
-        #print('Test set\n  Loss: {:0.3f}\n  Accuracy: {:0.3f}'.format(accr[0], accr[1]))
-        #self.model.save(self.model_loc)
 
         y_column = 'Heading'
         estimator = clf
@@ -131,7 +119,6 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
 
     def load_model_from_file(self):
         self.model = joblib.load(self.model_loc)  #load_model(self.model_loc)
-
 
     def predict(self, strings, encode=False):
         if not os.path.exists(self.model_loc):
@@ -289,27 +276,8 @@ def create_identification_dataset():
     prev_dataset = settings.dataset_path + 'heading_id_toc_dataset.csv'
     y_column = 'Heading'
     df = mlh.add_legacy_y(prev_dataset, df, y_column, line=True, page=False)  # page not present in legacy dataset
-    # if os.path.exists(prev_dataset):
-    #     prev = pd.read_csv(prev_dataset, dtype={'DocID': int, 'LineNum': int, 'LineText': str, 'Heading': int})
-    #
-    #     #df['Heading'].loc[(prev['DocID'] == df['DocID']) & (prev['LineNum'] == df['LineNum'])] = prev['Heading']
-    #     df['Heading'] = df.apply(lambda x: assign_y(x, prev), axis=1)
-    #     df['TagMethod'].loc[df['Heading'] == df['Heading']] = "legacy"
-    #
     df.to_csv(settings.get_dataset_path('heading_id_toc'), index=False)
     return df
-
-
-# def assign_y(x, prev):
-#     d, l = int(x['DocID']), int(x['LineNum']) - 1  # prev dataset has linenum starting at 0 >:[
-#     y = prev['Heading'].loc[(prev['DocID'] == d) & (prev['LineNum'] == l)]
-#     if len(y) == 0:
-#         return None
-#     elif len(y) == 1:
-#         return y.values[0]
-#     else:
-#         print("more rows than 1")  # very possible now that multiple toc pages are possible and legacy doesn't have pagenum to compare against
-#         print(y.values)
 
 
 def train(n_queries=10):

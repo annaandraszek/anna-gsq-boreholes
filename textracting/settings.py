@@ -35,9 +35,12 @@ ml['proc_head_id_toc'] = 'processed_' + ml['head_id_toc']
 ml['head_id_intext_no_toc'] = ml['head_id_intext'] + '_no_toc'
 
 
-dataset_version = 'expansion1'
-def get_model_path(model, type=None, training_name=dataset_version, tokeniser=False, classes=False):
-    path = model_path + training_name + '/' + model
+dataset_version = 'expansion1'  # folder of models/data in progress of being developed
+production = 'production'  # folder of last working models
+
+
+def get_model_path(model, type=None, set=dataset_version, tokeniser=False, classes=False):
+    path = model_path + set + '/' + model
     if type:
         path += '_' + type
     path += "_model"
