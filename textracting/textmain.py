@@ -19,7 +19,7 @@ def textract_many(docids, features):
 
 
 if __name__ == "__main__":
-    s3BucketName = 'gsq-staging'
+    s3BucketName = 'gsq-horizon'
     pre = 'cr_' # 'smaller_'
     docs = ['30281']
     for doc_path in docs:

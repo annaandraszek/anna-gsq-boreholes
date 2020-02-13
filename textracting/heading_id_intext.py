@@ -25,6 +25,7 @@ import textdistance
 #import spacy
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 import numpy as np
+import active_learning
 
 def num2cyfra1(string):
     s = ''
@@ -52,6 +53,8 @@ class Text2CNBPrediction(TransformerMixin, BaseEstimator):
         #x, y = check_X_y(x, y, accept_sparse=True)
         #self.n_features_ = x.shape[1]
         # add to pipeline: first step transforming all numbers to cyfra1 format
+        if isinstance(x, np.ndarray):
+            x = pd.Series(x)
         text_clf = Pipeline([
             ('n2c', Num2Cyfra1()),
             ('tf', TfidfVectorizer(analyzer='word', ngram_range=(1,2))),
@@ -109,6 +112,8 @@ class Num2Cyfra1(TransformerMixin, BaseEstimator):
         return self
 
     def transform(self, data):
+        if isinstance(data, np.ndarray):
+            data = pd.Series(data)
         data = data.apply(lambda x: num2cyfra1(x))
         return data  # check what form this is in
 
@@ -124,14 +129,14 @@ def contains_num(x):
 # kinda awkward because you're creating it from another dataset...so you're depending on that one to be complete
 def create_dataset(datafile = settings.get_dataset_path('heading_id_intext'), docid=False): #datafile=settings.dataset_path + 'heading_id_intext_dataset.csv', docid=False):
     sourcefile = settings.get_dataset_path('marginal_lines')
-    df = pd.read_csv(sourcefile)
+    df = pd.read_csv(sourcefile, dtype={'DocID': int, 'PageNum': int, 'LineNum': int, 'Heading': int})
 
     if docid:
         df = df.loc[df['DocID'] == float(docid)]
     # remove ContainsTab, ContainsPage
     df = df.drop(['ContainsTab', 'ContainsPage'], axis=1)
     # remove rows with Marginal == 1 or 2. then remove marginal column
-    df = df.loc[df.Marginal == 0]
+    df = df.loc[(df.Marginal == 0) | (df.Marginal != df.Marginal)]
     df = df.drop(['Marginal'], axis=1)
     # find ALL the toc pages and remove their lines from the dataset
     # find ALL the fig pages and remove their lines from the dataset
@@ -150,38 +155,52 @@ def create_dataset(datafile = settings.get_dataset_path('heading_id_intext'), do
     # update contains num to just re.search('[0-9]+')
     df['ContainsNum'] = df.Text.apply(lambda x: contains_num(x))
     # add column: line word count
+    df.dropna(subset=['Text'], inplace=True)    # remove nans
     df['WordCount'] = df.Text.apply(lambda x: len(x.split()))
 
-    proc_df = pd.read_csv(settings.get_dataset_path('processed_heading_id_toc'))
-    proc_head_df = proc_df.loc[proc_df.Heading > 0]
+    proc_df = pd.read_csv(settings.get_dataset_path('proc_heading_id_toc'))
+    proc_head_df = proc_df.loc[proc_df.Heading > 0]  # works with None type? no, but works with NaN and it should be that
     proc_head_df['Text'] = proc_head_df.apply(lambda x: str(x.SectionPrefix) + ' ' + x.SectionText, axis=1)
     series_mh = pd.Series()
     series_mt = pd.Series()
     series_mi = pd.Series()
 
-    for docid in df.DocID.unique():
-        doc_toc = proc_head_df.loc[proc_head_df.DocID == float(docid)]
-        df_doc = df.loc[df.DocID == float(docid)]
+    for id in df.DocID.unique():
+        doc_toc = proc_head_df.loc[proc_head_df.DocID == float(id)]
+        df_doc = df.loc[df.DocID == float(id)]
         matches_heading, matches_type, matches_i = compare_lines2headings(df_doc.Text, doc_toc)
-        print(len(matches_heading) == df_doc.shape[0], docid)
+        print(len(matches_heading) == df_doc.shape[0], id)
         series_mh = series_mh.append(pd.Series(matches_heading), ignore_index=True)
         series_mt = series_mt.append(pd.Series(matches_type), ignore_index=True)
         series_mi = series_mi.append(pd.Series(matches_i), ignore_index=True)
 
     df['MatchesHeading'], df['MatchesType'], df['MatchesI'] = series_mh, series_mt, series_mi
     df['TagMethod'] = None
+    df['Heading'] = None
     prev_dataset = settings.dataset_path + 'heading_id_intext_dataset.csv'
     if os.path.exists(prev_dataset):
-        prev = pd.read_csv(prev_dataset)
-        df['Heading'].loc[(prev['DocID'] == df['DocID']) & (prev['PageNum'] == df['PageNum']) & (prev['LineNum'] == df['LineNum'])] = prev['Heading']
-        df['TagMethod'].loc[df['Heading'] == df['Heading']] = "legacy"
+        prev = pd.read_csv(prev_dataset, dtype={'DocID': int, 'PageNum': int, 'LineNum': int, 'Heading': int})
 
+        #df['Heading'].loc[(prev['DocID'] == df['DocID']) & (prev['PageNum'] == df['PageNum']) & (prev['LineNum'] == df['LineNum'])] = prev['Heading']
+        df['Heading'] = df.apply(lambda x: assign_y(x, prev), axis=1)
+        df['TagMethod'].loc[df['Heading'] == df['Heading']] = "legacy"
 
     if not docid:
         df.to_csv(datafile, index=False)
-    df['Heading'] = 0
+    #df['Heading'] = 0
     return df
 
+
+def assign_y(x, prev):
+    d, p, l = int(x['DocID']), int(x['PageNum']), int(x['LineNum']) - 1  # prev dataset has linenum starting at 0 >:[
+    y = prev['Heading'].loc[(prev['DocID'] == d) & (prev['PageNum'] == p) & (prev['LineNum'] == l)]
+    if len(y) == 0:
+        return None
+    elif len(y) == 1:
+        return y.values[0]
+    else:
+        print("more rows than 1")  # very possible now that multiple toc pages are possible and legacy doesn't have pagenum to compare against
+        print(y.values)
 
 #model = spacy.load('en_core_web_md')
 
@@ -264,32 +283,39 @@ def data_prep(df, y=False, limit_cols=None):
         return X
 
 
-def train(datafile=settings.get_dataset_path('heading_id_intext'), model_file=settings.get_model_path('heading_id_intext')):  #settings.dataset_path + 'heading_id_intext_dataset.csv'),
+def train(datafile=settings.get_dataset_path('heading_id_intext'), model_file=settings.get_model_path('heading_id_intext'), n_queries=10):  #settings.dataset_path + 'heading_id_intext_dataset.csv'),
           #model_file=settings.heading_id_intext_model_file):
     data = pd.read_csv(datafile)
+    limit_cols = ['DocID', 'LineNum', 'WordsWidth', 'NormedLineNum', 'Top', 'Centrality',  'MatchesI']
     if 'no_toc' in model_file:
-        X, Y = data_prep(data, y=True, limit_cols=['MatchesHeading', 'MatchesType']) # not MatchesI because it's already dropped
-    else:
-        X, Y = data_prep(data, y=True)
-    X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.20)
+        limit_cols.extend(['MatchesHeading', 'MatchesType'])
+    #    X, Y = data_prep(data, y=True, limit_cols=['MatchesHeading', 'MatchesType']) # not MatchesI because it's already dropped
+    #else:
+    #    X, Y = data_prep(data, y=True)
+    #X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size = 0.20)
 
     clf = Pipeline([
         ('text', ColumnTransformer([
-            ('cnb', Text2CNBPrediction(), 'Text')
+            ('cnb', Text2CNBPrediction(), 1)  # 1 HAS TO BE 'TEXT'. changing it to int bc AL uses np arrays
         ], remainder="passthrough")),
         ('forest', RandomForestClassifier())
     ], verbose=True)
 
-    clf = clf.fit(X_train, y_train)
-    y_pred = clf.predict(X_test)
+    #clf = clf.fit(X_train, y_train)
+    #y_pred = clf.predict(X_test)
 
-    accuracy = accuracy_score(y_test, y_pred)
+    y_column = 'Heading'
+    estimator = clf
+
+    accuracy, learner = active_learning.train(data, y_column, n_queries, estimator, datafile, limit_cols)
+
+    #accuracy = accuracy_score(y_test, y_pred)
     print(accuracy)
-    y_true, y_pred = Y, clf.predict(X)
-    report = classification_report(y_true, y_pred)
-    print(report)
-    conf_matrix = confusion_matrix(y_true, y_pred)
-    print(conf_matrix)
+    #y_true, y_pred = Y, clf.predict(X)
+    #report = classification_report(y_true, y_pred)
+    #print(report)
+    #conf_matrix = confusion_matrix(y_true, y_pred)
+    #print(conf_matrix)
 
     #temp = pd.DataFrame(data=data)
     #temp['y_pred'] = y_pred
@@ -305,7 +331,8 @@ def train(datafile=settings.get_dataset_path('heading_id_intext'), model_file=se
 
     with open(model_file, "wb") as file:
         pickle.dump(clf, file)
-    #cnb_predictor = Text2CNBPrediction()
+    print("End of training stage. Re-run to train again")
+          #cnb_predictor = Text2CNBPrediction()
     #Text2CNBPrediction.__module__ = "heading_id_intext"
     #with open("models/cnb_predictor.pkl", 'wb') as file:
     #    pickle.dump(cnb_predictor, file)
@@ -342,18 +369,19 @@ def get_headings_intext(data, toc_page):
 
 
 if __name__ == '__main__':
-    data_path = settings.dataset_path + 'heading_id_intext_dataset.csv'
+    #data_path = settings.dataset_path + 'heading_id_intext_dataset.csv'
     #data = pd.read_csv(data_path)
-    #create_dataset(data_path)
+    #create_dataset()
+    train()
     #edit_dataset(data_path)
-    data = pd.read_csv(data_path)
-    model_files = [settings.heading_id_intext_model_file, settings.heading_id_intext_model_file_no_toc]
-    for file in model_files:
-        train(data, model_file=file)
-        preds = classify(data, model_file=file)
-        x = 0
-        for i, row in data.iterrows():
-            if preds[i] != row.Heading:
-                print(row.DocID, '\t', row.PageNum, ',', row.LineNum, '\t', row.Text, ' | ', row.Heading, ' | ', preds[i])
-                x += 1
-        print('Wrong classifications: ', x)
+    #data = pd.read_csv(data_path)
+    # model_files = [settings.get_model_path('heading_id_intext'), settings.get_model_path('heading_id_intext_no_toc')]
+    # for file in model_files:
+    #     train(model_file=file)
+        # preds = classify(data, model_file=file)
+        # x = 0
+        # for i, row in data.iterrows():
+        #     if preds[i] != row.Heading:
+        #         print(row.DocID, '\t', row.PageNum, ',', row.LineNum, '\t', row.Text, ' | ', row.Heading, ' | ', preds[i])
+        #         x += 1
+        # print('Wrong classifications: ', x)

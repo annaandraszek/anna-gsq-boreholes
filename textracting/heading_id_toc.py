@@ -18,7 +18,7 @@ import settings
 from sklearn.pipeline import Pipeline
 from sklearn.base import BaseEstimator, TransformerMixin
 from keras.wrappers.scikit_learn import KerasClassifier
-from sklearn.preprocessing import LabelBinarizer
+from sklearn.preprocessing import LabelBinarizer, label_binarize
 from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
 import active_learning
 
@@ -26,7 +26,8 @@ import active_learning
 class Text2Seq(TransformerMixin, BaseEstimator):
     def __init__(self):
         self.tok = Tokenizer()
-        self.labelbin = LabelBinarizer()
+        #self.labelbin = LabelBinarizer()
+        self.classes = [0, 1, 2]
 
     def fit(self, x, y=None):
         if isinstance(x, list):  # when the AL does predict proba, gives a single sample inside a 1-element list
@@ -36,17 +37,17 @@ class Text2Seq(TransformerMixin, BaseEstimator):
         if isinstance(x, np.ndarray):
             x = pd.Series(data=x.T[0])
         if isinstance(x, pd.DataFrame):  # may be df or ndarray
-            x = x['SectionText']
+            x = x['LineText']
         self.tok.fit_on_texts(x)  # have to specify the column to give it a series
 
-        if y is not None:
-            self.labelbin.fit(y)
+        #if y is not None:
+        #    self.labelbin.fit(y)
 
         return self
 
     def transform(self, x, y=None):
         if isinstance(x, pd.DataFrame):  # may be df or ndarray
-            x = x['SectionText']
+            x = x['LineText']
         if isinstance(x, list):  # when the AL does predict proba, gives a single sample inside a 1-element list
             if len(x) != 1:
                 print("x is longer than one sample, ", x)  # check in case it gives multiple samples and this code is wrong??
@@ -57,7 +58,8 @@ class Text2Seq(TransformerMixin, BaseEstimator):
         sequences_matrix = sequence.pad_sequences(sequences)
 
         if y:
-            y_binary = self.labelbin.transform(y)
+            y_binary = label_binarize(y, self.classes)
+            #y_binary = self.labelbin.transform(y)
             return sequences_matrix, y_binary
 
         return sequences_matrix
@@ -104,7 +106,7 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
 
         y_column = 'Heading'
         estimator = clf
-        accuracy, learner = active_learning.train(df, y_column, n_queries, estimator, datafile, limit_cols=['PageNum', 'LineNum'])
+        accuracy, learner = active_learning.train(df, y_column, n_queries, estimator, datafile, limit_cols=['PageNum', 'LineNum', 'SectionPrefix', 'SectionText', 'SectionPage'])
         self.model = learner
         with open(self.model_loc, "wb") as file:
             joblib.dump(learner, file)
@@ -251,8 +253,8 @@ def pre_process_id_dataset(pre='cyfra1', datafile=settings.get_dataset_path('hea
     newdf.dropna(inplace=True, subset=['SectionText'])
     newdf.replace(np.nan, '', inplace=True)  # nan values cause issues when adding columns
 
-    newdf.SectionText = newdf.SectionPrefix + newdf.SectionText + newdf.SectionPage
-    newdf.drop(axis=1, columns=['SectionPrefix', 'SectionPage'], inplace=True)
+    newdf['LineText'] = newdf.SectionPrefix + newdf.SectionText + newdf.SectionPage
+    #newdf.drop(axis=1, columns=['SectionPrefix', 'SectionPage'], inplace=True)
     return newdf
 
 
@@ -278,7 +280,7 @@ def create_identification_dataset():
                         elif re.match(r'^[0-9]+\.*\s+\w+', line['Text']):
                             heading = 1
 
-                        docset.append([docid, page, i, line['Text'], heading, None])
+                        docset.append([docid, page, i+1, line['Text'], heading, None])
                     pgdf = pd.DataFrame(data=docset, columns=columns)
                     df = df.append(pgdf, ignore_index=True)
         except IndexError:
@@ -295,8 +297,8 @@ def create_identification_dataset():
 
 
 def assign_y(x, prev):
-    d, l = int(x['DocID']), int(x['LineNum'])
-    y = (prev['Heading'].loc[(prev['DocID'] == d) & (prev['LineNum'] == l)])
+    d, l = int(x['DocID']), int(x['LineNum']) - 1  # prev dataset has linenum starting at 0 >:[
+    y = prev['Heading'].loc[(prev['DocID'] == d) & (prev['LineNum'] == l)]
     if len(y) == 0:
         return None
     elif len(y) == 1:
@@ -304,6 +306,17 @@ def assign_y(x, prev):
     else:
         print("more rows than 1")  # very possible now that multiple toc pages are possible and legacy doesn't have pagenum to compare against
         print(y.values)
+
+
+def train(n_queries=10):
+    if not os.path.exists(settings.get_dataset_path('proc_heading_id_toc')):
+        if not os.path.exists(settings.get_dataset_path('heading_id_toc')):
+            create_identification_dataset()
+        df = pre_process_id_dataset()
+        df.to_csv(settings.get_dataset_path('proc_heading_id_toc'))
+
+    nn = NeuralNetwork()
+    nn.train(n_queries=n_queries)
 
 
 if __name__ == '__main__':

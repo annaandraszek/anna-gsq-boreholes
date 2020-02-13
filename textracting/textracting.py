@@ -13,11 +13,13 @@ import img2pdf
 import os
 import time
 
+bucket = 'gsq-horizon'
+
 def find_file(docid):  # for finding the file type of a report
     file_pre = settings.get_s3_location(docid, format=None)
     client = boto3.client('s3')
     #my_bucket = s3.Bucket('gsq-staging/QDEX')
-    files = client.list_objects_v2(Bucket='gsq-staging', Prefix=file_pre)
+    files = client.list_objects_v2(Bucket=bucket, Prefix=file_pre)
     if not 'Contents' in files.keys():
         raise FileNotFoundError
     for file in files['Contents']:
@@ -74,7 +76,7 @@ def getJobResults(jobId):
         pages.append(response)
         print("Resultset page recieved: {}".format(len(pages)))
         nextToken = None
-        if ('NextToken' in response):
+        if 'NextToken' in response:
             nextToken = response['NextToken']
     return pages
 

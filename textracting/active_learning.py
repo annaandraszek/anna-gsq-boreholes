@@ -20,7 +20,12 @@ import sklearn
 def data_prep(data, limit_cols=None, y_column=None):  # y=False,
     X = data
     if limit_cols:
-        X = X.drop(columns=limit_cols)
+        #X = X.drop(columns=limit_cols)
+        for col in limit_cols:
+            try:
+                X = X.drop(columns=[col])
+            except:
+                print('column ', col, " doesn't exist in X")  # makes it ok to accidentally have multiple of the same col in limit_cols
     if y_column:
         X = X.drop(columns=[y_column])
         Y = data[y_column]
@@ -127,6 +132,7 @@ def active_learning(data, n_queries, y_column, estimator=RandomForestClassifier(
     #      np.concatenate((query_inst, np.array([preds]).T, y_new.reshape(-1, 1)), axis=1))
     print(sklearn.metrics.confusion_matrix(preds, y_test.astype(int)))
     accuracy = accuracy_scores[-1]
+    print(accuracy)
     return data, accuracy, learner
 
 
@@ -232,7 +238,8 @@ def al_data_prep(data, y_column, limit_cols=None):  # to generalise further, sho
     X_pool, y_pool = data_prep(unlabelled, limit_cols=limit_cols, y_column=y_column)
     ref_idx = X_pool.index.values
     refs['idx'] = ref_idx
-    X_pool, y_pool = X_pool.to_numpy(), y_pool.to_numpy()
+    X_pool.dropna(inplace=True)
+    #X_pool, y_pool = X_pool.to_numpy(), y_pool.to_numpy()  # COMMENT OUT FOR DEBUG
     return X_initial, Y_initial, X_pool, y_pool, refs
 
 

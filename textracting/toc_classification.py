@@ -81,7 +81,7 @@ def assign_y(x, prev):
 def data_prep(data, y=False, limit_cols=None):
     #data = data.drop(['Comments'], axis=1)
     #data = data.dropna()
-    X = data.drop(columns=['TOCPage', 'TagMethod'])
+    X = data.drop(columns=['TOCPage'])  #, 'TagMethod'])
     #X = data[['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf', 'PrevPageTOC']]
     if limit_cols:
         X = X.drop(columns=limit_cols)

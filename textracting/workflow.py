@@ -5,18 +5,12 @@
 # with small number of noisy reports, remove noise with heuristics, (and potentially use dataset and model in the future)
     # cleanpage s are created from pagelineinfo. from these, restructpagelines are be created
 
-# create toc dataset from files and train
-# todo create figure dataset and train figure page classifier
-
-# todo create heading recognition dataset and train
-# todo create heading identification dataset and train
-
 
 import textmain
 import textloading
 import search_report
 import texttransforming
-from heading_id_intext import Text2CNBPrediction, Num2Cyfra1, num2cyfra1  # have to load these to load the model
+#from heading_id_intext import Text2CNBPrediction, Num2Cyfra1, num2cyfra1  # have to load these to load the model
 import os
 import settings
 import pandas as pd
@@ -79,7 +73,7 @@ if __name__ == '__main__':
             docids = args.id
             mode = 'given'
 
-        mode = "testing"
+        #mode = "testing"
         if mode == "sample" or mode == "given" or mode == "testing":
             if mode == 'sample':
                 print("Running in sample mode. Num samples: " + str(num_sample) + " Cutoff date: " + str(cutoffdate) +
