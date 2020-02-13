@@ -21,6 +21,7 @@ from keras.wrappers.scikit_learn import KerasClassifier
 from sklearn.preprocessing import LabelBinarizer, label_binarize
 from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
 import active_learning
+import machine_learning_helper as mlh
 
 
 class Text2Seq(TransformerMixin, BaseEstimator):
@@ -286,26 +287,29 @@ def create_identification_dataset():
         except IndexError:
             print("IndexError ", tocpg, docid)
     prev_dataset = settings.dataset_path + 'heading_id_toc_dataset.csv'
-    if os.path.exists(prev_dataset):
-        prev = pd.read_csv(prev_dataset, dtype={'DocID': int, 'LineNum': int, 'LineText': str, 'Heading': int})
-
-        #df['Heading'].loc[(prev['DocID'] == df['DocID']) & (prev['LineNum'] == df['LineNum'])] = prev['Heading']
-        df['Heading'] = df.apply(lambda x: assign_y(x, prev), axis=1)
-        df['TagMethod'].loc[df['Heading'] == df['Heading']] = "legacy"
+    y_column = 'Heading'
+    df = mlh.add_legacy_y(prev_dataset, df, y_column, line=True, page=False)  # page not present in legacy dataset
+    # if os.path.exists(prev_dataset):
+    #     prev = pd.read_csv(prev_dataset, dtype={'DocID': int, 'LineNum': int, 'LineText': str, 'Heading': int})
+    #
+    #     #df['Heading'].loc[(prev['DocID'] == df['DocID']) & (prev['LineNum'] == df['LineNum'])] = prev['Heading']
+    #     df['Heading'] = df.apply(lambda x: assign_y(x, prev), axis=1)
+    #     df['TagMethod'].loc[df['Heading'] == df['Heading']] = "legacy"
+    #
     df.to_csv(settings.get_dataset_path('heading_id_toc'), index=False)
     return df
 
 
-def assign_y(x, prev):
-    d, l = int(x['DocID']), int(x['LineNum']) - 1  # prev dataset has linenum starting at 0 >:[
-    y = prev['Heading'].loc[(prev['DocID'] == d) & (prev['LineNum'] == l)]
-    if len(y) == 0:
-        return None
-    elif len(y) == 1:
-        return y.values[0]
-    else:
-        print("more rows than 1")  # very possible now that multiple toc pages are possible and legacy doesn't have pagenum to compare against
-        print(y.values)
+# def assign_y(x, prev):
+#     d, l = int(x['DocID']), int(x['LineNum']) - 1  # prev dataset has linenum starting at 0 >:[
+#     y = prev['Heading'].loc[(prev['DocID'] == d) & (prev['LineNum'] == l)]
+#     if len(y) == 0:
+#         return None
+#     elif len(y) == 1:
+#         return y.values[0]
+#     else:
+#         print("more rows than 1")  # very possible now that multiple toc pages are possible and legacy doesn't have pagenum to compare against
+#         print(y.values)
 
 
 def train(n_queries=10):

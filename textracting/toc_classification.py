@@ -10,36 +10,24 @@ import numpy as np
 import glob
 import settings
 import json
-from sklearn import tree
 from sklearn.ensemble import RandomForestClassifier
-import sklearn
 import pickle
 import os
-from modAL.models import ActiveLearner
-from modAL.uncertainty import uncertainty_sampling, margin_sampling
-from PIL import ImageDraw, Image
-import matplotlib.pyplot as plt
-from IPython import display
 import active_learning
-
+import machine_learning_helper as mlh
 
 columns = ['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf',
            'PrevPageTOC', 'TOCPage', 'TagMethod']
 
 
-
 def create_dataset():
-    #columns = ['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf', 'PrevPageTOC', 'TOCPage']
     df = pd.DataFrame(columns=columns)
     pageinfos = sorted(glob.glob('training/restructpageinfo/*.json'))
-    #pagelines = sorted(glob.glob('training/pagelines/*'))
 
     for pagesinfo in pageinfos:
         pi = json.load(open(pagesinfo))
-        #pl = json.load(open(pageslines))
         docset = np.zeros((len(pi.items()), len(columns)))
         docid = (pagesinfo.split('\\')[-1].replace('_1_restructpageinfo.json', '')).strip('cr_')
-        #save_report_pages(docid)
         for info, j in zip(pi.items(), range(len(pi.items()))):
             toc = 0
             c = 0
@@ -52,30 +40,30 @@ def create_dataset():
                         toc = 1
                 if 'list of' in line['Text'].lower():
                     listof = 1
-                # if docset[j-1][3] == 1 or docset[j-1][4] == 1:
-                #     prev_pg_toc = 1
             docset[j] = np.array([docid, info[0], len(info[1]), toc, c, listof, prev_pg_toc, None, None])
         pgdf = pd.DataFrame(data=docset, columns=columns)
         df = df.append(pgdf, ignore_index=True)
 
     prev_toc_dataset = settings.dataset_path + 'toc_dataset.csv'
-    if os.path.exists(prev_toc_dataset):
-        prev = pd.read_csv(prev_toc_dataset, dtype=int)
-        df['TOCPage'] = df.apply(lambda x: assign_y(x, prev), axis=1)
-        df['TagMethod'].loc[df['TOCPage'] == df['TOCPage']] = "legacy"
+    y_column = 'TOCPage'
+    df = mlh.add_legacy_y(prev_toc_dataset, df, y_column)
+    # if os.path.exists(prev_toc_dataset):
+    #     prev = pd.read_csv(prev_toc_dataset, dtype=int)
+    #     df[y_column] = df.apply(lambda x: mlh.assign_y(x, prev, y_column), axis=1)
+    #     df['TagMethod'].loc[df[y_column] == df[y_column]] = "legacy"
     return df
 
 
-def assign_y(x, prev):
-    d, p = int(x['DocID']), int(x['PageNum'])
-    y = (prev['TOCPage'].loc[(prev['DocID'] == d) & (prev['PageNum'] == p)])
-    if len(y) == 0:
-        return None
-    elif len(y) == 1:
-        return y.values[0]
-    else:
-        print("more rows than 1? ")
-        print(y.values)
+# def assign_y(x, prev):
+#     d, p = int(x['DocID']), int(x['PageNum'])
+#     y = (prev['TOCPage'].loc[(prev['DocID'] == d) & (prev['PageNum'] == p)])
+#     if len(y) == 0:
+#         return None
+#     elif len(y) == 1:
+#         return y.values[0]
+#     else:
+#         print("more rows than 1? ")
+#         print(y.values)
 
 
 def data_prep(data, y=False, limit_cols=None):
@@ -92,7 +80,7 @@ def data_prep(data, y=False, limit_cols=None):
 
 
 def train(datafile=settings.get_dataset_path('toc'), n_queries=10):
-    data = pd.read_csv(datafile)
+    data = pd.read_csv(datafile, )
     data[['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf',
           'PrevPageTOC', 'TOCPage']] = data[['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf',
            'PrevPageTOC', 'TOCPage']].astype("Int64")
@@ -114,21 +102,16 @@ def tag_prevpagetoc():
     count = 0
     for i, row in tocdf.iterrows():
         d, p = row.DocID, row.PageNum + 1
-        #try:
         view = df[(df['DocID'] == d) & (df['PageNum'] == p)]
         idx = view.index.values  # should only be one indice
         if len(idx) == 0:
             continue
         i = idx[0]
-            #print("len idx: ", len(idx))  # debug check
-            #for i in idx:
         if df.at[i, 'PrevPageTOC'] != 1:
             df.at[i, 'PrevPageTOC'] = 1
             count += 1
             if (df.at[i, 'TagMethod'] == 'auto') & (df.at[i, 'TOCPage'] == 0):  # only overwrite automatically tagged # if page already isn't 0, don't None
                 df.at[i, 'TOCPage'] = None  # reset to tag again
-        #except IndexError:  # there is no next page
-        #    continue
     df.to_csv(settings.get_dataset_path('toc'), index=False)
     return count
 

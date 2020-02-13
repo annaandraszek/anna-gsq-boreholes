@@ -15,22 +15,7 @@ from sklearn.ensemble import RandomForestClassifier
 import pandas as pd
 import json
 import sklearn
-
-
-def data_prep(data, limit_cols=None, y_column=None):  # y=False,
-    X = data
-    if limit_cols:
-        #X = X.drop(columns=limit_cols)
-        for col in limit_cols:
-            try:
-                X = X.drop(columns=[col])
-            except:
-                print('column ', col, " doesn't exist in X")  # makes it ok to accidentally have multiple of the same col in limit_cols
-    if y_column:
-        X = X.drop(columns=[y_column])
-        Y = data[y_column]
-        return X, Y
-    return X
+import machine_learning_helper as mlh
 
 
 def get_input(classes):
@@ -142,7 +127,7 @@ def passive_learning(data, y_column, estimator=sklearn.ensemble.RandomForestClas
     default_drop = ['DocID', 'TagMethod']
     if limit_cols:
         default_drop.extend(limit_cols)
-    X, Y = data_prep(data, limit_cols=default_drop, y_column=y_column)
+    X, Y = mlh.data_prep(data, limit_cols=default_drop, y_column=y_column)
     #X, Y = X.astype(int), Y.astype(int)  # pd's Int64 dtype accepts NaN  # but Int64 dtype is "unknown"  # need to change this line to accept with str input, not sure how
     X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size=0.20)
 
@@ -150,7 +135,7 @@ def passive_learning(data, y_column, estimator=sklearn.ensemble.RandomForestClas
     # y_pred = learner.predict(X_test)
     # accuracy = sklearn.metrics.accuracy_score(y_test, y_pred)
     valid_set = data.loc[(data['TagMethod'] == "manual") | (data['TagMethod'] == "legacy")]
-    valid_x, valid_y = data_prep(valid_set, y_column=y_column, limit_cols=['DocID', 'TagMethod'])
+    valid_x, valid_y = mlh.data_prep(valid_set, y_column=y_column, limit_cols=default_drop)
     valid_y = valid_y.astype(int)
     # valid_x = valid_set.drop(columns=['DocID', 'TOCPage', "TagMethod"])
     y_pred = learner.predict(valid_x)
@@ -223,7 +208,7 @@ def al_data_prep(data, y_column, limit_cols=None):  # to generalise further, sho
 
     unlabelled = data.loc[data[y_column].isnull()]
     labelled = data.dropna(subset=[y_column])  # assume that will contain 0, 1 values
-    X_initial, Y_initial = data_prep(labelled, limit_cols=limit_cols, y_column=y_column)
+    X_initial, Y_initial = mlh.data_prep(labelled, limit_cols=limit_cols, y_column=y_column)
 
     refs = {}
     ref_docids = unlabelled.DocID  # removing docids from X, but keeping them around in this to ref
@@ -235,7 +220,7 @@ def al_data_prep(data, y_column, limit_cols=None):  # to generalise further, sho
         ref_linenums = unlabelled.LineNum
         refs['linenums'] = ref_linenums
 
-    X_pool, y_pool = data_prep(unlabelled, limit_cols=limit_cols, y_column=y_column)
+    X_pool, y_pool = mlh.data_prep(unlabelled, limit_cols=limit_cols, y_column=y_column)
     ref_idx = X_pool.index.values
     refs['idx'] = ref_idx
     X_pool.dropna(inplace=True)
@@ -269,3 +254,23 @@ def save_report_pages(docid):
 
 if __name__ =="__main__":
     display_page('70562', 5, 4)
+
+
+
+# def data_prep(data, limit_cols=None, y_column=None):  # y=False,
+#     X = data
+#     if limit_cols:
+#         #X = X.drop(columns=limit_cols)
+#         for col in limit_cols:
+#             try:
+#                 X = X.drop(columns=[col])
+#             except:
+#                 print('column ', col, " doesn't exist in X")  # makes it ok to accidentally have multiple of the same col in limit_cols
+#     if y_column:
+#         X = X.drop(columns=[y_column])
+#         Y = data[y_column]
+#         return X, Y
+#     return X
+
+
+
