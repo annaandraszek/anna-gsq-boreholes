@@ -134,7 +134,10 @@ def passive_learning(data, y_column, estimator=sklearn.ensemble.RandomForestClas
     learner = estimator.fit(X_train, y_train)
     # y_pred = learner.predict(X_test)
     # accuracy = sklearn.metrics.accuracy_score(y_test, y_pred)
-    valid_set = data.loc[(data['TagMethod'] == "manual") | (data['TagMethod'] == "legacy")]
+    if 'TagMethod' in data.columns:
+        valid_set = data.loc[(data['TagMethod'] == "manual") | (data['TagMethod'] == "legacy")]
+    else:
+        valid_set = data  # for legacy dataset
     valid_x, valid_y = mlh.data_prep(valid_set, y_column=y_column, limit_cols=default_drop)
     valid_y = valid_y.astype(int)
     # valid_x = valid_set.drop(columns=['DocID', 'TOCPage', "TagMethod"])

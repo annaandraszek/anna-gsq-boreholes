@@ -6,6 +6,8 @@ import numpy as np
 import settings
 import os
 import pickle
+import inspect
+import joblib
 
 
 def data_prep(data, limit_cols=None, y_column=None):  # y=False,
@@ -61,11 +63,31 @@ def add_legacy_y(prev_dataset, df, y_column, line=False, page=True):
 
 
 def classify(data, model_name, limit_cols, mode=settings.dataset_version):
-    with open(settings.get_model_path(model_name, mode), "rb") as file:
-        model = pickle.load(file)
+    #frame = inspect.stack()[9]  # 9 only works if this functions is called from get_classified  # 1 if called from model file
+
+    model_path = settings.get_model_path(model_name, mode)
+    if not os.path.exists(model_path):
+        frame = inspect.stack()[2]  # 0: this, 1: mlh.get_classified, 2: model file
+        module = inspect.getmodule(frame[0])  # inspect.getmodule(frame[0])  # gets the module that this function was called from to call the correct training function
+        module.train(n_queries=0, mode=mode)#datafile=settings.get_dataset_path(model_name, mode), model_file=model_path)
+    with open(model_path, "rb") as file:
+        model = joblib.load(file)
     data = data_prep(data, limit_cols=limit_cols)
     pred = model.predict(data)
-    return pred
+    proba = model.predict_proba(data)
+    print(proba)
+    return pred, proba
+
+
+def get_classified(data, model_name, y_column, limit_cols, mode):
+    classes, proba = classify(data, model_name, limit_cols, mode)  #classify_page(df)
+    mask = np.array([True if i>0 else False for i in classes])
+    if isinstance(data, pd.DataFrame):
+        data[y_column] = classes
+        data['proba'] = proba[:, 1]
+        classified = data[mask]
+        return classified
+    return data[mask], classes[mask]  # return tuple if data is a series
 
 #
 # def classify(data, model_file, training_function):

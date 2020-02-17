@@ -3,23 +3,26 @@ import pandas as pd
 import settings
 import re
 import string
-import os
-
-os.environ['KMP_WARNINGS'] = '0'
-
-months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october',
-          'november', 'december']
-
-from keras.preprocessing.text import Tokenizer
+import active_learning
+from keras.wrappers.scikit_learn import KerasClassifier
 from keras.preprocessing import sequence
 from keras.models import load_model
 import tensorflow as tf
 import joblib
 import os
-from sklearn.model_selection import train_test_split
 from keras.models import Sequential
 from keras.layers import LSTM, Dense, Dropout, Embedding
-from keras.utils import to_categorical
+import machine_learning_helper as mlh
+from sklearn.pipeline import Pipeline
+from heading_id_toc import Text2Seq
+
+os.environ['KMP_WARNINGS'] = '0'
+
+months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october',
+          'november', 'december']
+name = 'page_id'
+y_column = 'tag'
+limit_cols = ['original']
 
 
 class NeuralNetwork():
@@ -33,31 +36,43 @@ class NeuralNetwork():
         self.model_loc = settings.get_model_path('page_id') #self.model_path + self.model_name + '.h5'
         self.tok_loc = settings.get_model_path('page_id', tokeniser=True)  #self.model_path + self.model_name + 'tokeniser.joblib'
 
-    def train(self, file=settings.get_dataset_path('page_id') ):  #settings.marginals_id_trans_dataset):
+    def train(self, file=settings.get_dataset_path('page_id'), n_queries=10):  #settings.marginals_id_trans_dataset):
         df = pd.read_csv(file)
-        self.X = df['transformed']
-        self.Y = df['tag']
+        #self.X = df['transformed']
+        #self.Y = df['tag']
         self.max_words, self.max_len = check_maxlens(df)
-        self.tok = Tokenizer(num_words=self.max_words+1) # only num_words-1 will be taken into account!
-        self.model = self.LSTM()
 
-        X_train, X_test, Y_train, Y_test = train_test_split(self.X, self.Y, test_size=0.15)
+        lstm = KerasClassifier(build_fn=self.LSTM, batch_size=self.batch_size, epochs=self.epochs,
+                               validation_split=0.2)
 
-        self.tok.fit_on_texts(X_train)
-        sequences = self.tok.texts_to_sequences(X_train)
-        sequences_matrix = sequence.pad_sequences(sequences, maxlen=self.max_len)
-        y_binary = to_categorical(Y_train)
-        self.model.summary()
-        self.model.fit(sequences_matrix, y_binary, batch_size=self.batch_size, epochs=self.epochs,
-                  validation_split=0.2) #, callbacks=[EarlyStopping(monitor='val_loss',min_delta=0.0001)]
+        estimator = Pipeline([
+            ('transform', Text2Seq(classes=2)),
+            ('lstm', lstm)
+        ], verbose=True)
 
-        test_sequences = self.tok.texts_to_sequences(X_test)
-        test_sequences_matrix = sequence.pad_sequences(test_sequences, maxlen=self.max_len)
+        accuracy, learner = active_learning.train(df, y_column, n_queries, estimator, file, limit_cols=limit_cols)
+        self.model = learner
 
-        accr = self.model.evaluate(test_sequences_matrix, to_categorical(Y_test))
-        print('Test set\n  Loss: {:0.3f}\n  Accuracy: {:0.3f}'.format(accr[0], accr[1]))
+        # self.tok = Tokenizer(num_words=self.max_words+1) # only num_words-1 will be taken into account!
+        # self.model = self.LSTM()
+        #
+        # X_train, X_test, Y_train, Y_test = train_test_split(self.X, self.Y, test_size=0.15)
+        #
+        # self.tok.fit_on_texts(X_train)
+        # sequences = self.tok.texts_to_sequences(X_train)
+        # sequences_matrix = sequence.pad_sequences(sequences, maxlen=self.max_len)
+        # y_binary = to_categorical(Y_train)
+        # self.model.summary()
+        # self.model.fit(sequences_matrix, y_binary, batch_size=self.batch_size, epochs=self.epochs,
+        #           validation_split=0.2) #, callbacks=[EarlyStopping(monitor='val_loss',min_delta=0.0001)]
+        #
+        # test_sequences = self.tok.texts_to_sequences(X_test)
+        # test_sequences_matrix = sequence.pad_sequences(test_sequences, maxlen=self.max_len)
+        #
+        # accr = self.model.evaluate(test_sequences_matrix, to_categorical(Y_test))
+        # print('Test set\n  Loss: {:0.3f}\n  Accuracy: {:0.3f}'.format(accr[0], accr[1]))
         self.model.save(self.model_loc)
-        joblib.dump(self.tok, self.tok_loc)
+        #joblib.dump(self.tok, self.tok_loc)
 
     def LSTM(self):
         model = Sequential()
@@ -158,6 +173,14 @@ def run_model():
         print(row.original, ', ', p[i], ', ', r[i])
 
 
+def train(n_queries=10):
+    if not os.path.exists(settings.get_dataset_path('page_id')):
+        df = create_dataset()
+        df.to_csv(settings.get_dataset_path('page_id'))
+    nn = NeuralNetwork()
+    nn.train(n_queries=n_queries)
+
+
 def get_page_marginals(marginals):
     if len(marginals) > 0:
         nn = NeuralNetwork()
@@ -168,10 +191,11 @@ def get_page_marginals(marginals):
 
 
 if __name__ == "__main__":
+    train()
     #create_dataset()
-    nn = NeuralNetwork()
+    #nn = NeuralNetwork()
     #nn.train()
-    run_model()
+    #run_model()
 
     # result
     # [[1.93149030e-01 8.52303803e-01]

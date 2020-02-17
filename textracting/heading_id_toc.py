@@ -23,12 +23,16 @@ from sklearn.metrics import classification_report, accuracy_score, confusion_mat
 import active_learning
 import machine_learning_helper as mlh
 
+name = 'heading_id_toc'
+y_column = 'Heading'
+limit_cols = ['PageNum', 'LineNum', 'SectionPrefix', 'SectionText', 'SectionPage']
+
 
 class Text2Seq(TransformerMixin, BaseEstimator):
-    def __init__(self):
+    def __init__(self, classes=3):
         self.tok = Tokenizer()
         #self.labelbin = LabelBinarizer()
-        self.classes = [0, 1, 2]
+        self.classes = range(classes)
 
     def fit(self, x, y=None):
         if isinstance(x, list):  # when the AL does predict proba, gives a single sample inside a 1-element list
@@ -38,7 +42,10 @@ class Text2Seq(TransformerMixin, BaseEstimator):
         if isinstance(x, np.ndarray):
             x = pd.Series(data=x.T[0])
         if isinstance(x, pd.DataFrame):  # may be df or ndarray
-            x = x['LineText']
+            try:
+                x = x['LineText']
+            except KeyError:
+                x = x['SectionText']
         self.tok.fit_on_texts(x)  # have to specify the column to give it a series
 
         #if y is not None:
@@ -48,7 +55,10 @@ class Text2Seq(TransformerMixin, BaseEstimator):
 
     def transform(self, x, y=None):
         if isinstance(x, pd.DataFrame):  # may be df or ndarray
-            x = x['LineText']
+            try:
+                x = x['LineText']
+            except KeyError:
+                x = x['SectionText']
         if isinstance(x, list):  # when the AL does predict proba, gives a single sample inside a 1-element list
             if len(x) != 1:
                 print("x is longer than one sample, ", x)  # check in case it gives multiple samples and this code is wrong??
@@ -78,10 +88,11 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
 
     def __init__(self, model_name='cyfra1'):
         self.model_name = 'heading_id_' + model_name
-        self.model_loc = settings.get_model_path('heading_id_toc') #self.model_path + self.model_name + '.h5'
+        self.model_loc = settings.get_model_path(name) #self.model_path + self.model_name + '.h5'
         #self.tok_loc = settings.get_model_path('heading_id_toc', tokeniser=True)#self.model_path + self.model_name + 'tokeniser.joblib'
 
-    def train(self, datafile=settings.get_dataset_path('proc_heading_id_toc'), n_queries=10):  #settings.dataset_path + 'processed_heading_id_dataset_cyfra1.csv'):
+    def train(self, n_queries=10, mode=settings.dataset_version):  #settings.dataset_path + 'processed_heading_id_dataset_cyfra1.csv'):
+        datafile = settings.get_dataset_path('proc_heading_id_toc_cyfra1', mode)
         df = pd.read_csv(datafile)
         self.max_words, self.max_len = check_maxlens(df)
 
@@ -95,9 +106,13 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
 
         y_column = 'Heading'
         estimator = clf
-        accuracy, learner = active_learning.train(df, y_column, n_queries, estimator, datafile, limit_cols=['PageNum', 'LineNum', 'SectionPrefix', 'SectionText', 'SectionPage'])
+        if mode == settings.production:
+            limit_cols = ['DocID', 'LineNum']
+        accuracy, learner = active_learning.train(df, y_column, n_queries, estimator, datafile,
+                                                  limit_cols=limit_cols)
         self.model = learner
-        with open(self.model_loc, "wb") as file:
+        model_loc = settings.get_model_path(name, mode)
+        with open(model_loc, "wb") as file:
             joblib.dump(learner, file)
         # joblib.dump(self.tok, self.tok_loc)
 
@@ -117,21 +132,41 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
         return model
 
 
-    def load_model_from_file(self):
-        self.model = joblib.load(self.model_loc)  #load_model(self.model_loc)
+    def load_model_from_file(self, model_loc=None):
+        if model_loc is None:
+            model_loc = self.model_loc
+        self.model = joblib.load(model_loc)  #load_model(self.model_loc)
 
-    def predict(self, strings, encode=False):
-        if not os.path.exists(self.model_loc):
-            self.train()
-        try:
-            self.model
-        except AttributeError:
-            self.load_model_from_file()
 
+    def predict(self, strings, encode=False, mode=settings.dataset_version):
         if encode:
             strings = [num2cyfra1(s) for s in strings]
-        predictions = self.model.predict(strings)
-        return predictions, np.argmax(predictions, axis=0)
+
+        predictions = mlh.get_classified(strings, name, y_column, limit_cols, mode)
+        return predictions #, np.argmax(predictions, axis=0)
+        # model_loc = settings.get_model_path(name, mode)
+        # if not os.path.exists(model_loc):
+        #     self.train(datafile=settings.get_dataset_path(name, mode))
+        # # try:
+        # #     self.model
+        # # except AttributeError:
+        # #self.load_model_from_file(model_loc)
+        #
+        #
+        # predictions = self.model.predict(strings)
+        #return predictions, np.argmax(predictions, axis=0)
+
+
+def train(n_queries=10, mode=settings.dataset_version):
+    if not os.path.exists(settings.get_dataset_path('proc_heading_id_toc', mode)):
+        if not os.path.exists(settings.get_dataset_path(name, mode)):
+            create_identification_dataset(datafile=settings.get_dataset_path(name, mode))
+        df = pre_process_id_dataset(datafile=settings.get_dataset_path(name, mode))
+        df.to_csv(settings.get_dataset_path('proc_heading_id_toc'), mode)
+
+    nn = NeuralNetwork()
+    nn.train(n_queries=n_queries, mode=mode)
+
 
 
 def num2cyfra1(string):
@@ -184,29 +219,29 @@ def split_pagenum(string):
     return s
 
 
-def num2cyfra(string):
-    s = ''
-    prev_c = ''
-    for c in string:
-        if re.match(r'[0-9]', c):
-            if prev_c != 'num':
-                s += 'cyfra '
-                prev_c = 'num'
-        elif c == '.':
-            s += 'punkt '
-            prev_c = '.'
-    return s
+# def num2cyfra(string):
+#     s = ''
+#     prev_c = ''
+#     for c in string:
+#         if re.match(r'[0-9]', c):
+#             if prev_c != 'num':
+#                 s += 'cyfra '
+#                 prev_c = 'num'
+#         elif c == '.':
+#             s += 'punkt '
+#             prev_c = '.'
+#     return s
 
 
-def num2strona(string):
-    s = ''
-    prev_c = ''
-    for c in string:
-        if re.match(r'[0-9]', c):
-            if prev_c != 'num':
-                s += 'strona '
-                prev_c = 'num'
-    return s
+# def num2strona(string):
+#     s = ''
+#     prev_c = ''
+#     for c in string:
+#         if re.match(r'[0-9]', c):
+#             if prev_c != 'num':
+#                 s += 'strona '
+#                 prev_c = 'num'
+#     return s
 
 
 def pre_process_id_dataset(pre='cyfra1', datafile=settings.get_dataset_path('heading_id_toc'), training=True):
@@ -218,7 +253,8 @@ def pre_process_id_dataset(pre='cyfra1', datafile=settings.get_dataset_path('hea
     # break up the LineText column into SectionPrefix, SectionText, and SectionPage
     newdf = pd.DataFrame(columns=['DocID', 'PageNum', 'LineNum', 'SectionPrefix', 'SectionText', 'SectionPage'])
     newdf.DocID = df.DocID
-    newdf.PageNum = df.PageNum
+    if 'PageNum' in df.columns.values:
+        newdf.PageNum = df.PageNum
     newdf.LineNum = df.LineNum
     if training:
         newdf['Heading'] = df.Heading
@@ -230,12 +266,12 @@ def pre_process_id_dataset(pre='cyfra1', datafile=settings.get_dataset_path('hea
     if 'cyfra1' in pre:
         newdf.SectionPrefix = newdf.SectionPrefix.apply(lambda x: num2cyfra1(x))
         newdf.SectionPage = newdf.SectionPage.apply(lambda x: num2cyfra1(x))
-    else:
-        newdf.SectionPrefix = newdf.SectionPrefix.apply(lambda x: num2cyfra(x))
-        newdf.SectionPage = newdf.SectionPage.apply(lambda x: num2cyfra(x))
-
-    if 'strona' in pre:
-        newdf.SectionPage = newdf.SectionPage.apply(lambda x: num2strona(x))
+    # else:
+    #     newdf.SectionPrefix = newdf.SectionPrefix.apply(lambda x: num2cyfra(x))
+    #     newdf.SectionPage = newdf.SectionPage.apply(lambda x: num2cyfra(x))
+    #
+    # if 'strona' in pre:
+    #     newdf.SectionPage = newdf.SectionPage.apply(lambda x: num2strona(x))
 
     newdf.replace('', np.nan, inplace=True)
     newdf.dropna(inplace=True, subset=['SectionText'])
@@ -246,11 +282,11 @@ def pre_process_id_dataset(pre='cyfra1', datafile=settings.get_dataset_path('hea
     return newdf
 
 
-def create_identification_dataset():
+def create_identification_dataset(datafile=settings.get_dataset_path(name)):
     columns = ['DocID', 'PageNum', 'LineNum', 'LineText', 'Heading', 'TagMethod']
     df = pd.DataFrame(columns=columns)
     lines_docs = sorted(glob.glob('training/restructpageinfo/*'))
-    toc_df = pd.read_csv(settings.get_dataset_path('toc'))
+    toc_df = pd.read_csv(datafile)
     toc_pages = get_toc_pages(toc_df)
     for lines_doc in lines_docs:
         pages = json.load(open(lines_doc))
@@ -274,21 +310,9 @@ def create_identification_dataset():
         except IndexError:
             print("IndexError ", tocpg, docid)
     prev_dataset = settings.dataset_path + 'heading_id_toc_dataset.csv'
-    y_column = 'Heading'
     df = mlh.add_legacy_y(prev_dataset, df, y_column, line=True, page=False)  # page not present in legacy dataset
-    df.to_csv(settings.get_dataset_path('heading_id_toc'), index=False)
+    df.to_csv(datafile, index=False)
     return df
-
-
-def train(n_queries=10):
-    if not os.path.exists(settings.get_dataset_path('proc_heading_id_toc')):
-        if not os.path.exists(settings.get_dataset_path('heading_id_toc')):
-            create_identification_dataset()
-        df = pre_process_id_dataset()
-        df.to_csv(settings.get_dataset_path('proc_heading_id_toc'))
-
-    nn = NeuralNetwork()
-    nn.train(n_queries=n_queries)
 
 
 if __name__ == '__main__':

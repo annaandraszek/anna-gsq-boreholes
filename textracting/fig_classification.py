@@ -14,8 +14,9 @@ import machine_learning_helper as mlh
 import active_learning as al
 from sklearn.ensemble import RandomForestClassifier
 
+name = 'fig'
 y_column = 'FigPage'
-columns = ['DocID', 'PageNum', 'MedConfidence', 'AvgConfidence', 'RangeConfidence', 'IQRConfidence','MedLineLen', 'ContainsFigWord', 'ContainsFigLn', 'FigPos', y_column]
+columns = ['DocID', 'PageNum', 'MedConfidence', 'AvgConfidence', 'RangeConfidence', 'IQRConfidence','MedLineLen', 'ContainsFigWord', 'ContainsFigLn', 'FigPos', y_column, 'TagMethod']
 limited_cols = ['DocID']
 
 
@@ -67,38 +68,39 @@ def create_individual_dataset(docid, docinfo, doclines):
     pi = docinfo
     docset = write_to_dataset(pi, docid)
     df = pd.DataFrame(docset, columns=columns)
+#    df = df.drop(columns=['TagMethod'])  # don't want to have this and the y column?
     return df
 
 
-def train(datafile=settings.get_dataset_path('fig'), model_file=settings.get_model_path('fig'), n_queries=10):
+def train(n_queries=10, mode=settings.dataset_version):  # datafile=settings.get_dataset_path(name), model_file=settings.get_model_path(name),
+    datafile = settings.get_dataset_path(name, mode)
     data = pd.read_csv(datafile)
     clf = RandomForestClassifier() #tree.DecisionTreeClassifier()
     accuracy, clf = al.active_learning(data, n_queries, y_column, estimator=clf, limit_cols=limited_cols)
     print(accuracy)
+    model_file = settings.get_model_path(name, mode)
     with open(model_file, "wb") as file:
         pickle.dump(clf, file)
 
+#
+# def classify_page(data, mode=settings.dataset_version):
+#     if mode == settings.dataset_version:
+#         if not os.path.exists(settings.get_model_path(name)):
+#             train(data, n_queries=0)
+#     return mlh.classify(data, name, mode=mode, limit_cols=limited_cols)
+#
 
-def classify_page(data):
-    if not os.path.exists(settings.fig_tree_model_file):
-        train(data)
-    with open(settings.fig_tree_model_file, "rb") as file:
-        model = pickle.load(file)
-    data = mlh.data_prep(data, limit_cols=limited_cols)
-    pred = model.predict(data)
-    return pred
-
-
-def get_fig_pages(docid, docinfo, doclines):
-    if not docid:
-        data_file = settings.dataset_path + 'fig_dataset.csv'
-        df = pd.read_csv(data_file)
-    else:
-        df = create_individual_dataset(docid, docinfo, doclines)
-    classes = classify_page(df)
-    mask = np.array([True if i==1 else False for i in classes])
-    fig_pages = df[mask]
-    return fig_pages
+def get_fig_pages(data, mode=settings.dataset_version): #docid, docinfo, doclines):  # change usages of this to pass fig dataset
+    return mlh.get_classified(data, name, y_column, limited_cols, mode)
+    # if not docid:
+    #     data_file = settings.dataset_path + 'fig_dataset.csv'
+    #     df = pd.read_csv(data_file)
+    # else:
+    #     df = create_individual_dataset(docid, docinfo, doclines)
+    # classes = classify_page(df)
+    # mask = np.array([True if i==1 else False for i in classes])
+    # fig_pages = df[mask]
+    # return fig_pages
 
 
 if __name__ == "__main__":

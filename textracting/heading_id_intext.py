@@ -25,6 +25,10 @@ import numpy as np
 import active_learning
 import machine_learning_helper as mlh
 
+name = 'heading_id_intext'
+y_column = 'Heading'
+limit_cols = ['DocID', 'LineNum', 'WordsWidth', 'NormedLineNum', 'Top', 'Heading', 'Centrality', 'MatchesI']
+
 
 def num2cyfra1(string):
     s = ''
@@ -118,7 +122,7 @@ def contains_num(x):
 
 
 # kinda awkward because you're creating it from another dataset...so you're depending on that one to be complete
-def create_dataset(datafile = settings.get_dataset_path('heading_id_intext'), docid=False): #datafile=settings.dataset_path + 'heading_id_intext_dataset.csv', docid=False):
+def create_dataset(datafile = settings.get_dataset_path(name), docid=False): #datafile=settings.dataset_path + 'heading_id_intext_dataset.csv', docid=False):
     sourcefile = settings.get_dataset_path('marginal_lines')
     df = pd.read_csv(sourcefile, dtype={'DocID': int, 'PageNum': int, 'LineNum': int, 'Heading': int})
 
@@ -166,7 +170,6 @@ def create_dataset(datafile = settings.get_dataset_path('heading_id_intext'), do
         series_mi = series_mi.append(pd.Series(matches_i), ignore_index=True)
 
     df['MatchesHeading'], df['MatchesType'], df['MatchesI'] = series_mh, series_mt, series_mi
-    y_column = 'Heading'
     df['TagMethod'] = None
     df[y_column] = None
     prev_dataset = settings.dataset_path + 'heading_id_intext_dataset.csv'
@@ -252,82 +255,84 @@ def compare_lines2headings(lines, headings):
 #def rm_empty(string):
 #    return re.sub('^(|\s+)$', np.nan, str(string))
 
+#
+# def data_prep(df, y=False):  # not currently called, need to include it somehow in al_data_prep
+# #    df = df.apply(lambda x: rm_empty(x))
+# #    df = df.dropna()
+#     original_cols = ['DocID', 'PageNum', 'LineNum', 'NormedLineNum', 'Text', 'Words2Width', 'WordsWidth', 'Width',
+#                      'Height', 'Left','Top', 'ContainsNum', 'Centrality', 'Heading', 'WordCount', 'MatchesHeading','MatchesType', 'MatchesI']
+#
+#     df = pd.DataFrame(df, columns=original_cols)  # ordering as the fit, to not cause error in ColumnTranformer
+#     if y:
+#         y = y_column
+#     return mlh.data_prep(df, y, limit_cols)
+#     # X = df.drop(columns=) #'MatchesType',
+#     # if limit_cols:
+#     #     X = X.drop(columns=limit_cols)
+#     # if y:
+#     #     Y = df.Heading
+#     #     return X, Y
+#     # else:
+#     #     return X
 
-def data_prep(df, y=False):
-#    df = df.apply(lambda x: rm_empty(x))
-#    df = df.dropna()
-    original_cols = ['DocID', 'PageNum', 'LineNum', 'NormedLineNum', 'Text', 'Words2Width', 'WordsWidth', 'Width',
-                     'Height', 'Left','Top', 'ContainsNum', 'Centrality', 'Heading', 'WordCount', 'MatchesHeading','MatchesType', 'MatchesI']
 
-    df = pd.DataFrame(df, columns=original_cols)  # ordering as the fit, to not cause error in ColumnTranformer
-    limit_cols = ['DocID', 'LineNum', 'WordsWidth', 'NormedLineNum', 'Top', 'Heading', 'Centrality',  'MatchesI']
-    if y:
-        y = 'Heading'
-    return mlh.data_prep(df, y, limit_cols)
-    # X = df.drop(columns=) #'MatchesType',
-    # if limit_cols:
-    #     X = X.drop(columns=limit_cols)
-    # if y:
-    #     Y = df.Heading
-    #     return X, Y
-    # else:
-    #     return X
-
-
-def train(datafile=settings.get_dataset_path('heading_id_intext'), model_file=settings.get_model_path('heading_id_intext'), n_queries=10):
+def train(n_queries=10, mode=settings.dataset_version):  #datafile=settings.get_dataset_path('heading_id_intext'), model_file=settings.get_model_path('heading_id_intext'),
+    datafile = settings.get_dataset_path(name, mode)
+    model_file = settings.get_model_path(name, mode)
     data = pd.read_csv(datafile)
-    limit_cols = ['DocID', 'LineNum', 'WordsWidth', 'NormedLineNum', 'Top', 'Centrality',  'MatchesI']
     if 'no_toc' in model_file:
         limit_cols.extend(['MatchesHeading', 'MatchesType'])
 
-    clf = Pipeline([
+    estimator = Pipeline([
         ('text', ColumnTransformer([
             ('cnb', Text2CNBPrediction(), 1)  # 1 HAS TO BE 'TEXT'. changing it to int bc AL uses np arrays
         ], remainder="passthrough")),
         ('forest', RandomForestClassifier())
     ], verbose=True)
 
-    y_column = 'Heading'
-    estimator = clf
-
     accuracy, learner = active_learning.train(data, y_column, n_queries, estimator, datafile, limit_cols)
 
     print(accuracy)
     with open(model_file, "wb") as file:
-        pickle.dump(clf, file)
+        pickle.dump(learner, file)
     print("End of training stage. Re-run to train again")
 
 
-def classify(data, model_file=settings.heading_id_intext_model_file):
-    if not os.path.exists(model_file):
-        train()
-    with open(model_file, "rb") as file:
-        model = pickle.load(file)
-    data = data_prep(data)
-    pred = model.predict(data)
-    return pred
+# def classify_line(data, mode): #model_file=settings.heading_id_intext_model_file):
+#     if not os.path.exists(settings.get_model_path(name, mode)):
+#         train(n_queries=0, datafile=settings.get_dataset_path(name, mode), model_file=settings.get_model_path(name, mode))
+#     # with open(model_file, "rb") as file:
+#     #     model = pickle.load(file)
+#     # data = data_prep(data)
+#     # pred = model.predict(data)
+#     return mlh.classify(data, name, mode=mode, limit_cols=limit_cols)
 
 
-def get_headings_intext(data, toc_page):
+def get_headings_intext(data, toc_page=True, mode=settings.dataset_version):
     if not toc_page:
-        pred = classify(data, model_file=settings.heading_id_intext_model_file_no_toc)
+        #pred = mlh.classify(data, name, limit_cols, mode)
+        return mlh.get_classified(data, name + '_no_toc', y_column, limit_cols, mode=mode)
     else:
-        pred = classify(data)
-    data['Heading'] = pred
-    headings = data.loc[pred > 0]
-    if toc_page:
+        headings =  mlh.get_classified(data, name, y_column, limit_cols, mode=mode)
         return headings.loc[headings.MatchesHeading > 0]
-    else:
-        return headings
+        #pred = classify_line(data, model_file=settings.get_model_path(name, mode))
+    # data[y_column] = pred
+    # headings = data.loc[pred > 0]
+    #
+    # if toc_page:
+    #     return headings.loc[headings.MatchesHeading > 0]
+    # else:
+    #     return headings
 
 
 if __name__ == '__main__':
-    #data_path = settings.dataset_path + 'heading_id_intext_dataset.csv'
+    data_path = settings.dataset_path + 'heading_id_intext_dataset.csv'
     #data = pd.read_csv(data_path)
     #create_dataset()
-    train()
+    #train()
     #edit_dataset(data_path)
-    #data = pd.read_csv(data_path)
+    data = pd.read_csv(data_path)
+    get_headings_intext(data, True, mode=settings.production)
     # model_files = [settings.get_model_path('heading_id_intext'), settings.get_model_path('heading_id_intext_no_toc')]
     # for file in model_files:
     #     train(model_file=file)

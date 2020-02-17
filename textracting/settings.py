@@ -39,10 +39,10 @@ dataset_version = 'expansion1'  # folder of models/data in progress of being dev
 production = 'production'  # folder of last working models
 
 
-def get_model_path(model, type=None, set=dataset_version, tokeniser=False, classes=False):
-    path = model_path + set + '/' + model
-    if type:
-        path += '_' + type
+def get_model_path(model, mode=dataset_version, tokeniser=False, classes=False):
+    path = model_path + mode + '/' + model
+    # if type:
+    #     path += '_' + type
     path += "_model"
     #if ('heading_id_toc' or 'page') in model and not tokeniser:
         #path += ".h5"

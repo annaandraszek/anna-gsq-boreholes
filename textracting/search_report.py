@@ -6,8 +6,8 @@ import settings
 import os
 import heading_id_toc
 import marginals_classification
-#import page_extraction
-#import fig_classification
+import page_extraction
+import fig_classification
 import heading_id_intext
 import heading_classification
 os.environ['KMP_AFFINITY'] = 'noverbose'
@@ -20,6 +20,7 @@ import docx
 from heading_id_intext import Text2CNBPrediction, Num2Cyfra1, num2cyfra1
 #import textdistance
 
+mode = settings.production
 
 class Report():
     def __init__(self, docid):
@@ -27,11 +28,12 @@ class Report():
         #self.toc_dataset_path = settings.production_path + docid + '_toc_dataset.csv'
         self.docinfo = self.get_doc_info()
         if len(self.docinfo.keys()) == 0:
-            return
+            print("ERROR: docinfo is empty. Cannot process Report", docid)
+            raise ValueError
         self.doclines = self.get_doc_lines()
         self.line_dataset = self.create_line_dataset()
         self.toc_page = self.get_toc_page()
-        #self.fig_pages = fig_classification.get_fig_pages(self.docid, self.docinfo, self.doclines)
+        #self.fig_pages = self.get_fig_pages()  #fig_classification.get_fig_pages(self.docid, self.docinfo, self.doclines)
         #self.line_dataset = self.create_line_dataset()
 
         if self.toc_page:
@@ -44,14 +46,18 @@ class Report():
         self.section_content = self.get_sections()
         #self.toc_heading_classes, self.text_heading_classes = self.classify_headings()
 
+    def get_fig_pages(self):
+        data = fig_classification.create_individual_dataset(self.docid, self.docinfo, self.doclines)
+        fig_classification.get_fig_pages(data, mode)
+
     def get_marginals(self):
         self.marginals = marginals_classification.get_marginals(
-            self.create_marginals_dataset())  # a df containing many columns, key: pagenum, text
+            self.create_marginals_dataset(), mode)  # a df containing many columns, key: pagenum, text
         self.marginals_set = set([(p, l) for p, l in zip(self.marginals.PageNum, self.marginals.LineNum)])
         #self.page_nums = page_extraction.get_page_nums(self.marginals)
 
     def get_section_ptrs(self):
-        self.headings_intext = heading_id_intext.get_headings_intext(self.create_intext_id_dataset(), self.toc_page)
+        self.headings_intext = heading_id_intext.get_headings_intext(self.create_intext_id_dataset(), self.toc_page, mode)
         section_ptrs = self.headings_intext.loc[self.headings_intext['Heading'] == 1]
         #self.subsection_ptrs = self.headings_intext.loc[self.headings_intext['Heading'] == 2]
         #self.subsection_ptrs.reset_index(inplace=True, drop=True)
@@ -94,9 +100,6 @@ class Report():
                 lines.append(line['Text'])
             pagelines[pagenum] = lines
             prev_pg = int(pagenum)
-
-
-
         return pagelines
 
     def get_doc_info(self):
@@ -121,9 +124,11 @@ class Report():
 
     def get_toc_page(self):
         data = self.create_toc_dataset()
-        toc_pages = toc_classification.get_toc_pages(data, mode=settings.production)
+        toc_pages = toc_classification.get_toc_pages(data, mode)
         try:
-            toc = int(toc_pages['PageNum'].values[0])
+            toc_pages = toc_pages.reset_index()
+            tc = toc_pages.iloc[toc_pages['proba'].idxmax()]  # getting most probable toc page
+            toc = int(tc['PageNum']) # how do you account for multiple toc pages?
         except IndexError:
             print("TOC page doesn't exist")
             toc = None
@@ -133,21 +138,20 @@ class Report():
         df = self.create_identification_dataset()
         newdf = heading_id_toc.pre_process_id_dataset(pre='cyfra1', datafile=df, training=False)
         model = heading_id_toc.NeuralNetwork()
-        x = newdf['SectionText']
-        _, res = model.predict(x)
+        x = newdf['LineText']  #['SectionText']
+        res, classes = model.predict(x, mode=mode)
         columns = ['LineNum', 'SectionPrefix', 'SectionText', 'SectionPage']  #'PageNum',
         headings = pd.DataFrame(columns=columns)
         subheadings = pd.DataFrame(columns=columns)
-        for i, pred in zip(range(len(res)), res):
-            if pred > 0:
-                heading = self.docinfo[str(self.toc_page)][i]
-                section_prefix, section_text = heading_id_toc.split_prefix(heading['Text'])
-                section_text, section_page = heading_id_toc.split_pagenum(section_text)
-                hrow = [heading['LineNum'], section_prefix, section_text, section_page]  # heading['PageNum'],
-                if pred == 1:
-                    headings.loc[len(headings)] = hrow
-                elif pred == 2:
-                    subheadings.loc[len(subheadings)] = hrow
+        for i, pred in zip(res.index.values, classes):
+            heading = self.docinfo[str(self.toc_page)][i]
+            section_prefix, section_text = heading_id_toc.split_prefix(heading['Text'])
+            section_text, section_page = heading_id_toc.split_pagenum(section_text)
+            hrow = [heading['LineNum'], section_prefix, section_text, section_page]  # heading['PageNum'],
+            if pred == 1:
+                headings.loc[len(headings)] = hrow
+            elif pred == 2:
+                subheadings.loc[len(subheadings)] = hrow
         return headings, subheadings
 
     def create_line_dataset(self):
@@ -167,8 +171,12 @@ class Report():
                 docset.append([self.docid, int(page), line['LineNum'], 0, line['Text'], words2width, line['WordsWidth'],
                                bb['Width'], bb['Height'], bb['Left'], bb['Top'], centrality, wordcount])
             temp = pd.DataFrame(data=docset, columns=columns)
-            temp['NormedLineNum'] = (temp['LineNum'] - min(temp['LineNum'])) / (
+            if (max(temp['LineNum']) - min(temp['LineNum'])) == 0:  # only one line # avoid NaN from div by 0
+                temp['NormedLineNum'] = 0
+            else:
+                temp['NormedLineNum'] = (temp['LineNum'] - min(temp['LineNum'])) / (
                         max(temp['LineNum']) - min(temp['LineNum']))
+
             df = df.append(temp, ignore_index=True)
         unnormed = np.array(df['Centrality'])
         normalized = (unnormed - min(unnormed)) / (max(unnormed) - min(unnormed))
@@ -202,7 +210,7 @@ class Report():
         df['ContainsNum'] = df.Text.apply(lambda x: marginals_classification.contains_num(x))
         df['ContainsTab'] = df.Text.apply(lambda x: marginals_classification.contains_tab(x))
         df['ContainsPage'] = df.Text.apply(lambda x: marginals_classification.contains_page(x))
-        df['Marginal'] = 0
+        #df['Marginal'] = 0  # no y column
         df.drop(columns=['WordCount'], inplace=True)
         return df
 
@@ -442,14 +450,14 @@ def save_report_sections(report):
         doc.add_heading(section['Heading'], 1)
         p = doc.add_paragraph()
         for line in section['Content']:
-            p.add_run(line + ' ')
+            p.add_run(line + '\n')
         doc.add_page_break()
     doc.save(settings.get_report_name(report.docid, local_path=True, file_extension='_sections.docx'))
 
 if __name__ == '__main__':
     # transform document pages into dataset of pages for toc classification, classify pages, and isolate toc
     # from toc page, transform content into dataset of headings for heading identification, identify headings, and return headings and subheadings
-    reports = [ '57418']#'24352', '24526', '26853', '28066', '28184','28882', '30281', '31681', '23508', ] #,'23732',
+    reports = ['30320'] # '30320' #'24352', '24526', '26853', '28066', '28184','28882', '30281', '31681', '23508', ] #,'23732',
 
     for report in reports:
         start = time.time()

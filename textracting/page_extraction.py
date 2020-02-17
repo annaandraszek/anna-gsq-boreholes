@@ -19,6 +19,11 @@ from keras.models import Sequential
 #from keras import layers
 #from six.moves import range
 import re
+from sklearn.pipeline import Pipeline
+import active_learning
+from keras.wrappers.scikit_learn import KerasClassifier
+from heading_id_toc import Text2Seq
+from sklearn.preprocessing import FunctionTransformer
 
 
 def num2word(str):
@@ -54,46 +59,56 @@ class NeuralNetwork():
         self.classes_loc = settings.get_model_path('page_extraction', classes=True)  #self.model_path + self.model_name + 'class_dict.joblib'
         self.mode_type = model_type
 
+
     def train(self, file=settings.get_dataset_path('page_extraction')):  #settings.page_extraction_dataset):
         df = pd.read_csv(file)
-        self.X = df['transformed']
-        self.Y = df['position']         # try with y position instead of y value
-        self.X = self.X.apply(lambda x: num2word(x))
-        self.max_words, self.max_len = check_maxlens(self.X)
+        #self.X = df['transformed']
+        #self.Y = df['position']         # try with y position instead of y value
+        transform = FunctionTransformer(lambda x: num2word(x))  # not sure this will work
+        #self.X = self.X.apply(lambda x: num2word(x))
+        #self.max_words, self.max_len = check_maxlens(self.X)
         self.classes, y_vectorised = self.position2int()
-        self.inv_classes = {v: k for k, v in self.classes.items()}
-        y_masked = np.zeros((self.Y.size, self.max_len))
-        for i, j in zip(y_masked, y_vectorised):
-            p = self.inv_classes[j]
-            i[p] = 1
+        #self.inv_classes = {v: k for k, v in self.classes.items()}
+        #y_masked = np.zeros((self.Y.size, self.max_len))
+        #for i, j in zip(y_masked, y_vectorised):
+        #    p = self.inv_classes[j]
+        #    i[p] = 1
 
         self.num_classes = len(self.classes.items())
-        self.tok = Tokenizer(num_words=self.max_words+1) # only num_words-1 will be taken into account!
+        nn = KerasClassifier(build_fn=self.NN, batch_size=self.batch_size, epochs=self.epochs, validation_split=0.2)
+
+        clf = Pipeline([
+            (),
+            ('transform', Text2Seq(classes=self.num_classes)),
+            ('nn', nn)
+        ])
+
+        # self.tok = Tokenizer(num_words=self.max_words+1) # only num_words-1 will be taken into account!
 
         # if self.mode_type == 'LSTM':
         #     self.model = self.LSTM()
         # else:
-        self.model = self.NN()
-
-        X_train, X_test, Y_train, Y_test = train_test_split(self.X, y_masked, test_size=0.15)
-
-        self.tok.fit_on_texts(self.X)
-        sequences = self.tok.texts_to_sequences(X_train)
-        sequences_matrix = sequence.pad_sequences(sequences, maxlen=self.max_len)
-        #y_binary = to_categorical(Y_train) # y needs to be onehot encoded
-
-        self.model.summary()
-        self.model.fit(sequences_matrix, Y_train, batch_size=self.batch_size, epochs=self.epochs,
-                  validation_split=0.2) #, callbacks=[EarlyStopping(monitor='val_loss',min_delta=0.0001)]
-
-        test_sequences = self.tok.texts_to_sequences(X_test)
-        test_sequences_matrix = sequence.pad_sequences(test_sequences, maxlen=self.max_len)
-
-        accr = self.model.evaluate(test_sequences_matrix, Y_test)
-        print('Test set\n  Loss: {:0.3f}\n  Accuracy: {:0.3f}'.format(accr[0], accr[1]))
+        # self.model = self.NN()
+        #
+        # X_train, X_test, Y_train, Y_test = train_test_split(self.X, y_masked, test_size=0.15)
+        #
+        # self.tok.fit_on_texts(self.X)
+        # sequences = self.tok.texts_to_sequences(X_train)
+        # sequences_matrix = sequence.pad_sequences(sequences, maxlen=self.max_len)
+        # #y_binary = to_categorical(Y_train) # y needs to be onehot encoded
+        #
+        # self.model.summary()
+        # self.model.fit(sequences_matrix, Y_train, batch_size=self.batch_size, epochs=self.epochs,
+        #           validation_split=0.2) #, callbacks=[EarlyStopping(monitor='val_loss',min_delta=0.0001)]
+        #
+        # test_sequences = self.tok.texts_to_sequences(X_test)
+        # test_sequences_matrix = sequence.pad_sequences(test_sequences, maxlen=self.max_len)
+        #
+        # accr = self.model.evaluate(test_sequences_matrix, Y_test)
+        # print('Test set\n  Loss: {:0.3f}\n  Accuracy: {:0.3f}'.format(accr[0], accr[1]))
         self.model.save(self.model_loc)
-        joblib.dump(self.tok, self.tok_loc)
-        joblib.dump(self.inv_classes, self.classes_loc)
+        #joblib.dump(self.tok, self.tok_loc)
+        #joblib.dump(self.inv_classes, self.classes_loc)
 
     def NN(self):
         model = Sequential()

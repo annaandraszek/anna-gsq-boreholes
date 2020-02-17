@@ -9,7 +9,7 @@ import texttransforming
 # features can = ['TABLES', 'FORMS']
 def textract(docid, features):
     #documentName = 'cr_' + docid + '_1.pdf'  # '.pdf'
-    textracting.report2textract(docid, features=features, bucket='gsq-staging')
+    textracting.report2textract(docid, features=features, bucket='gsq-horizon')
     #texttransforming.clean_and_restruct(docid, save=True)  # pagelineinfo -> cleanpage -> restructpageinfo
 
 

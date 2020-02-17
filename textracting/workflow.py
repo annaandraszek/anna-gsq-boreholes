@@ -73,7 +73,7 @@ if __name__ == '__main__':
             docids = args.id
             mode = 'given'
 
-        #mode = "testing"
+        mode = "testing"
         if mode == "sample" or mode == "given" or mode == "testing":
             if mode == 'sample':
                 print("Running in sample mode. Num samples: " + str(num_sample) + " Cutoff date: " + str(cutoffdate) +
@@ -86,7 +86,7 @@ if __name__ == '__main__':
 
             elif mode == "testing":
                 print("Running in testing mode")
-                docids = ['69419']
+                docids = ['48798']
 
             training_folders = os.walk('training/QDEX/')
             training_docids = [x[0].split('\\')[-1] for x in training_folders]
@@ -124,7 +124,10 @@ if __name__ == '__main__':
                 # check if search report, bookmark report, needs to be run or if bookmarked pdf already exists
                 if (not os.path.exists(settings.get_bookmarked_file(docid))) and (not args.force):
                     ml_start = time.time()
-                    report = search_report.Report(docid)  # need every ml method here to be able to create a dataset with an unseen report
+                    try:
+                        report = search_report.Report(docid)  # need every ml method here to be able to create a dataset with an unseen report
+                    except ValueError:
+                        continue
                 #search_report.draw_report(report)
                     search_report.bookmark_report(report)
                 # check if needs to be run or if sections word doc already exists

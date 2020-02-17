@@ -17,10 +17,15 @@ import active_learning
 import machine_learning_helper as mlh
 
 
+name = 'toc'
 y_column = 'TOCPage'
 columns = ['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf',
            'PrevPageTOC', y_column, 'TagMethod']
+limit_cols = ['DocID']
 estimator = RandomForestClassifier()
+model_path = settings.get_model_path(name)
+data_path = settings.get_dataset_path(name)
+
 
 def create_dataset():
     df = pd.DataFrame(columns=columns)
@@ -52,22 +57,23 @@ def create_dataset():
     return df
 
 
-def train(datafile=settings.get_dataset_path('toc'), n_queries=10):
+def train(n_queries=10, mode=settings.dataset_version): #datafile=data_path, ):
+    datafile = settings.get_dataset_path(name, mode)
     data = pd.read_csv(datafile)
-    data[['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf',
-          'PrevPageTOC', 'TOCPage']] = data[['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf',
-           'PrevPageTOC', 'TOCPage']].astype("Int64")
-    data['TagMethod'] = data['TagMethod'].astype("string")
+    #data[['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf',
+    #      'PrevPageTOC', y_column]] = data[['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf',
+    #       'PrevPageTOC', y_column]].astype("Int64")
+    #data['TagMethod'] = data['TagMethod'].astype("string")
     accuracy, learner = active_learning.train(data, y_column, n_queries, estimator, datafile)
-    with open(settings.get_model_path('toc'), "wb") as file:
+    with open(settings.get_model_path(name, mode), "wb") as file:
         pickle.dump(learner, file)
     print("End of training stage. Re-run to train again")
     return accuracy
 
 
 def tag_prevpagetoc():
-    source = settings.get_dataset_path('toc')
-    df = pd.read_csv(source)
+    #source = settings.get_dataset_path(name)
+    df = pd.read_csv(data_path)
     tocdf = df.loc[df[y_column] == 1]
     count = 0
     for i, row in tocdf.iterrows():
@@ -82,13 +88,13 @@ def tag_prevpagetoc():
             count += 1
             if (df.at[i, 'TagMethod'] == 'auto') & (df.at[i, y_column] == 0):  # only overwrite automatically tagged # if page already isn't 0, don't None
                 df.at[i, y_column] = None  # reset to tag again
-    df.to_csv(settings.get_dataset_path('toc'), index=False)
+    df.to_csv(data_path, index=False)
     return count
 
 
 def check_tags(show=False):
-    source = settings.get_dataset_path('toc')
-    df = pd.read_csv(source)
+    #source = settings.get_dataset_path(name)
+    df = pd.read_csv(data_path)
     test = df.loc[(df['ContainsContentsWord'] == 1) | (df['ContainsTOCPhrase'] == 1) | (df['ContainsListOf'] == 1)]
     bad = test.loc[test[y_column] == 0]
     print("Samples with 'Contents' or 'Table of Contents' or 'List of' but not tagged as TOC, or ListOf: ")
@@ -101,23 +107,25 @@ def check_tags(show=False):
             df.at[i, y_column] = None
             c += 1
     print("count: ", c)
-    df.to_csv(source, index=False)
+    df.to_csv(data_path, index=False)
 
 
-def classify_page(data, mode=settings.dataset_version):
-    if mode == settings.dataset_version:
-        if not os.path.exists(settings.get_model_path('toc')):
-            train(data)
-    return mlh.classify(data, 'toc', mode=mode, limit_cols=['DocID'])
+# def classify_page(data, mode=settings.dataset_version):
+# #    if mode == settings.dataset_version:
+#     if not os.path.exists(settings.get_model_path(name, mode)):
+#         train(data, n_queries=0, mode=mode)
+#     return mlh.classify(data, 'toc', mode=mode, limit_cols=['DocID'])
 
 
 def get_toc_pages(df, mode=settings.dataset_version):
+    return mlh.get_classified(df, name, y_column, limit_cols, mode)
+
     #data_file = settings.production_path + docid + '_toc_dataset.csv'
     #df = pd.read_csv(data_file)
-    classes = classify_page(df, mode)  #classify_page(df)
-    mask = np.array([True if i==1 else False for i in classes])
-    toc_pages = df[mask]
-    return toc_pages
+    # classes = classify_page(df, mode)  #classify_page(df)
+    # mask = np.array([True if i==1 else False for i in classes])
+    # toc_pages = df[mask]
+    # return toc_pages
 
 
 if __name__ == "__main__":
