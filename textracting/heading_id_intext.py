@@ -24,6 +24,7 @@ import textdistance
 import numpy as np
 import active_learning
 import machine_learning_helper as mlh
+import heading_id_toc
 
 name = 'heading_id_intext'
 y_column = 'Heading'
@@ -162,7 +163,9 @@ def compare_lines2headings(lines, headings):
         ln_similarities = []
         ln_words = line.lower().split()
         for i, heading in headings.iterrows():  # save info whether the best comparison is to a heading or subheading
-            hd_words = heading.Text.lower().split()
+            hd = heading.Text.lower()
+            hd, _ = heading_id_toc.split_pagenum(hd)
+            hd_words = hd.split()
             # compare words
             similarity = textdistance.jaccard(ln_words, hd_words)  # intersection / union
             ln_similarities.append([similarity, heading.Heading, i])
@@ -203,6 +206,7 @@ def get_headings_intext(data, toc_page=True, mode=settings.dataset_version):
         return mlh.get_classified(data, name + '_no_toc', y_column, limit_cols, mode=mode)
     else:
         headings =  mlh.get_classified(data, name, y_column, limit_cols, mode=mode)
+
         return headings.loc[headings.MatchesHeading > 0]
 
 

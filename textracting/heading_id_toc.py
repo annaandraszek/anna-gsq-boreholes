@@ -215,22 +215,10 @@ def split_pagenum(string):
 def pre_process_id_dataset(datafile=settings.get_dataset_path('heading_id_toc'), training=True):
     if isinstance(datafile, pd.DataFrame):
         df = datafile
-        #df['LineText'] = df['Text']
     else:
         df = pd.read_csv(datafile)
-    # break up the LineText column into SectionPrefix, SectionText, and SectionPage
-    #newdf = pd.DataFrame(columns=['DocID', 'PageNum', 'LineNum', 'SectionPrefix', 'SectionText', 'SectionPage'])
-    #newdf.DocID = df.DocID
-    #if 'PageNum' in df.columns.values:
-    #    newdf.PageNum = df.PageNum
-    #newdf.LineNum = df.LineNum
-    #if training:
-    #    newdf['Heading'] = df.Heading
-    #    newdf['TagMethod'] = df.TagMethod
-
     df['SectionPrefix'], df['SectionText'] = zip(*df.Text.map(split_prefix))
     df['SectionText'], df['SectionPage'] = zip(*df.SectionText.map(split_pagenum))
-
     df.SectionPrefix = df.SectionPrefix.apply(lambda x: num2cyfra1(x))
     df.SectionPage = df.SectionPage.apply(lambda x: num2cyfra1(x))
 
@@ -239,7 +227,6 @@ def pre_process_id_dataset(datafile=settings.get_dataset_path('heading_id_toc'),
     df.replace(np.nan, '', inplace=True)  # nan values cause issues when adding columns
 
     df['ProcessedText'] = df.SectionPrefix + df.SectionText + df.SectionPage
-    #newdf.drop(axis=1, columns=['SectionPrefix', 'SectionPage'], inplace=True)
     return df
 
 

@@ -100,7 +100,7 @@ def get_bookmarked_file(file_id, test=False, test_i=None):
     path = report_local_path
     if test:
         path = test_local_path
-        files = path + str(file_id) + '/'
+        files = path + str(file_id) + '/*'
         if not test_i:
             fpaths = glob.glob(files)
             test_i = len(fpaths)

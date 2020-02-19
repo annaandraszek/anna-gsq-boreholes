@@ -59,8 +59,28 @@ class Report():
         #self.page_nums = page_extraction.get_page_nums(self.marginals, mode=mode)
         self.page_nums = None
 
+    def match_headings(self, headings_intext):
+        all_headings = pd.concat((self.headings, self.subheadings))
+        # there can only be one of each value in self.headings_intext.MatchesI
+        matched_is = []
+        for value in headings_intext.MatchesI.values:
+            if value not in matched_is:
+                matched_is.append(value)
+            else:
+                temp = headings_intext.loc[headings_intext['MatchesI'] == value]
+                imax = temp['MatchesHeading'].idxmax()
+                save = temp.loc[imax]
+                headings_intext = headings_intext.drop(index=temp.index.values)  # remove all non matching rows so this only has to be done once per i
+                headings_intext = headings_intext.append(save)  # don't need to remove and re-append i because it's just a number
+        # sort headings
+        headings_intext.sort_values(by=['PageNum', 'LineNum'], inplace=True)
+        return headings_intext
+
+
     def get_section_ptrs(self):
-        self.headings_intext = heading_id_intext.get_headings_intext(self.create_intext_id_dataset(), self.toc_page, mode)
+        headings_intext = heading_id_intext.get_headings_intext(self.create_intext_id_dataset(), self.toc_page, mode)
+        # compare intext headings vs toc headings and choose only 1:1
+        self.headings_intext = self.match_headings(headings_intext)
         section_ptrs = self.headings_intext.loc[self.headings_intext['Heading'] == 1]
         self.subsection_ptrs = self.headings_intext.loc[self.headings_intext['Heading'] == 2]
         self.subsection_ptrs.reset_index(inplace=True, drop=True)
@@ -140,25 +160,9 @@ class Report():
     def get_headings(self):  # get headings from TOC
         df = self.create_identification_dataset()
         df = heading_id_toc.pre_process_id_dataset(datafile=df, training=False)
-        preds = heading_id_toc.get_toc_headings(df)
-        #model = heading_id_toc.NeuralNetwork()
-        #x = newdf['ProcessedText']  #['SectionText']
-        #res, classes = model.predict(x, mode=mode)
-        #columns = df.columns #['LineNum', 'SectionPrefix', 'SectionText', 'SectionPage']  #'PageNum',
+        preds = heading_id_toc.get_toc_headings(df, mode)
         headings = preds.loc[preds['Heading'] == 1]
         subheadings = preds.loc[preds['Heading'] == 2]
-
-        #subheadings = pd.DataFrame(columns=columns)
-
-        # for i, pred in zip(res.index.values, classes):
-        #     heading = self.docinfo[str(self.toc_page)][i]
-        #     # section_prefix, section_text = heading_id_toc.split_prefix(heading['Text'])
-        #     # section_text, section_page = heading_id_toc.split_pagenum(section_text)
-        #     hrow = df.loc[i, ['LineNum', 'SectionPrefix', 'SectionText', 'SectionPage']] #[heading['LineNum'], section_prefix, section_text, section_page]  # heading['PageNum'],
-        #     if pred == 1:
-        #         headings.loc[len(headings)] = hrow
-        #     elif pred == 2:
-        #         subheadings.loc[len(subheadings)] = hrow
         return headings, subheadings
 
     def create_line_dataset(self):
@@ -202,14 +206,14 @@ class Report():
         df = self.line_dataset.loc[self.line_dataset['PageNum'] != self.toc_page]
         df['ContainsNum'] = df.Text.apply(lambda x: heading_id_intext.contains_num(x))
         if self.headings.shape[0] > 0:
-            self.headings['Text'] = self.headings.apply(lambda x: x.SectionPrefix + ' ' + x.SectionText, axis=1)
+            #self.headings['Text'] = self.headings.apply(lambda x: x.SectionPrefix + ' ' + x.SectionText, axis=1)
             self.headings['Heading'] = 1
         if self.subheadings.shape[0] > 0:
-            self.subheadings['Text'] = self.subheadings.apply(lambda x: x.SectionPrefix + ' ' + x.SectionText, axis=1)
+            #self.subheadings['Text'] = self.subheadings.apply(lambda x: x.SectionPrefix + ' ' + x.SectionText, axis=1)
             self.subheadings['Heading'] = 2
-        headings = pd.concat([self.headings, self.subheadings], ignore_index=True)
+        headings = pd.concat([self.headings, self.subheadings])#, ignore_index=True)
         df['MatchesHeading'], df['MatchesType'], df['MatchesI'] = heading_id_intext.compare_lines2headings(df.Text.values, headings)
-        df['Heading'] = 0
+        df['Heading'] = None
         return df
 
     def create_marginals_dataset(self):
@@ -427,11 +431,11 @@ def bookmark_report(report, test=False):
     # add links between toc lines and their intext section
     #self.headings_intext, self.subheadings, self.headings
     if report.toc_page:
-        toc_headings = pd.concat([report.headings, report.subheadings], ignore_index=True)
+        toc_headings = pd.concat([report.headings, report.subheadings])
         for i, row in report.headings_intext.iterrows():
             if row.MatchesHeading == 0:
                 continue
-            toc_h = toc_headings.iloc[int(row.MatchesI)]
+            toc_h = toc_headings.loc[int(row.MatchesI)]
             toc_bb = report.line_dataset.loc[(report.line_dataset.PageNum == report.toc_page) &
                                              (report.line_dataset.LineNum == toc_h.LineNum)].iloc[0]
             left = width * toc_bb['Left']
@@ -465,8 +469,8 @@ if __name__ == '__main__':
     # transform document pages into dataset of pages for toc classification, classify pages, and isolate toc
     # from toc page, transform content into dataset of headings for heading identification, identify headings, and return headings and subheadings
     test_reports = ['30320', '42688', '95183', '2984', '57418', '75738', '111200']
-    #reports = test_reports #['30320'] # '30320' #'24352', '24526', '26853', '28066', '28184','28882', '30281', '31681', '23508', ] #,'23732',
-    reports = ['42688']
+    reports = test_reports #['30320'] # '30320' #'24352', '24526', '26853', '28066', '28184','28882', '30281', '31681', '23508', ] #,'23732',
+    #reports = ['30320']
     test = True
     for report in reports:
         start = time.time()

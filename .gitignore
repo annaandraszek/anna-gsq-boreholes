@@ -12,4 +12,4 @@ textracting/datasets/not_using
 textracting/production/
 textracting/reports/
 textracting/training/
-**/html/
+textracting/html/
