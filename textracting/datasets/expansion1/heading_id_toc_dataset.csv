@@ -1285,19 +1285,22 @@ DocID,PageNum,LineNum,LineText,Heading,TagMethod
 30340,3,21,4.4 	Drill Testing of Magnetic Targets 	7,,
 30340,3,22,5. 	CONCLUSIONS AND RECOMMENDATIONS 	9,,
 30340,3,23,REFERENCES 	10,,
-30392,4,1,Urandangi Project Annual Report 	September 1998,0.0,legacy
-30392,4,2,TABLE OF CONTENTS,0.0,legacy
-30392,4,3,Page,0.0,legacy
-30392,4,4,SUMMARY,1.0,legacy
-30392,4,5,1. 	INTRODUCTION 	1,1.0,legacy
-30392,4,6,-,0.0,legacy
-30392,4,7,2. 	TENURE 	1,1.0,legacy
-30392,4,8,3. 	RATIONALE FOR EXPLORATION 	1,1.0,legacy
-30392,4,9,4. 	PREVIOUS WORK BY BHP MINERALS 	1,1.0,legacy
-30392,4,10,5. 	WORK COMPLETED BY BHP MINERALS IN THE CURRENT,1.0,legacy
-30392,4,11,TERM 	2,0.0,legacy
-30392,4,12,5.1 	Site U 24 	2,2.0,legacy
-30392,4,13,6. 	CONCLUSIONS 	3,1.0,legacy
+30392,3,1,CR.ANOP39 	2,0.0,legacy
+30392,3,2,Urandangi Project Annual Report,0.0,legacy
+30392,3,3,LIST OF FIGURES,0.0,legacy
+30392,3,4,Drawing No.,1.0,legacy
+30392,3,5,Figure 1 	Location map 	A4-1732A,1.0,legacy
+30392,3,6,Figure 2 	Regional north north-east trending gravity ridge 	CDB 1002,0.0,legacy
+30392,3,7,Figure 3 	Anomaly U 24. Drill hole location,1.0,legacy
+30392,3,8,LIST OF TABLES,1.0,legacy
+30392,3,9,--,1.0,legacy
+30392,3,10,Table 1 	Urandangi Project - Tenement Details,1.0,legacy
+30392,3,11,Table 2 	Drill Hole Details,0.0,legacy
+30392,3,12,LIST OF APPENDICES,2.0,legacy
+30392,3,13,Appendix 1 	Drill Hole UDH 08,1.0,legacy
+30392,3,14,Drill Logs,,
+30392,3,15,Logging Codes,,
+30392,3,16,Sample Details and Assay Results,,
 3051,2,1,CONTENTS,,
 3051,2,2,Page,,
 3051,2,3,SUMMARY,,
@@ -2040,6 +2043,26 @@ DocID,PageNum,LineNum,LineText,Heading,TagMethod
 39894,2,14,Figure 2. Authority to Prospect 703P Location Map - Topography,,
 39894,2,15,Figure 3. Authority to Prospect 703P Location Map - Existing wells and seismic lines,,
 39894,2,16,2,,
+40262,3,1,TABLF OF CONTFNTS,,
+40262,3,2,Page,,
+40262,3,3,SUMMARY 	(i),,
+40262,3,4,1. 	INTRODUCTION 	1,,
+40262,3,5,1.1 Tenure 	1,,
+40262,3,6,1.2 Location and Access 	4,,
+40262,3,7,2. 	REGIONAL GEOLOGY 	4,,
+40262,3,8,3. 	EVALUATION OF BASE METAL PROSPECTS IN AND ADJACENT 	6,,
+40262,3,9,TO EPM12372,,
+40262,3,10,4. 	PROPOSED EXPLORATION PROGRAM ON EPM12372 & 	12,,
+40262,3,11,EPM12766,,
+40262,3,12,5. 	FUTURE PLANS 	14,,
+40262,3,13,List of Tables,,
+40262,3,14,Table 1. List of sub blocks EPM 12732 Ermine North,,
+40262,3,15,List of Figures,,
+40262,3,16,Figure # 	Title 	Page,,
+40262,3,17,1 	Tenement Location Map EPM 12732 	2,,
+40262,3,18,2 	Ermine Project Area Sub Block Map 	3,,
+40262,3,19,3 	TCM Mt Windsor Regiona Geology 	5,,
+40262,3,20,ii,,
 40352,2,1,TABLE OF CONTENTS,,
 40352,2,2,1. HOLE SUMMARY,,
 40352,2,3,2. HOLE DESIGN,,
@@ -3652,6 +3675,12 @@ DocID,PageNum,LineNum,LineText,Heading,TagMethod
 72764,2,28,Figure 10 	2010 soil survey Cu results and broad geology,,
 72764,2,29,Figure 11 	2010 soil survey Zn results and broad geology,,
 72764,2,30,July 2012 	Page 2,,
+72867,3,1,List of Figures,,
+72867,3,2,Figure 1. EPM 12998 Block ID and Locality Map.,,
+72867,3,3,"Figure 2. EPM 12998 Topography, location and access",,
+72867,3,4,Figure 3. Ozmin Interpretive Geology,,
+72867,3,5,Plate 1. (attached) Kennecott Interpretitive Geological Map highlighting basalt-exhalite,,
+72867,3,6,sequences with Ozmin Soil Geochemical anomalies (Cu+Zn),,
 74718,3,1,TABLE OF CONTENTS,0.0,legacy
 74718,3,2,1. INTRODUCTION 	4,1.0,legacy
 74718,3,3,2. TENURE 	4,1.0,legacy
@@ -3914,6 +3943,19 @@ DocID,PageNum,LineNum,LineText,Heading,TagMethod
 80507,2,25,(QLD) and its officials. The Minister is authorised to publish information in which the copyright subsist solely in,,
 80507,2,26,accordance with the Mineral Resources Regulations 2013.,,
 80507,2,27,2,,
+80685,9,1,QGC A BG Group business,,
+80685,9,2,Jen 129 - Well Completion Report,,
+80685,9,3,LIST OF APPENDICES,,
+80685,9,4,Appendix 1 	Survey Location Plan,,
+80685,9,5,Appendix 2 	Daily Drilling Reports,,
+80685,9,6,Appendix 3 	Daily Geological Reports,,
+80685,9,7,Appendix 4 	Composite Log,,
+80685,9,8,Appendix 5 	Lithology Log,,
+80685,9,9,Appendix 6 	Pason Log,,
+80685,9,10,Appendix 7 	Cementing Report,,
+80685,9,11,LIST OF ENCLOSURES,,
+80685,9,12,Enclosure 1 	Wireline Log Data (LAS Format),,
+80685,9,13,Enclosure 2 	Wireline Log Prints,,
 81317,3,1,TABLE OF CONTENTS,,
 81317,3,2,Page,,
 81317,3,3,1. Introduction 	1,,
@@ -3989,6 +4031,32 @@ DocID,PageNum,LineNum,LineText,Heading,TagMethod
 82103,3,37,"1/68 Railway Avenue, Railway Estate 	PO Box 499, Hyde Park",,
 82103,3,38,"Townsville, QLD 4810 Australia 	Castletown, Townsville QLD 4812. Australia",,
 82103,3,39,T +61 (07) 4772 5880 F +61 (07) 4772 	www.kruciblemetals.com.at E: info@kruciblemetals.com.au,,
+82778,9,1,QGC - A BG Group business,,
+82778,9,2,Owen 213 - Well Completion Report,,
+82778,9,3,LIST OF APPENDICES,,
+82778,9,4,Appendix 1 	Survey Location Plan,,
+82778,9,5,Appendix 2 	Daily Drilling Reports,,
+82778,9,6,Appendix 3 	Daily Geological Reports,,
+82778,9,7,Appendix 4 	Composite Log,,
+82778,9,8,Appendix 5 	Lithology Log,,
+82778,9,9,Appendix 6 	Pason Log,,
+82778,9,10,Appendix 7 	Cementing Reports,,
+82778,9,11,LIST OF ENCLOSURES,,
+82778,9,12,Enclosure 1 	Wireline Log Data (LAS Format),,
+82778,9,13,Enclosure 2 	Wireline Log Prints,,
+83936,9,1,QGC - A BG Group business,,
+83936,9,2,Cam 136 - Well Completion Report,,
+83936,9,3,LIST OF APPENDICES,,
+83936,9,4,Appendix 1 	Survey Location Plan,,
+83936,9,5,Appendix 2 	Daily Drilling Reports,,
+83936,9,6,Appendix 3 	Daily Geologica Reports,,
+83936,9,7,Appendix 4 	Composite Log,,
+83936,9,8,Appendix 5 	Lithology Log,,
+83936,9,9,Appendix 6 	Pason Log,,
+83936,9,10,Appendix 7 	Cementing Report,,
+83936,9,11,LIST OF ENCLOSURES,,
+83936,9,12,Enclosure 1 	Wireline Log Data (LAS Format),,
+83936,9,13,Enclosure 2 	Wireline Log Prints,,
 84138,46,1,ORIGIN ENERGY,,
 84138,46,2,"HALLIBURTON 	COM 5, NTH 2,231,249-250,280-282,316-320,334-338,368-369,37 CEMENT PROGRAM",,
 84138,46,3,REV.3,,

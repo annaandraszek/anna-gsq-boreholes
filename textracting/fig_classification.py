@@ -46,7 +46,7 @@ def write_to_dataset(pi, docid):
         q75, q25 = np.percentile(np.array(confs), [75, 25])
         iqr = q75 - q25
 
-        docset[i] = np.array([docid.strip('cr_'), info[0], medconf, avgconf, rangeconf, iqr, medlineln, fig, figln, figlnpos, 0])
+        docset[i] = np.array([docid.strip('cr_'), info[0], medconf, avgconf, rangeconf, iqr, medlineln, fig, figln, figlnpos, None, None])
     return docset
 
 
@@ -68,7 +68,7 @@ def create_individual_dataset(docid, docinfo, doclines):
     pi = docinfo
     docset = write_to_dataset(pi, docid)
     df = pd.DataFrame(docset, columns=columns)
-#    df = df.drop(columns=['TagMethod'])  # don't want to have this and the y column?
+    df = df.drop(columns=['TagMethod', y_column])  # don't want to have this and the y column?
     return df
 
 
@@ -76,31 +76,15 @@ def train(n_queries=10, mode=settings.dataset_version):  # datafile=settings.get
     datafile = settings.get_dataset_path(name, mode)
     data = pd.read_csv(datafile)
     clf = RandomForestClassifier() #tree.DecisionTreeClassifier()
-    accuracy, clf = al.active_learning(data, n_queries, y_column, estimator=clf, limit_cols=limited_cols)
+    accuracy, clf = al.train(data, y_column, n_queries, clf, datafile, limited_cols)
     print(accuracy)
     model_file = settings.get_model_path(name, mode)
     with open(model_file, "wb") as file:
         pickle.dump(clf, file)
 
-#
-# def classify_page(data, mode=settings.dataset_version):
-#     if mode == settings.dataset_version:
-#         if not os.path.exists(settings.get_model_path(name)):
-#             train(data, n_queries=0)
-#     return mlh.classify(data, name, mode=mode, limit_cols=limited_cols)
-#
 
 def get_fig_pages(data, mode=settings.dataset_version): #docid, docinfo, doclines):  # change usages of this to pass fig dataset
     return mlh.get_classified(data, name, y_column, limited_cols, mode)
-    # if not docid:
-    #     data_file = settings.dataset_path + 'fig_dataset.csv'
-    #     df = pd.read_csv(data_file)
-    # else:
-    #     df = create_individual_dataset(docid, docinfo, doclines)
-    # classes = classify_page(df)
-    # mask = np.array([True if i==1 else False for i in classes])
-    # fig_pages = df[mask]
-    # return fig_pages
 
 
 if __name__ == "__main__":

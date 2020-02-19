@@ -5,7 +5,6 @@ import glob
 import settings
 from sklearn import ensemble
 import pickle
-import os
 import re
 import active_learning
 import machine_learning_helper as mlh
@@ -19,17 +18,6 @@ limit_cols=['DocID', 'Text', 'LineNum']
 estimator = ensemble.RandomForestClassifier()
 data_path = settings.get_dataset_path(name)
 model_path = settings.get_model_path(name)
-
-# def assign_y(x, prev):
-#     d, p, l = int(x['DocID']), int(x['PageNum']), int(x['LineNum'])
-#     y = (prev['Marginal'].loc[(prev['DocID'] == d) & (prev['PageNum'] == p) & (prev['LineNum'] == l)])
-#     if len(y) == 0:
-#         return None
-#     elif len(y) == 1:
-#         return y.values[0]
-#     else:
-#         print("more rows than 1? ")
-#         print(y.values)
 
 
 def contains_num(string):
@@ -96,12 +84,6 @@ def create_dataset():
 
     prev_dataset = settings.dataset_path + 'marginals_dataset_v2.csv'
     df = mlh.add_legacy_y(prev_dataset, df, y_column, line=True)
-    # if os.path.exists(prev_dataset):
-    #     prev = pd.read_csv(prev_dataset)
-    #     df[y_column] = df.apply(lambda x: mlh.assign_y(x, prev, y_column, line=True), axis=1)
-    #     df[y_column].loc[df[y_column] == 2] = 1  # removing the [2] class
-    #     df['TagMethod'].loc[df[y_column] == df[y_column]] = "legacy"
-
     return df
 
 
@@ -115,31 +97,6 @@ def create_individual_dataset(docid):
     df['Centrality'] = normalized
     return df
 
-#
-# def edit_dataset():
-#     file = settings.get_dataset_path('marginal_lines')
-#     data = pd.read_csv(file)
-#     data['Marginal'].loc[data['Marginal'] == 2] = 1
-# #     data['NormedLineNum'].loc[data['NormedLineNum'] != data['NormedLineNum']] = 0  # values where NormedLineNum == None
-#     data.to_csv(file, index=False)
-
-
-# def data_prep(data, y=False):
-#     limit_cols = ['Text', 'TagMethod']
-#     if y:
-#         y=y_column
-#     #data.dropna(inplace=True)
-#     data.drop(data[data['Width'] < 0].index, inplace=True)
-#     return mlh.data_prep(data, y, limit_cols)
-    # X = data.drop(columns= limit_cols) # PageNum?
-    # #X = X.drop(['Words2Width'], axis=1)  # temporarily
-    # if limit_cols:
-    #     X = X.drop(columns=limit_cols)
-    # if y:
-    #     Y = data['Marginal']
-    #     return X, Y
-    # return X
-
 
 def train(n_queries=10, mode=settings.dataset_version): #, model='forest') datafile=data_path,
     datafile = settings.get_dataset_path(name, mode)  # need to define these here because mode may be production
@@ -151,33 +108,10 @@ def train(n_queries=10, mode=settings.dataset_version): #, model='forest') dataf
     print("End of training stage. Re-run to train again")
     return accuracy
 
-#
-# def classify(data):
-#     if not os.path.exists(settings.get_model_path('marginal_lines')):
-#         train(data)
-#     with open(settings.get_model_path('marginal_lines'), "rb") as file:
-#         model = pickle.load(file)
-#     data = data_prep(data)
-#     pred = model.predict(data)
-#     return pred
-#
-#
-# def classify_line(data, mode=settings.dataset_version):  # want to have this here instead of in mlh bc would need to pass training function
-#     if mode == settings.dataset_version:
-#         if not os.path.exists(model_path):
-#             train(data, n_queries=0)
-#     return mlh.classify(data, name, mode=mode, limit_cols=limit_cols)
-#
 
 def get_marginals(data, mode=settings.dataset_version):
-    # if mode == settings.production:
-    #    limit_cols.extend([])
     return mlh.get_classified(data, name, y_column, limit_cols, mode)
-    #data = create_individual_dataset(docid)
-    # result = classify_line(data, mode)
-    # data[y_column] = result
-    # marginals = data.loc[data[y_column] != 0]
-    # return marginals
+
 
 
 if __name__ == "__main__":

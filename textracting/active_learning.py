@@ -89,6 +89,7 @@ def active_learning(data, n_queries, y_column, estimator=RandomForestClassifier(
     if y_column in ['Marginal', 'Heading']:  # covers marginal_lines, heading_id_toc, heading_id_intext
         line = True  # determines if a line or page is to to be displayed
     classes = pd.unique(data[y_column].values)  #todo: check type
+    classes = sorted(filter(lambda v: v==v, classes))
     X_initial, Y_initial, X_pool, y_pool, refs = al_data_prep(data, y_column, limit_cols)
     X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X_initial, Y_initial,
                                                                                test_size=0.50)
@@ -167,13 +168,15 @@ def automatically_tag(type, classification_function, y_column):
     source = settings.get_dataset_path(type)  # 'toc'
     df = pd.read_csv(source)
     df = df.reset_index(drop=True)
-    new_tags = classification_function(df) #classify_page(df)
+    new_tags = classification_function(df, masked=False) # can add mode parameter if ever use it on production set
     #idx = df.loc[((df['TagMethod'] != 'legacy') != (df['TOCPage'] == df['TOCPage'])) & (df['TagMethod'] != 'manual')].index.values #= new_tags.loc[(df['TagMethod'] != 'legacy') & (df['TagMethod'] != 'manual')]
-    idx = df.loc[(df['TagMethod'] == 'auto') | (df[y_column] != df[y_column])].index.values  # join of auto and TOCPage==None
-    df.loc[idx, y_column] = new_tags[idx]
+    idx = df.loc[((df['TagMethod'] == 'auto') | (df['TagMethod'] != df['TagMethod'])) | (df[y_column] != df[y_column])].index.values  # join of auto and TOCPage==None
+    df.loc[idx, y_column] = new_tags.iloc[idx]
     df.loc[idx, 'TagMethod'] = 'auto'
     print(len(idx), " automatically tagged")
     #df['TagMethod'].loc[(df['TagMethod'] != 'legacy') & (df['TagMethod'] != 'manual')] = 'auto'
+    if 'proba' in df.columns:
+        df = df.drop(columns=['proba'])
     df.to_csv(settings.get_dataset_path(type), index=False)
 
 
@@ -184,7 +187,7 @@ def al_input_loop(learner, inst, docid, n_queries, classes, page=None, line=None
     pred = learner.predict(inst.reshape(1, -1))
     #preds.append(pred[0])
 
-    display_page(int(docid), page, line)  # docid, pagenum, line
+    display_page(int(docid), int(page), line)  # docid, pagenum, line
 
     time.sleep(1)  # sometimes the input box doesn't show, i think because it doesn't have the time
 
@@ -219,7 +222,7 @@ def al_data_prep(data, y_column, limit_cols=None):  # to generalise further, sho
     if y_column in ['Heading', 'Marginal']:
         ref_pagenums = unlabelled.PageNum
         refs['pagenums'] = ref_pagenums
-    if y_column in 'Heading':
+    if y_column in ['Heading', 'Marginal']:
         ref_linenums = unlabelled.LineNum
         refs['linenums'] = ref_linenums
 
@@ -256,8 +259,9 @@ def save_report_pages(docid):
 
 
 if __name__ =="__main__":
-    display_page('70562', 5, 4)
-
+    #display_page('70562', 5, 4)
+    import heading_id_toc
+    automatically_tag('proc_heading_id_toc', heading_id_toc.get_toc_headings, 'Heading')
 
 
 # def data_prep(data, limit_cols=None, y_column=None):  # y=False,

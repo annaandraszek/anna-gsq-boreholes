@@ -33,8 +33,7 @@ class Report():
         self.doclines = self.get_doc_lines()
         self.line_dataset = self.create_line_dataset()
         self.toc_page = self.get_toc_page()
-        #self.fig_pages = self.get_fig_pages()  #fig_classification.get_fig_pages(self.docid, self.docinfo, self.doclines)
-        #self.line_dataset = self.create_line_dataset()
+        self.fig_pages = self.get_fig_pages()  #fig_classification.get_fig_pages(self.docid, self.docinfo, self.doclines)
 
         if self.toc_page:
             self.headings, self.subheadings = self.get_headings()
@@ -54,13 +53,14 @@ class Report():
         self.marginals = marginals_classification.get_marginals(
             self.create_marginals_dataset(), mode)  # a df containing many columns, key: pagenum, text
         self.marginals_set = set([(p, l) for p, l in zip(self.marginals.PageNum, self.marginals.LineNum)])
-        #self.page_nums = page_extraction.get_page_nums(self.marginals)
+        #self.page_nums = page_extraction.get_page_nums(self.marginals, mode=mode)
+        self.page_nums = None
 
     def get_section_ptrs(self):
         self.headings_intext = heading_id_intext.get_headings_intext(self.create_intext_id_dataset(), self.toc_page, mode)
         section_ptrs = self.headings_intext.loc[self.headings_intext['Heading'] == 1]
-        #self.subsection_ptrs = self.headings_intext.loc[self.headings_intext['Heading'] == 2]
-        #self.subsection_ptrs.reset_index(inplace=True, drop=True)
+        self.subsection_ptrs = self.headings_intext.loc[self.headings_intext['Heading'] == 2]
+        self.subsection_ptrs.reset_index(inplace=True, drop=True)
         section_ptrs.reset_index(inplace=True, drop=True)
         return section_ptrs
 
@@ -304,55 +304,57 @@ def draw_report(report):
 
         if int(page[0]) in report.marginals['PageNum'].values:     # draw bb around marginals
             lnnum = report.marginals.loc[report.marginals['PageNum'] == int(page[0])]['LineNum']
-            linenum = lnnum.values[0] - 1
-            line = page[1][linenum]
-            box = line['BoundingBox']
-            left = width * box['Left']
-            top = height * box['Top']
-            draw.rectangle([left, top, left + (width * box['Width']), top + (height * box['Height'])], outline='orange')
+            for ln in lnnum.values:
+                linenum = ln - 1
+                line = page[1][linenum]
+                box = line['BoundingBox']
+                left = width * box['Left']
+                top = height * box['Top']
+                draw.rectangle([left, top, left + (width * box['Width']), top + (height * box['Height'])], outline='orange')
 
             # draw bb around page number (by comparing marginal content to result of page number extraction)
-            if int(page[0]) in report.page_nums['PageNum'].values:  # draw bb around marginals
-                pg_marginal = report.page_nums.loc[report.page_nums['PageNum'] == int(page[0])]
-                #pglnnum = pg_marginal['LineNum']
-                #pglinenum = pglnnum.values[0] - 1
-                text = pg_marginal.Text.values[0]
-                split_text = text.split('\t')
-                reg = r'(^|\s)' + str(pg_marginal['Page'].values[0]) + r'($|\s)'   # implement returning pagenum position instead? would make this MUCH easier
-                pgnum_i = None
-                for t, i in zip(split_text, range(len(split_text))):
-                    if re.search(reg, t):
-                        pgnum_i = i
-                        break
-                if pgnum_i:
-                    box = line['OriginalBBs'][pgnum_i]
-                    left = width * box['Left']
-                    top = height * box['Top']
-                    draw.rectangle([left, top, left + (width * box['Width']), top + (height * box['Height'])],
-                               outline='red')
+            if isinstance(report.page_nums, pd.DataFrame):
+                if int(page[0]) in report.page_nums['PageNum'].values:  # draw bb around marginals
+                    pg_marginal = report.page_nums.loc[report.page_nums['PageNum'] == int(page[0])]
+                    #pglnnum = pg_marginal['LineNum']
+                    #pglinenum = pglnnum.values[0] - 1
+                    text = pg_marginal.Text.values[0]
+                    split_text = text.split('\t')
+                    reg = r'(^|\s)' + str(pg_marginal['Page'].values[0]) + r'($|\s)'   # implement returning pagenum position instead? would make this MUCH easier
+                    pgnum_i = None
+                    for t, i in zip(split_text, range(len(split_text))):
+                        if re.search(reg, t):
+                            pgnum_i = i
+                            break
+                    if pgnum_i:
+                        box = line['OriginalBBs'][pgnum_i]
+                        left = width * box['Left']
+                        top = height * box['Top']
+                        draw.rectangle([left, top, left + (width * box['Width']), top + (height * box['Height'])],
+                                   outline='red')
 
-            #original_marginal_bb = docinfo[pagestr][lineindex]['OriginalBBs'][index in marginal]
+                #original_marginal_bb = docinfo[pagestr][lineindex]['OriginalBBs'][index in marginal]
+
 
         if page[0] == str(report.toc_page): # change colour of toc page
-            for i, row in report.toc_dataset.iterrows():
-                left = width * row['Left']
-                top = height * row['Top']
-                #draw = ImageDraw.Draw(image)
-                draw.rectangle([left, top, left + (width * row['Width']), top + (height * row['Height'])],
-                               outline='pink')
+            # for i, row in report.toc_dataset.iterrows():  # did this mean to put rectangles around toc headings?
+            #     left = width * row['Left']
+            #     top = height * row['Top']
+            #     #draw = ImageDraw.Draw(image)
+            #     draw.rectangle([left, top, left + (width * row['Width']), top + (height * row['Height'])],
+            #                    outline='pink')
 
             img_copy = image.copy()
             background = ImageDraw.Draw(img_copy, 'RGBA')
             background.rectangle([0, 0, image.size[0], image.size[1]], fill='green')
             image = Image.blend(img_copy, image, alpha=0.3)
 
-
-
-        if float(page[0]) in report.fig_pages['PageNum'].values: # change colour of fig pages
-            img_copy = image.copy()
-            background = ImageDraw.Draw(img_copy, 'RGBA')
-            background.rectangle([0, 0, image.size[0], image.size[1]], fill='purple')
-            image = Image.blend(image, img_copy, alpha=0.3)
+        if report.fig_pages:
+            if float(page[0]) in report.fig_pages['PageNum'].values: # change colour of fig pages
+                img_copy = image.copy()
+                background = ImageDraw.Draw(img_copy, 'RGBA')
+                background.rectangle([0, 0, image.size[0], image.size[1]], fill='purple')
+                image = Image.blend(image, img_copy, alpha=0.3)
 
         #else:
         # draw bb around section headers
@@ -384,23 +386,18 @@ def draw_report(report):
 
 # add bookmarks to sections and sub-bookmarks to subsections
 # if drawing report, after it has been drawn on. if not, need to download the report if it has not been converted from tif
-def bookmark_report(report):
+def bookmark_report(report, test=False):
     if len(report.docinfo.keys()) == 0:
         return
-    report_file = settings.get_report_name(report.docid, local_path=True, file_extension='.pdf')
+    if test:
+        report_file = settings.get_report_name(report.docid, local_path=True, file_extension='_boxed.pdf')
+    else:
+        report_file = settings.get_report_name(report.docid, local_path=True, file_extension='.pdf')
     output = PdfFileWriter()
     input = PdfFileReader(open(report_file, 'rb'))
     ptrs = report.headings_intext
     for page in input.pages:
         output.addPage(page)
-
-    # if len(input.outlines) > 0:  # add existing bookmarks
-    #     for o in input.outlines:
-    #         title = o["/Title"]
-    #         page = o.page.idnum
-    #         type = o["/Type"]
-    #         output.addBookmark()
-
 
     output.addBookmark('Title Page', 0, fit='/FitB')
     if report.toc_page:
@@ -437,8 +434,11 @@ def bookmark_report(report):
             output.addLink(report.toc_page-1, row.PageNum-1, rect=rectangle, fit='/FitB')  # creates link from toc heading to section page
 
     #outfile = settings.get_report_name(report.docid, local_path=True, file_extension='_bookmarked.pdf')
-    outfile = settings.get_bookmarked_file(report.docid)
+    outfile = settings.get_bookmarked_file(report.docid, test=test)
     print(outfile)
+    rpath = outfile.rsplit('/', 1)[0]
+    if not os.path.exists(rpath):
+        os.mkdir(rpath)
     output.write(open(outfile, 'wb'))
 
 
@@ -457,13 +457,15 @@ def save_report_sections(report):
 if __name__ == '__main__':
     # transform document pages into dataset of pages for toc classification, classify pages, and isolate toc
     # from toc page, transform content into dataset of headings for heading identification, identify headings, and return headings and subheadings
-    reports = ['30320'] # '30320' #'24352', '24526', '26853', '28066', '28184','28882', '30281', '31681', '23508', ] #,'23732',
-
+    test_reports = ['30320', '42688', '95183', '2984', '57418', '75738', '111200']
+    reports = test_reports #['30320'] # '30320' #'24352', '24526', '26853', '28066', '28184','28882', '30281', '31681', '23508', ] #,'23732',
+    test = True
     for report in reports:
         start = time.time()
         r = Report(report)
-        #draw_report(r)
-        bookmark_report(r)
+        if test:
+            draw_report(r)
+        bookmark_report(r, test)
         save_report_sections(r)
         end = time.time()
         print('time:', end - start)

@@ -73,7 +73,7 @@ if __name__ == '__main__':
             docids = args.id
             mode = 'given'
 
-        mode = "testing"
+        #mode = "testing"
         if mode == "sample" or mode == "given" or mode == "testing":
             if mode == 'sample':
                 print("Running in sample mode. Num samples: " + str(num_sample) + " Cutoff date: " + str(cutoffdate) +

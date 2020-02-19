@@ -1,7 +1,7 @@
 from __future__ import print_function
 import pandas as pd
 import settings
-from page_identification import transform_text
+from page_identification import transform_text_wrapper
 import page_identification
 import os
 from keras.preprocessing.text import Tokenizer
@@ -24,6 +24,13 @@ import active_learning
 from keras.wrappers.scikit_learn import KerasClassifier
 from heading_id_toc import Text2Seq
 from sklearn.preprocessing import FunctionTransformer
+import machine_learning_helper as mlh
+import pickle
+
+
+name = 'page_extraction'
+y_column = 'position'
+limit_cols = ['transformed', 'pagenum']
 
 
 def num2word(str):
@@ -53,36 +60,42 @@ class NeuralNetwork():
     #model_path = settings.model_path
 
     def __init__(self, model_name='mask_nn', model_type='NN'):
-        self.model_name = 'page_ex_' + model_name
-        self.model_loc =  settings.get_model_path('page_extraction')  #self.model_path + self.model_name + '.h5'
-        self.tok_loc = settings.get_model_path('page_extraction', tokeniser=True) #self.model_path + self.model_name + 'tokeniser.joblib'
-        self.classes_loc = settings.get_model_path('page_extraction', classes=True)  #self.model_path + self.model_name + 'class_dict.joblib'
-        self.mode_type = model_type
+        #self.model_name = 'page_ex_' + model_name
+        #self.model_loc =  settings.get_model_path('page_extraction')  #self.model_path + self.model_name + '.h5'
+        #self.tok_loc = settings.get_model_path('page_extraction', tokeniser=True) #self.model_path + self.model_name + 'tokeniser.joblib'
+        #self.mode_type = model_type
+        print()
 
-
-    def train(self, file=settings.get_dataset_path('page_extraction')):  #settings.page_extraction_dataset):
+    def train(self, n_queries=10, mode=settings.dataset_version):  #settings.page_extraction_dataset):
+        file = settings.get_dataset_path(name, mode)
         df = pd.read_csv(file)
         #self.X = df['transformed']
-        #self.Y = df['position']         # try with y position instead of y value
-        transform = FunctionTransformer(lambda x: num2word(x))  # not sure this will work
+        #self.X = df['transformed']  # self.X only exists here to get proper maxlens
+        self.Y = df['position']         # try with y position instead of y value
+        #transform = FunctionTransformer(lambda x: num2word(x))  # not sure this will work
         #self.X = self.X.apply(lambda x: num2word(x))
         #self.max_words, self.max_len = check_maxlens(self.X)
+        self.max_len = 20  # assuming max num of words in line will be 20
         self.classes, y_vectorised = self.position2int()
-        #self.inv_classes = {v: k for k, v in self.classes.items()}
-        #y_masked = np.zeros((self.Y.size, self.max_len))
-        #for i, j in zip(y_masked, y_vectorised):
-        #    p = self.inv_classes[j]
-        #    i[p] = 1
+        self.inv_classes = {v: k for k, v in self.classes.items()}
+        y_masked = np.zeros((self.Y.size, self.max_len))
+        for i, j in zip(y_masked, y_vectorised):
+           p = self.inv_classes[j]
+           i[p] = 1
 
         self.num_classes = len(self.classes.items())
         nn = KerasClassifier(build_fn=self.NN, batch_size=self.batch_size, epochs=self.epochs, validation_split=0.2)
 
         clf = Pipeline([
-            (),
-            ('transform', Text2Seq(classes=self.num_classes)),
+            ('transform_text', FunctionTransformer(transform_text_wrapper)),
+            #('num2word', FunctionTransformer(lambda x: num2word(x))),
+            ('transform', Text2Seq(classes=self.num_classes, pad_len=self.max_len)),
             ('nn', nn)
-        ])
+        ], verbose=True)
 
+        accuracy, learner = active_learning.train(df, y_column, n_queries, clf, file, limit_cols=limit_cols)
+        self.model = learner
+        self.model_loc = settings.get_model_path(name, mode)
         # self.tok = Tokenizer(num_words=self.max_words+1) # only num_words-1 will be taken into account!
 
         # if self.mode_type == 'LSTM':
@@ -106,18 +119,24 @@ class NeuralNetwork():
         #
         # accr = self.model.evaluate(test_sequences_matrix, Y_test)
         # print('Test set\n  Loss: {:0.3f}\n  Accuracy: {:0.3f}'.format(accr[0], accr[1]))
-        self.model.save(self.model_loc)
+        #self.model.save(self.model_loc)
+        with open(self.model_loc, "wb") as f:
+            pickle.dump(self.model, f)
+        self.classes_loc = settings.get_model_path(name, mode, classes=True)  #self.model_path + self.model_name + 'class_dict.joblib'
         #joblib.dump(self.tok, self.tok_loc)
-        #joblib.dump(self.inv_classes, self.classes_loc)
+        joblib.dump(self.inv_classes, self.classes_loc)
+        print("End of training stage. Re-run to train again")
+        return accuracy
 
     def NN(self):
+        max_words = 6
         model = Sequential()
-        model.add(Embedding(input_length=self.max_len, input_dim = self.max_words+1, output_dim=self.max_len))#256))
+        model.add(Embedding(input_length=self.max_len, input_dim = max_words, output_dim=self.max_len))#256))
         model.add(Dense(32, activation='relu'))
         model.add(Dropout(0.1))
         #model.add(Dense(256, activation='relu', input_shape=()))
         model.add(Flatten())
-        model.add(Dense(self.max_len, activation='softmax'))
+        model.add(Dense(max_words-1, activation='softmax'))  # i have 5 "classifications" of vocab
 
         model.compile(loss='categorical_crossentropy',
                       optimizer='rmsprop',
@@ -126,30 +145,33 @@ class NeuralNetwork():
 
     def load_model_from_file(self):
         self.model = load_model(self.model_loc)
-        self.tok = joblib.load(self.tok_loc)
+        #self.tok = joblib.load(self.tok_loc)
         self.inv_classes = joblib.load(self.classes_loc)
         self.model._make_predict_function()
 
 
-    def predict(self, strings):
-        if not os.path.exists(self.model_loc):
-            self.train()
-        try:
-            self.model
-        except AttributeError:
-            self.load_model_from_file()
-
-        original_strings = strings
-        strings = strings.apply(lambda x: num2word(x))
-
-        sequences = self.tok.texts_to_sequences(strings)
-        sequences_matrix = sequence.pad_sequences(sequences, maxlen=12)
-        predictions = self.model.predict(sequences_matrix)
-        reverse_predictions = np.flip(predictions, 1)
+    def predict(self, strings, mode=settings.dataset_version):
+        # if not os.path.exists(self.model_loc):
+        #     self.train()
+        # try:
+        #     self.model
+        # except AttributeError:
+        #     self.load_model_from_file()
+        #
+        # original_strings = strings
+        # strings = strings.apply(lambda x: num2word(x))
+        #
+        # sequences = self.tok.texts_to_sequences(strings)
+        # sequences_matrix = sequence.pad_sequences(sequences, maxlen=12)
+        # predictions = self.model.predict(sequences_matrix)
+        if not isinstance(strings, pd.DataFrame):
+            strings = pd.DataFrame(data=strings, columns=['original'])
+        predictions = mlh.get_classified(strings, name, y_column, limit_cols, mode)
+        reverse_predictions = np.flip(predictions, 1) #?
         pred_classes = np.argmax(reverse_predictions, axis=1)
         classes = np.array([-(x+1) for x in pred_classes])
         #classes = [self.inv_classes[x] for x in pred_classes]
-        texts = original_strings.apply(lambda x: x.split())
+        texts = strings.apply(lambda x: x.split())
         #for i, j in zip(texts, classes):
         #    print(i[j])
         pagenums = [x[y] for x, y in zip(texts, classes)]
@@ -168,28 +190,37 @@ class NeuralNetwork():
         return map, vector
 
 
+def train(n_queries=10, mode=settings.dataset_version):
+    if not os.path.exists(settings.get_dataset_path(name, mode)):
+        df = create_dataset(mode)
+        df.to_csv(settings.get_dataset_path(name, mode), index=False)
+    nn = NeuralNetwork()
+    nn.train(n_queries=n_queries, mode=mode)
+
+
 # goal of this is to match page numbers in the text with pages of the pdf, by which we navigate - so we can navigate to
 #   the textually-numbered pages
 # therefore essential to return a mapping between the actual page number and the textual page number - which needs to
 #   be done a few steps ahead of this to carry it through to here; in marginals identification
-def get_page_nums(marginals, ml_only=False): # given a dataset of marginals of the document
-    page_marginals_mask = page_identification.get_page_marginals(marginals.Text)  # from all the marginals, get only those containing page numbers
+def get_page_nums(marginals, ml_only=False, mode=settings.dataset_version): # given a dataset of marginals of the document
+    page_marginals_mask = page_identification.get_page_marginals(marginals.Text, mode)  # from all the marginals, get only those containing page numbers
     if len(page_marginals_mask) <= 0:
         return []
+    marginals = marginals.reset_index(drop=True)
     page_marginals = marginals.loc[page_marginals_mask == 1]
     nn = NeuralNetwork('mask_nn', 'NN')
-    trans_marginals = page_marginals.Text.apply(lambda x: transform_text(x, transform_all=False))
+    #trans_marginals = page_marginals.Text.apply(lambda x: transform_text(x, transform_all=False))
     if ml_only:
-        page_nums = nn.predict(trans_marginals)
+        page_nums = nn.predict(page_marginals)  #trans_marginals)
     else:  # if there is only one smallNum in the line, return that. if there are more, put it through the predict function
         page_nums = []
-        for line in trans_marginals:
+        for line in page_marginals['Text'].values: #trans_marginals:
             tokens = line.split()
             page_num = None
             for token in tokens:
-                if re.match('^[0-9]+$', token):
+                if re.match('^[0-9]+$', token):  # todo: make this not care about punctuation
                     if page_num:  # have found two nums in the line, need to go to predict
-                        page_num = nn.predict(pd.Series(line))[0]
+                        page_num = nn.predict(pd.Series(line), mode=mode)[0]
                         break
                     else:
                         page_num = token
@@ -210,8 +241,8 @@ def run_model(model_name, model_type='NN'):
                       '8 \t9 \t10',
                       '8 may 1998 \treport 90',
                       '3 \tbhp annual report'])
-    trans_data = data.apply(lambda x: transform_text(x, transform_all=False))
-    r = nn.predict(trans_data)
+    #trans_data = data.apply(lambda x: transform_text(x, transform_all=False))
+    r = nn.predict(data)
     print(r)
 
     all_predictions = False
@@ -231,14 +262,14 @@ def run_model(model_name, model_type='NN'):
         print('real accuracy: ', correct/(correct+incorrect))
 
 
-def create_dataset():
-    sourcefile = settings.get_dataset_path('page_id')
+def create_dataset(mode=settings.dataset_version):
+    sourcefile = settings.get_dataset_path('page_id', mode)
     texts = pd.read_csv(sourcefile)
     page_texts = texts.loc[texts.tag == 1]
-    page_texts.transformed = page_texts.original.apply(lambda x: transform_text(x, transform_all=False))
+    #page_texts.transformed = page_texts.original.apply(lambda x: transform_text(x, transform_all=False))
 
     page_texts = page_texts.drop(['tag'], axis=1)
-    page_texts['pagenum'] = 0
+    page_texts['pagenum'] = None
 
     #page_texts.to_csv(settings.page_extraction_dataset, index=False)
     return page_texts

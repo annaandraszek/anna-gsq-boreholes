@@ -1,5 +1,7 @@
+import glob
 
 report_local_path = 'reports/QDEX/'
+test_local_path = 'reports/test/'
 model_path = 'models/'
 result_path = 'results/'
 dataset_path = 'datasets/'
@@ -91,8 +93,15 @@ def get_file_from_training(folder, file_id, local_path, extension='.json'):
     return file + str(file_id) + "_" + folder + extension
 
 
-def get_bookmarked_file(file_id):
-    file = report_local_path + file_id + "/cr_" + file_id + "_1_bookmarked.pdf"
+def get_bookmarked_file(file_id, test=False, test_i=None):
+    path = report_local_path
+    if test:
+        path = test_local_path
+        files = path + str(file_id) + '/'
+        if not test_i:
+            fpaths = glob.glob(files)
+            test_i = len(fpaths)
+    file = path + file_id + "/cr_" + file_id + "_1_" + str(test_i) + "_bookmarked.pdf"
     return file
 
 

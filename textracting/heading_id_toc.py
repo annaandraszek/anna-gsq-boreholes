@@ -4,13 +4,10 @@ import json
 from keras.layers import LSTM, Dense, Dropout, Embedding
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing import sequence
-from keras.models import load_model
 import tensorflow as tf
 import joblib
 import os
-from sklearn.model_selection import train_test_split
 from keras.models import Sequential
-from keras.utils import to_categorical
 import numpy as np
 import pandas as pd
 import re
@@ -18,8 +15,7 @@ import settings
 from sklearn.pipeline import Pipeline
 from sklearn.base import BaseEstimator, TransformerMixin
 from keras.wrappers.scikit_learn import KerasClassifier
-from sklearn.preprocessing import LabelBinarizer, label_binarize
-from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
+from sklearn.preprocessing import label_binarize
 import active_learning
 import machine_learning_helper as mlh
 
@@ -29,10 +25,11 @@ limit_cols = ['PageNum', 'LineNum', 'SectionPrefix', 'SectionText', 'SectionPage
 
 
 class Text2Seq(TransformerMixin, BaseEstimator):
-    def __init__(self, classes=3):
+    def __init__(self, classes=3, pad_len=None):
         self.tok = Tokenizer()
         #self.labelbin = LabelBinarizer()
         self.classes = range(classes)
+        self.pad_len = pad_len
 
     def fit(self, x, y=None):
         if isinstance(x, list):  # when the AL does predict proba, gives a single sample inside a 1-element list
@@ -66,7 +63,10 @@ class Text2Seq(TransformerMixin, BaseEstimator):
         if isinstance(x, np.ndarray):
             x = pd.Series(data=x.T[0])  # make array 1D before it can be a series
         sequences = self.tok.texts_to_sequences(x)
-        sequences_matrix = sequence.pad_sequences(sequences)
+        if self.pad_len is not None:
+            sequences_matrix = sequence.pad_sequences(sequences, maxlen=self.pad_len)
+        else:
+            sequences_matrix = sequence.pad_sequences(sequences)
 
         if y:
             y_binary = label_binarize(y, self.classes)
@@ -92,7 +92,7 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
         #self.tok_loc = settings.get_model_path('heading_id_toc', tokeniser=True)#self.model_path + self.model_name + 'tokeniser.joblib'
 
     def train(self, n_queries=10, mode=settings.dataset_version):  #settings.dataset_path + 'processed_heading_id_dataset_cyfra1.csv'):
-        datafile = settings.get_dataset_path('proc_heading_id_toc_cyfra1', mode)
+        datafile = settings.get_dataset_path('proc_heading_id_toc', mode)
         df = pd.read_csv(datafile)
         self.max_words, self.max_len = check_maxlens(df)
 
@@ -107,9 +107,9 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
         y_column = 'Heading'
         estimator = clf
         if mode == settings.production:
+            global limit_cols
             limit_cols = ['DocID', 'LineNum']
-        accuracy, learner = active_learning.train(df, y_column, n_queries, estimator, datafile,
-                                                  limit_cols=limit_cols)
+        accuracy, learner = active_learning.train(df, y_column, n_queries, estimator, datafile, limit_cols=limit_cols)
         self.model = learner
         model_loc = settings.get_model_path(name, mode)
         with open(model_loc, "wb") as file:
@@ -144,17 +144,6 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
 
         predictions = mlh.get_classified(strings, name, y_column, limit_cols, mode)
         return predictions #, np.argmax(predictions, axis=0)
-        # model_loc = settings.get_model_path(name, mode)
-        # if not os.path.exists(model_loc):
-        #     self.train(datafile=settings.get_dataset_path(name, mode))
-        # # try:
-        # #     self.model
-        # # except AttributeError:
-        # #self.load_model_from_file(model_loc)
-        #
-        #
-        # predictions = self.model.predict(strings)
-        #return predictions, np.argmax(predictions, axis=0)
 
 
 def train(n_queries=10, mode=settings.dataset_version):
@@ -166,7 +155,6 @@ def train(n_queries=10, mode=settings.dataset_version):
 
     nn = NeuralNetwork()
     nn.train(n_queries=n_queries, mode=mode)
-
 
 
 def num2cyfra1(string):
@@ -219,31 +207,6 @@ def split_pagenum(string):
     return s
 
 
-# def num2cyfra(string):
-#     s = ''
-#     prev_c = ''
-#     for c in string:
-#         if re.match(r'[0-9]', c):
-#             if prev_c != 'num':
-#                 s += 'cyfra '
-#                 prev_c = 'num'
-#         elif c == '.':
-#             s += 'punkt '
-#             prev_c = '.'
-#     return s
-
-
-# def num2strona(string):
-#     s = ''
-#     prev_c = ''
-#     for c in string:
-#         if re.match(r'[0-9]', c):
-#             if prev_c != 'num':
-#                 s += 'strona '
-#                 prev_c = 'num'
-#     return s
-
-
 def pre_process_id_dataset(pre='cyfra1', datafile=settings.get_dataset_path('heading_id_toc'), training=True):
     if isinstance(datafile, pd.DataFrame):
         df = datafile
@@ -266,12 +229,6 @@ def pre_process_id_dataset(pre='cyfra1', datafile=settings.get_dataset_path('hea
     if 'cyfra1' in pre:
         newdf.SectionPrefix = newdf.SectionPrefix.apply(lambda x: num2cyfra1(x))
         newdf.SectionPage = newdf.SectionPage.apply(lambda x: num2cyfra1(x))
-    # else:
-    #     newdf.SectionPrefix = newdf.SectionPrefix.apply(lambda x: num2cyfra(x))
-    #     newdf.SectionPage = newdf.SectionPage.apply(lambda x: num2cyfra(x))
-    #
-    # if 'strona' in pre:
-    #     newdf.SectionPage = newdf.SectionPage.apply(lambda x: num2strona(x))
 
     newdf.replace('', np.nan, inplace=True)
     newdf.dropna(inplace=True, subset=['SectionText'])
@@ -286,7 +243,7 @@ def create_identification_dataset(datafile=settings.get_dataset_path(name)):
     columns = ['DocID', 'PageNum', 'LineNum', 'LineText', 'Heading', 'TagMethod']
     df = pd.DataFrame(columns=columns)
     lines_docs = sorted(glob.glob('training/restructpageinfo/*'))
-    toc_df = pd.read_csv(datafile)
+    toc_df = pd.read_csv(settings.get_dataset_path('toc'))
     toc_pages = get_toc_pages(toc_df)
     for lines_doc in lines_docs:
         pages = json.load(open(lines_doc))
@@ -309,28 +266,32 @@ def create_identification_dataset(datafile=settings.get_dataset_path(name)):
                     df = df.append(pgdf, ignore_index=True)
         except IndexError:
             print("IndexError ", tocpg, docid)
-    prev_dataset = settings.dataset_path + 'heading_id_toc_dataset.csv'
+    prev_dataset = settings.get_dataset_path(name, settings.production)
     df = mlh.add_legacy_y(prev_dataset, df, y_column, line=True, page=False)  # page not present in legacy dataset
     df.to_csv(datafile, index=False)
     return df
 
 
+def get_toc_headings(df, mode=settings.dataset_version, masked=False):
+    return mlh.get_classified(df, name, y_column, limit_cols, mode, masked)
+
+
 if __name__ == '__main__':
     create_identification_dataset()
     #pre = 'cyfra1strona'
-    df = pre_process_id_dataset()  #pre)
-    df.to_csv(settings.get_dataset_path('proc_heading_id_toc'), index=False)
-    #df.to_csv(settings.dataset_path + 'processed_heading_id_dataset_' + pre + '.csv', index=False)
-
-    data = settings.get_dataset_path('proc_heading_id_toc')
-    nn = NeuralNetwork()
-    nn.train(data)
-    # nn.load_model_from_file()
-    p, r = nn.predict(['4.0 drilling', 'Introduction 1', 'lirowjls', 'figure drilling', '5 . 9 . geology of culture 5', '1 . 0 introduction', '8 . 1 introduction 7'], encode=True)
-    #     #['4.3 drilling', 'Introduction strona', 'lirowjls', 'figure drilling', '5 . 9 . geology of culture strona', '1 . introduction', '8 . 1 introduction strona'])
-    print(p)
-    print('------------------')
-    print(r)
+    # df = pre_process_id_dataset()  #pre)
+    # df.to_csv(settings.get_dataset_path('proc_heading_id_toc'), index=False)
+    # #df.to_csv(settings.dataset_path + 'processed_heading_id_dataset_' + pre + '.csv', index=False)
+    #
+    # data = settings.get_dataset_path('proc_heading_id_toc')
+    # nn = NeuralNetwork()
+    # nn.train(data)
+    # # nn.load_model_from_file()
+    # p, r = nn.predict(['4.0 drilling', 'Introduction 1', 'lirowjls', 'figure drilling', '5 . 9 . geology of culture 5', '1 . 0 introduction', '8 . 1 introduction 7'], encode=True)
+    # #     #['4.3 drilling', 'Introduction strona', 'lirowjls', 'figure drilling', '5 . 9 . geology of culture strona', '1 . introduction', '8 . 1 introduction strona'])
+    # print(p)
+    # print('------------------')
+    # print(r)
 
     #create_identification_dataset()
     # df = pre_process_id_dataset()

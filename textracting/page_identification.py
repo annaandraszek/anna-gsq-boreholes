@@ -5,25 +5,27 @@ import re
 import string
 import active_learning
 from keras.wrappers.scikit_learn import KerasClassifier
-from keras.preprocessing import sequence
-from keras.models import load_model
+# from keras.preprocessing import sequence
+# from keras.models import load_model
 import tensorflow as tf
 import joblib
+import pickle
 import os
 from keras.models import Sequential
 from keras.layers import LSTM, Dense, Dropout, Embedding
 import machine_learning_helper as mlh
 from sklearn.pipeline import Pipeline
 from heading_id_toc import Text2Seq
+from sklearn.preprocessing import FunctionTransformer
+from sklearn.compose import ColumnTransformer
 
 os.environ['KMP_WARNINGS'] = '0'
-
 months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october',
           'november', 'december']
 name = 'page_id'
 y_column = 'tag'
-limit_cols = ['original']
-
+limit_cols = ['transformed']
+columns = ['original', 'transformed', y_column]
 
 class NeuralNetwork():
     epochs = 15
@@ -31,12 +33,14 @@ class NeuralNetwork():
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
     #model_path = settings.model_path
 
-    def __init__(self, model_name='trans'):
+    def __init__(self):
         #self.model_name = 'page_id_' + model_name
-        self.model_loc = settings.get_model_path('page_id') #self.model_path + self.model_name + '.h5'
-        self.tok_loc = settings.get_model_path('page_id', tokeniser=True)  #self.model_path + self.model_name + 'tokeniser.joblib'
+        #self.model_loc = settings.get_model_path('page_id') #self.model_path + self.model_name + '.h5'
+        #self.tok_loc = settings.get_model_path('page_id', tokeniser=True)  #self.model_path + self.model_name + 'tokeniser.joblib'
+        print()
 
-    def train(self, file=settings.get_dataset_path('page_id'), n_queries=10):  #settings.marginals_id_trans_dataset):
+    def train(self, n_queries=10, mode=settings.dataset_version):  #settings.marginals_id_trans_dataset):
+        file = settings.get_dataset_path(name, mode)
         df = pd.read_csv(file)
         #self.X = df['transformed']
         #self.Y = df['tag']
@@ -46,13 +50,15 @@ class NeuralNetwork():
                                validation_split=0.2)
 
         estimator = Pipeline([
-            ('transform', Text2Seq(classes=2)),
+            #('transform1', ColumnTransformer([
+                ('transform_text', FunctionTransformer(transform_text_wrapper)),# 0)
+                #], remainder="passthrough")),
+            ('transform2', Text2Seq(classes=2)),
             ('lstm', lstm)
         ], verbose=True)
 
         accuracy, learner = active_learning.train(df, y_column, n_queries, estimator, file, limit_cols=limit_cols)
         self.model = learner
-
         # self.tok = Tokenizer(num_words=self.max_words+1) # only num_words-1 will be taken into account!
         # self.model = self.LSTM()
         #
@@ -71,15 +77,19 @@ class NeuralNetwork():
         #
         # accr = self.model.evaluate(test_sequences_matrix, to_categorical(Y_test))
         # print('Test set\n  Loss: {:0.3f}\n  Accuracy: {:0.3f}'.format(accr[0], accr[1]))
-        self.model.save(self.model_loc)
+        self.model_loc = settings.get_model_path(name, mode)
+        #self.model.save(self.model_loc)
         #joblib.dump(self.tok, self.tok_loc)
+        with open(self.model_loc, "wb") as f:
+            pickle.dump(self.model, f)
+
 
     def LSTM(self):
         model = Sequential()
         model.add(Embedding(self.max_words+1, output_dim=self.max_len))#256))
         model.add(LSTM(128))
         model.add(Dropout(0.5))
-        model.add(Dense(2, activation='sigmoid'))
+        model.add(Dense(1, activation='sigmoid'))
 
         model.compile(loss='binary_crossentropy',
                       optimizer='rmsprop',
@@ -87,26 +97,27 @@ class NeuralNetwork():
         return model
 
 
-    def load_model_from_file(self):
-        self.model = load_model(self.model_loc)
-        self.tok = joblib.load(self.tok_loc)
+    def load_model_from_file(self, model_loc):
+        if model_loc is None:
+            model_loc = self.model_loc
+        self.model = pickle.load(model_loc)
+        #self.tok = joblib.load(self.tok_loc)
         self.model._make_predict_function()
 
 
-    def predict(self, strings):
-        if not os.path.exists(self.model_loc):
-            self.train()
-        try:
-            self.model
-        except AttributeError:
-            self.load_model_from_file()
-
-        strings = strings.apply(lambda x: transform_text(x))
-        sequences = self.tok.texts_to_sequences(strings)
-        sequences_matrix = sequence.pad_sequences(sequences, maxlen=12)
-        predictions = self.model.predict(sequences_matrix)
-        return predictions, np.argmax(predictions, axis=1)
-
+    def predict(self, strings, mode=settings.dataset_version):
+        # if not os.path.exists(self.model_loc):
+        #     self.train()
+        # try:
+        #     self.model
+        # except AttributeError:
+        #     self.load_model_from_file()
+        #strings = strings.apply(lambda x: transform_text(x))
+        # sequences = self.tok.texts_to_sequences(strings)
+        # sequences_matrix = sequence.pad_sequences(sequences, maxlen=12)
+        # predictions = self.model.predict(sequences_matrix)
+        # return predictions, np.argmax(predictions, axis=1)
+        return mlh.get_classified(strings, name, y_column, limit_cols, mode, masked=False)
 
 def check_maxlens(df):
     series = df['transformed']
@@ -119,9 +130,18 @@ def check_maxlens(df):
     return unique_words, max_seq_len
 
 
-def transform_text(str, transform_all=True):
-    str = str.translate(str.maketrans(string.punctuation, ' '*len(string.punctuation)))
-    tokens = str.split(r' ')
+def transform_text_wrapper(series, transform_all=True):
+    if isinstance(series, pd.DataFrame):
+        if len(series.columns) == 1:
+            series = pd.Series(data=series.iloc[:,0])
+        else:
+            raise KeyError('Pass a DataFrame with a single column, or a Series')
+    return series.apply(lambda x: transform_text(x, transform_all))
+
+
+def transform_text(text, transform_all=True):
+    text = text.translate(text.maketrans(string.punctuation, ' ' * len(string.punctuation)))
+    tokens = text.split(r' ')
     new_text = ''
     for token in tokens:
         token = token.lower()
@@ -152,12 +172,15 @@ def transform_text(str, transform_all=True):
 
 def create_dataset():
     sourcefile = settings.get_dataset_path('marginal_lines')
-    texts = pd.read_csv(sourcefile, usecols=['Text'])
+    texts = pd.read_csv(sourcefile, usecols=['Text', 'Marginal'])
     texts = texts.loc[texts['Marginal'] > 0]
-    new_text = texts.Text.apply(lambda x: transform_text(x))
+    new_texts = pd.DataFrame(columns=columns)
+    new_texts['original'] = texts['Text']
+    new_texts['transformed'] = texts.Text.apply(lambda x: transform_text(x))
+    new_texts['tag'] = None
     #print(new_text)
     #new_text.to_csv(settings.marginals_id_trans_dataset, index=False)
-    return new_text
+    return new_texts
 
 
 def run_model():
@@ -173,18 +196,18 @@ def run_model():
         print(row.original, ', ', p[i], ', ', r[i])
 
 
-def train(n_queries=10):
-    if not os.path.exists(settings.get_dataset_path('page_id')):
+def train(n_queries=10, mode=settings.dataset_version):
+    if not os.path.exists(settings.get_dataset_path('page_id', mode)):
         df = create_dataset()
-        df.to_csv(settings.get_dataset_path('page_id'))
+        df.to_csv(settings.get_dataset_path('page_id', mode), index=False)
     nn = NeuralNetwork()
-    nn.train(n_queries=n_queries)
+    nn.train(n_queries=n_queries, mode=mode)
 
 
-def get_page_marginals(marginals):
+def get_page_marginals(marginals, mode=settings.dataset_version):
     if len(marginals) > 0:
         nn = NeuralNetwork()
-        p, r = nn.predict(marginals)#.original)
+        p, r = nn.predict(marginals, mode)#.original)
         return r
     else:
         return []

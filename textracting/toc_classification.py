@@ -52,7 +52,6 @@ def create_dataset():
         df = df.append(pgdf, ignore_index=True)
 
     prev_toc_dataset = settings.dataset_path + 'toc_dataset.csv'
-    #y_column = 'TOCPage'
     df = mlh.add_legacy_y(prev_toc_dataset, df, y_column)
     return df
 
@@ -60,10 +59,6 @@ def create_dataset():
 def train(n_queries=10, mode=settings.dataset_version): #datafile=data_path, ):
     datafile = settings.get_dataset_path(name, mode)
     data = pd.read_csv(datafile)
-    #data[['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf',
-    #      'PrevPageTOC', y_column]] = data[['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf',
-    #       'PrevPageTOC', y_column]].astype("Int64")
-    #data['TagMethod'] = data['TagMethod'].astype("string")
     accuracy, learner = active_learning.train(data, y_column, n_queries, estimator, datafile)
     with open(settings.get_model_path(name, mode), "wb") as file:
         pickle.dump(learner, file)
@@ -110,22 +105,9 @@ def check_tags(show=False):
     df.to_csv(data_path, index=False)
 
 
-# def classify_page(data, mode=settings.dataset_version):
-# #    if mode == settings.dataset_version:
-#     if not os.path.exists(settings.get_model_path(name, mode)):
-#         train(data, n_queries=0, mode=mode)
-#     return mlh.classify(data, 'toc', mode=mode, limit_cols=['DocID'])
-
-
 def get_toc_pages(df, mode=settings.dataset_version):
     return mlh.get_classified(df, name, y_column, limit_cols, mode)
 
-    #data_file = settings.production_path + docid + '_toc_dataset.csv'
-    #df = pd.read_csv(data_file)
-    # classes = classify_page(df, mode)  #classify_page(df)
-    # mask = np.array([True if i==1 else False for i in classes])
-    # toc_pages = df[mask]
-    # return toc_pages
 
 
 if __name__ == "__main__":
