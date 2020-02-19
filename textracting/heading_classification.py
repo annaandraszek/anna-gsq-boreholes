@@ -1,3 +1,6 @@
+## @file
+# Module functions for classifying found headings in certain categories. Not used at the moment
+
 from sklearn.pipeline import Pipeline
 import pandas as pd
 from sklearn.naive_bayes import ComplementNB

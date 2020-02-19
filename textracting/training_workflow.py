@@ -1,3 +1,6 @@
+## @file
+# Workflow file for AL training
+
 import toc_classification
 import fig_classification
 import heading_id_toc
@@ -40,7 +43,7 @@ def create_training_sets_pt1(): # creating of training sets, up to their annotat
     # fig_df = fig_classification.create_dataset()
     # save_dataset(fig_df, 'fig')
 
-    heading_id_toc_df = heading_id_toc.create_identification_dataset()
+    heading_id_toc_df = heading_id_toc.create_dataset()
     save_dataset(heading_id_toc_df, 'heading_id_toc')
 
     marginals_df = marginals_classification.create_dataset()

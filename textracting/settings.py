@@ -1,3 +1,6 @@
+## @file
+# Settings
+
 import glob
 
 report_local_path = 'reports/QDEX/'

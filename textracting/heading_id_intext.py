@@ -1,3 +1,6 @@
+## @file
+# Module functions for finding headings in the report text
+
 # headings dataset
 # - exclude lines in toc
 # - exclude lines in fig pages

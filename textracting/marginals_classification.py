@@ -1,3 +1,6 @@
+## @file
+# Module functions for classifying a line as a marginal (header or footer)
+
 import numpy as np
 import pandas as pd
 import json

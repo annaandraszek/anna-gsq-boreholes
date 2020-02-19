@@ -1,9 +1,5 @@
-# download reports from s3 gsq-staging ?
-
-# run textracting on reports, saving various json, csv, txt files
-
-# with small number of noisy reports, remove noise with heuristics, (and potentially use dataset and model in the future)
-    # cleanpage s are created from pagelineinfo. from these, restructpagelines are be created
+## @file
+# Main file for bookmarking report from the command line
 
 
 import textmain

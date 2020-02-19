@@ -1,3 +1,6 @@
+## @file
+# Functions for facilitating active (and passive) learning
+
 import time
 from IPython import display
 import settings

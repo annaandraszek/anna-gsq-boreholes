@@ -1,3 +1,6 @@
+## @file
+# Main file for identifying/classifying parts of a report and bookmarking it, drawing on it, and saving its sections.
+
 import json
 import pandas as pd
 import numpy as np
@@ -136,22 +139,26 @@ class Report():
 
     def get_headings(self):  # get headings from TOC
         df = self.create_identification_dataset()
-        newdf = heading_id_toc.pre_process_id_dataset(pre='cyfra1', datafile=df, training=False)
-        model = heading_id_toc.NeuralNetwork()
-        x = newdf['LineText']  #['SectionText']
-        res, classes = model.predict(x, mode=mode)
-        columns = ['LineNum', 'SectionPrefix', 'SectionText', 'SectionPage']  #'PageNum',
-        headings = pd.DataFrame(columns=columns)
-        subheadings = pd.DataFrame(columns=columns)
-        for i, pred in zip(res.index.values, classes):
-            heading = self.docinfo[str(self.toc_page)][i]
-            section_prefix, section_text = heading_id_toc.split_prefix(heading['Text'])
-            section_text, section_page = heading_id_toc.split_pagenum(section_text)
-            hrow = [heading['LineNum'], section_prefix, section_text, section_page]  # heading['PageNum'],
-            if pred == 1:
-                headings.loc[len(headings)] = hrow
-            elif pred == 2:
-                subheadings.loc[len(subheadings)] = hrow
+        df = heading_id_toc.pre_process_id_dataset(datafile=df, training=False)
+        preds = heading_id_toc.get_toc_headings(df)
+        #model = heading_id_toc.NeuralNetwork()
+        #x = newdf['ProcessedText']  #['SectionText']
+        #res, classes = model.predict(x, mode=mode)
+        #columns = df.columns #['LineNum', 'SectionPrefix', 'SectionText', 'SectionPage']  #'PageNum',
+        headings = preds.loc[preds['Heading'] == 1]
+        subheadings = preds.loc[preds['Heading'] == 2]
+
+        #subheadings = pd.DataFrame(columns=columns)
+
+        # for i, pred in zip(res.index.values, classes):
+        #     heading = self.docinfo[str(self.toc_page)][i]
+        #     # section_prefix, section_text = heading_id_toc.split_prefix(heading['Text'])
+        #     # section_text, section_page = heading_id_toc.split_pagenum(section_text)
+        #     hrow = df.loc[i, ['LineNum', 'SectionPrefix', 'SectionText', 'SectionPage']] #[heading['LineNum'], section_prefix, section_text, section_page]  # heading['PageNum'],
+        #     if pred == 1:
+        #         headings.loc[len(headings)] = hrow
+        #     elif pred == 2:
+        #         subheadings.loc[len(subheadings)] = hrow
         return headings, subheadings
 
     def create_line_dataset(self):
@@ -458,7 +465,8 @@ if __name__ == '__main__':
     # transform document pages into dataset of pages for toc classification, classify pages, and isolate toc
     # from toc page, transform content into dataset of headings for heading identification, identify headings, and return headings and subheadings
     test_reports = ['30320', '42688', '95183', '2984', '57418', '75738', '111200']
-    reports = test_reports #['30320'] # '30320' #'24352', '24526', '26853', '28066', '28184','28882', '30281', '31681', '23508', ] #,'23732',
+    #reports = test_reports #['30320'] # '30320' #'24352', '24526', '26853', '28066', '28184','28882', '30281', '31681', '23508', ] #,'23732',
+    reports = ['42688']
     test = True
     for report in reports:
         start = time.time()

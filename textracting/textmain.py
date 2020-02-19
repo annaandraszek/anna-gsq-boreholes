@@ -1,5 +1,5 @@
-
-# High level management of textract functions
+## @file
+#Main file for managing textract functions
 
 import textracting
 import texttransforming

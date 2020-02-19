@@ -1,3 +1,6 @@
+## @file
+# Module functions for classifying a page as a figure (map, image, non-textual entity)
+
 import pandas as pd
 import glob
 import json

@@ -1,4 +1,4 @@
-
+## @file
 # Running textract on documents in S3
 
 import boto3

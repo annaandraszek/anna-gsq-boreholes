@@ -1,3 +1,6 @@
+## @file
+# Module functions for extracting page numbers from marginals known to contain a page number
+
 from __future__ import print_function
 import pandas as pd
 import settings

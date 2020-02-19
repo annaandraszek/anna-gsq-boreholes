@@ -1,14 +1,13 @@
-import numpy as np
+## @file
+# Module functions for identifying if a marginal contains a page number
+
 import pandas as pd
 import settings
 import re
 import string
 import active_learning
 from keras.wrappers.scikit_learn import KerasClassifier
-# from keras.preprocessing import sequence
-# from keras.models import load_model
 import tensorflow as tf
-import joblib
 import pickle
 import os
 from keras.models import Sequential
@@ -17,7 +16,6 @@ import machine_learning_helper as mlh
 from sklearn.pipeline import Pipeline
 from heading_id_toc import Text2Seq
 from sklearn.preprocessing import FunctionTransformer
-from sklearn.compose import ColumnTransformer
 
 os.environ['KMP_WARNINGS'] = '0'
 months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october',

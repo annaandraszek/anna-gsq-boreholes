@@ -1,9 +1,13 @@
+## @file
 # finding page(s) in a document that is a table of contents
 
 # b) classifier use
     # 1. use with real documents
         # pipeline:
             # input document name on s3 to download, or input local document name, or input json name to not run textract
+
+## @file
+# Module functions for classifying a page as a Table of Contents
 
 import pandas as pd
 import numpy as np
