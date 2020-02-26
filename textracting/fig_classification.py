@@ -21,6 +21,7 @@ name = 'fig'
 y_column = 'FigPage'
 columns = ['DocID', 'PageNum', 'MedConfidence', 'AvgConfidence', 'RangeConfidence', 'IQRConfidence','MedLineLen', 'ContainsFigWord', 'ContainsFigLn', 'FigPos', y_column, 'TagMethod']
 limited_cols = ['DocID']
+include_cols = ['PageNum', 'MedConfidence', 'AvgConfidence', 'RangeConfidence', 'IQRConfidence','MedLineLen', 'ContainsFigWord', 'ContainsFigLn', 'FigPos']
 
 
 def write_to_dataset(pi, docid):
@@ -64,6 +65,9 @@ def create_dataset():
         docset = write_to_dataset(pi, docid)
         pgdf = pd.DataFrame(data=docset, columns=columns)
         df = df.append(pgdf, ignore_index=True)
+
+    prev_dataset = settings.get_dataset_path(name, settings.production)
+    df = mlh.add_legacy_y(prev_dataset, df, y_column)
     return df
 
 
@@ -77,7 +81,11 @@ def create_individual_dataset(docid, docinfo, doclines):
 
 def train(n_queries=10, mode=settings.dataset_version):  # datafile=settings.get_dataset_path(name), model_file=settings.get_model_path(name),
     datafile = settings.get_dataset_path(name, mode)
-    data = pd.read_csv(datafile)
+    if not os.path.exists(datafile):
+        data = create_dataset()
+        data.to_csv(datafile, index=False)
+    else:
+        data = pd.read_csv(datafile)
     clf = RandomForestClassifier() #tree.DecisionTreeClassifier()
     accuracy, clf = al.train(data, y_column, n_queries, clf, datafile, limited_cols)
     print(accuracy)

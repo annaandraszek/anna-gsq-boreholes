@@ -2,10 +2,10 @@
 # Main file for bookmarking report from the command line
 
 
-import textmain
-import textloading
+from textracting import textmain
+from textracting import textloading
 import search_report
-import texttransforming
+from textracting import texttransforming
 #from heading_id_intext import Text2CNBPrediction, Num2Cyfra1, num2cyfra1  # have to load these to load the model
 import os
 import settings
@@ -29,15 +29,16 @@ if __name__ == '__main__':
     parser.add_argument("-s", "--sample", help='number of reports to sample', nargs='?', default=num_sample, type=int) # can store just sample mode, or sample num
     parser.add_argument("--save", help="use to save sample arguments as default", action='store_true')
     parser.add_argument("-d", "--cutoffdate", help="cutoff year for reports to be no older than", type=int)
-    parser.add_argument("-e", "--exclude", help="report types to exclude. must match report type code eg. WELCOM for Well Completion Report") # have a more verbore help that gives all the codes?
+    parser.add_argument("--extype", help="report types to exclude. must match report type code eg. WELCOM for Well Completion Report", nargs='+') # have a more verbore help that gives all the codes?
+    parser.add_argument("--extitle", help="report titles containing these phrases to exclude", nargs='+') # have a more verbore help that gives all the codes?
     parser.add_argument("-f", "--force", help="force report to be processed even if already has been", action='store_true')
     args = parser.parse_args()
 
     var_file = 'bookmarker_vars.pkl'
     if os.path.exists(var_file):
         with open(var_file, "rb") as f:
-            num_sample, cutoffdate, rtype_exclude = pkl.load(f)
-        print("Loaded vars; num_sample: ", num_sample, ' cutoffdate: ', cutoffdate, ' rtype_exclude: ', rtype_exclude)
+            num_sample, cutoffdate, rtype_exclude, rtitle_exclude = pkl.load(f)
+        print("Loaded vars; num_sample: ", num_sample, ' cutoffdate: ', cutoffdate, ' rtype_exclude: ', rtype_exclude, ' rtitle_exclude: ', rtitle_exclude)
 
     not_exit = True
     while not_exit:
@@ -51,11 +52,13 @@ if __name__ == '__main__':
                     num_sample = args.sample
                 if args.cutoffdate:
                     cutoffdate = pd.Timestamp(args.cutoffdate, 1, 1)
-                if args.exclude:
-                    rtype_exclude = args.exclude
-                pkl.dump([num_sample, cutoffdate, rtype_exclude], f)
+                if args.extype:
+                    rtype_exclude = args.extype
+                if args.extitle:
+                    rtitle_exclude = args.extitle
+                pkl.dump([num_sample, cutoffdate, rtype_exclude, rtitle_exclude], f)
             print("Saved vars; num_sample: ", num_sample, ' cutoffdate: ', cutoffdate, ' rtype_exclude: ',
-                  rtype_exclude)
+                  rtype_exclude, ' rtitle_exclude: ', rtitle_exclude)
 
         if args.sample and mode != 'save':  # case: saving num_sample but not in sample mode
             mode = 'sample'
@@ -73,9 +76,9 @@ if __name__ == '__main__':
         if mode == "sample" or mode == "given" or mode == "testing":
             if mode == 'sample':
                 print("Running in sample mode. Num samples: " + str(num_sample) + " Cutoff date: " + str(cutoffdate) +
-                      " Excluding: " + str(rtype_exclude))
+                      " Excluding: " + str(rtype_exclude) + " " + str(rtitle_exclude))
 
-                docids = textloading.get_reportid_sample(num=num_sample, cutoffdate=cutoffdate, rtype_exclude=rtype_exclude)
+                docids = textloading.get_reportid_sample(num=num_sample, cutoffdate=cutoffdate, rtype_exclude=rtype_exclude, rtitle_exclude=rtitle_exclude)
 
             elif mode == 'given':
                 print("Running in 'given' mode")
@@ -128,6 +131,7 @@ if __name__ == '__main__':
                     search_report.bookmark_report(report)
                 # check if needs to be run or if sections word doc already exists
                     search_report.save_report_sections(report)
+                    search_report.report2json(report)
 
                     ml_end = time.time()
                     ml_time = ml_end - ml_start

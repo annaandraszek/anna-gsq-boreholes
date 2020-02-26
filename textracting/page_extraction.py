@@ -34,6 +34,7 @@ import pickle
 name = 'page_extraction'
 y_column = 'position'
 limit_cols = ['transformed', 'pagenum']
+include_cols = ['original']
 
 
 def num2word(str):

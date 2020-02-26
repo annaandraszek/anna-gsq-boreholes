@@ -20,10 +20,13 @@ import re
 from PyPDF2 import PdfFileWriter, PdfFileReader
 import time
 import docx
-from heading_id_intext import Text2CNBPrediction, Num2Cyfra1, num2cyfra1
+from heading_id_intext import Text2CNBPrediction, Num2Cyfra1
 #import textdistance
+import jsonpickle
+import glob
 
-mode = settings.production
+#mode = settings.production
+mode = settings.dataset_version
 
 class Report():
     def __init__(self, docid):
@@ -131,17 +134,22 @@ class Report():
         return pi
 
     def create_toc_dataset(self):
-        docset = np.zeros((len(self.docinfo.items()), 5))
+        docset = np.zeros((len(self.docinfo.items()), len(toc_classification.include_cols)+1))
         for info, lines, j, in zip(self.docinfo.items(), self.doclines.items(), range(len(self.docinfo.items()))):
             toc = 0
             c = 0
+            listof = 0
             for line in lines[1]:
                 if 'contents' in line.lower():
                     c = 1
                     if 'table of contents' in line.lower():
                         toc = 1
-            docset[j] = np.array([self.docid, info[0], len(lines[1]), toc, c])
-        pgdf = pd.DataFrame(data=docset, columns=['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord'])
+                if 'list of' in line.lower():
+                    listof = 1
+            docset[j] = np.array([self.docid, info[0], len(lines[1]), toc, c, listof, 0])
+        columns = ['DocID']
+        columns.extend(toc_classification.include_cols)
+        pgdf = pd.DataFrame(data=docset, columns=columns)
         #pgdf.to_csv(self.toc_dataset_path, index=False)
         return pgdf
 
@@ -195,7 +203,7 @@ class Report():
         return df
 
     def create_identification_dataset(self): # dataset for identifying headings in TOC
-        columns = ['DocID', 'LineNum', 'Text']#, 'Width', 'Height', 'Left', 'Top']
+        columns = ['DocID', 'LineNum','Left', 'Top', 'Text']#, 'Width', 'Height', ]
         df = self.line_dataset.loc[self.line_dataset['PageNum'] == self.toc_page]
         df = df[columns]
         df.reset_index(inplace=True, drop=True)
@@ -465,22 +473,79 @@ def save_report_sections(report):
         doc.add_page_break()
     doc.save(settings.get_report_name(report.docid, local_path=True, file_extension='_sections.docx'))
 
+
+def report2json(report, test=False):
+    if test:
+        local = 'test'
+    else:
+        local = True
+    with open(settings.get_report_name(report.docid, local_path=local, file_extension='.json'), "w") as f:
+        frozen = jsonpickle.encode(report)
+        json.dump(frozen, f)
+
+
+def sanitise_datasets():
+    """Remove bad reports (qld mining journals, welcom) values from datasets."""
+    rtitle = 'QGMJ'
+    rtype = 'WELCOM'
+    ref = pd.read_excel('C:/Users/andraszeka/Documents/gsq-boreholes/investigations/QDEX_metada_export.xlsx', dtype={'REPNO': int})
+    bad = ref.loc[ref.RTITLE.str.contains(rtitle) | ref.RTYPE.str.contains(rtype)]
+    bad_docids = bad.REPNO.values
+    names = ['marginal_lines', 'toc', 'fig', 'heading_id_toc', 'heading_id_intext'] # page id and page extraction datasets don't have DocID attribute
+    datasets = [settings.get_dataset_path(name) for name in names]
+    for dataset in datasets:
+        if os.path.exists(dataset):
+            try:
+                data = pd.read_csv(dataset, dtype={'DocID': int})
+            except ValueError:
+                data = pd.read_csv(dataset)
+                data.dropna(subset=['DocID'], inplace=True)
+                data.DocID = data.DocID.astype(int)
+            prelen = data.shape[0]
+            data = data.loc[~data.DocID.isin(bad_docids)]
+            postlen = data.shape[0]
+            data.to_csv(dataset, index=False)
+            print('Removed ', str(prelen-postlen), ' bad values from ', dataset)
+
+
+def sanitise_files():
+    """Remove bad docid files from restructpageinfo"""
+    rtitle = 'QGMJ'
+    rtype = 'WELCOM'
+    ref = pd.read_excel('C:/Users/andraszeka/Documents/gsq-boreholes/investigations/QDEX_metada_export.xlsx',
+                        dtype={'REPNO': int})
+    bad = ref.loc[ref.RTITLE.str.contains(rtitle) | ref.RTYPE.str.contains(rtype)]
+    bad_docids = bad.REPNO.values
+    removed = []
+    lines_docs = glob.glob('training/restructpageinfo/*.json')
+    for lines_doc in lines_docs:
+        docid = int(lines_doc.split('\\')[-1].replace('_1_restructpageinfo.json', '').strip('cr_'))
+        if docid in bad_docids:
+            if not os.path.exists('nottraining/restructpageinfo/'):
+                os.makedirs('nottraining/restructpageinfo/')
+            os.rename(lines_doc, settings.get_restructpageinfo_file(docid, local_path=True, training=False))
+            removed.append(docid)
+    print("Removed: ", len(removed), ", ", removed)
+
 if __name__ == '__main__':
+    #sanitise_datasets()
+    sanitise_files()
     # transform document pages into dataset of pages for toc classification, classify pages, and isolate toc
     # from toc page, transform content into dataset of headings for heading identification, identify headings, and return headings and subheadings
-    test_reports = ['30320', '42688', '95183', '2984', '57418', '75738', '111200']
-    reports = test_reports #['30320'] # '30320' #'24352', '24526', '26853', '28066', '28184','28882', '30281', '31681', '23508', ] #,'23732',
-    #reports = ['30320']
-    test = True
-    for report in reports:
-        start = time.time()
-        r = Report(report)
-        if test:
-            draw_report(r)
-        bookmark_report(r, test)
-        save_report_sections(r)
-        end = time.time()
-        print('time:', end - start)
+    # test_reports = ['30320', '42688', '95183', '2984', '57418', '75738', '111200']
+    # #reports = test_reports #['30320'] # '30320' #'24352', '24526', '26853', '28066', '28184','28882', '30281', '31681', '23508', ] #,'23732',
+    # reports = ['30320']
+    # test = True
+    # for report in reports:
+    #     start = time.time()
+    #     r = Report(report)
+    #     if test:
+    #         draw_report(r)
+    #     bookmark_report(r, test)
+    #     save_report_sections(r)
+    #     report2json(r, test=test)
+    #     end = time.time()
+    #     print('time:', end - start)
         #print('TOC Headings: \n')
         #for string in r.doclines[str(r.toc_page)]:
         #    print(string)

@@ -18,6 +18,8 @@ y_column = 'Marginal'
 columns = ['DocID', 'PageNum', 'LineNum', 'NormedLineNum','Text', 'Words2Width', 'WordsWidth', 'Width', 'Height',
            'Left', 'Top', 'ContainsNum', 'ContainsTab', 'ContainsPage', 'Centrality', y_column, 'TagMethod']
 limit_cols=['DocID', 'Text', 'LineNum']
+include_cols = ['PageNum', 'NormedLineNum', 'Words2Width', 'WordsWidth', 'Width', 'Height', 'Left', 'Top',
+                'ContainsNum', 'ContainsTab', 'ContainsPage', 'Centrality']
 estimator = ensemble.RandomForestClassifier()
 data_path = settings.get_dataset_path(name)
 model_path = settings.get_model_path(name)

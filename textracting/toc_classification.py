@@ -15,10 +15,12 @@ import glob
 import settings
 import json
 from sklearn.ensemble import RandomForestClassifier
+from sklearn import tree
 import pickle
 import os
 import active_learning
 import machine_learning_helper as mlh
+import matplotlib.pyplot as plt
 
 
 name = 'toc'
@@ -26,7 +28,9 @@ y_column = 'TOCPage'
 columns = ['DocID', 'PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf',
            'PrevPageTOC', y_column, 'TagMethod']
 limit_cols = ['DocID']
-estimator = RandomForestClassifier()
+include_cols = ['PageNum', 'NumChildren', 'ContainsTOCPhrase', 'ContainsContentsWord', 'ContainsListOf', 'PrevPageTOC']
+estimator = tree.DecisionTreeClassifier()
+#estimator = RandomForestClassifier()
 model_path = settings.get_model_path(name)
 data_path = settings.get_dataset_path(name)
 
@@ -63,7 +67,10 @@ def create_dataset():
 def train(n_queries=10, mode=settings.dataset_version): #datafile=data_path, ):
     datafile = settings.get_dataset_path(name, mode)
     data = pd.read_csv(datafile)
-    accuracy, learner = active_learning.train(data, y_column, n_queries, estimator, datafile)
+    accuracy, learner = active_learning.train(data, y_column, n_queries, estimator, datafile, mode=mode)
+    if type(learner) == tree._classes.DecisionTreeClassifier:
+        tree.plot_tree(learner, feature_names=include_cols, class_names=True)
+        plt.show()
     with open(settings.get_model_path(name, mode), "wb") as file:
         pickle.dump(learner, file)
     print("End of training stage. Re-run to train again")
@@ -110,7 +117,20 @@ def check_tags(show=False):
 
 
 def get_toc_pages(df, mode=settings.dataset_version):
-    return mlh.get_classified(df, name, y_column, limit_cols, mode)
+    prevpgtoc = False
+    res = []
+    for i, row in df.iterrows():
+        if prevpgtoc:
+            row['PrevPageTOC'] = 1
+        pred = mlh.get_classified(pd.DataFrame(data=[row], columns=df.columns), name, y_column, limit_cols, mode, masked=False)
+        if pred[y_column].iloc[0] == 1:
+            prevpgtoc = True
+        else:
+            prevpgtoc = False
+        res.append(pred.values[0])
+    res_df = pd.DataFrame(data=res, columns=pred.columns)
+    return res_df.loc[res_df[y_column] == 1]
+    #return mlh.get_classified(df, name, y_column, limit_cols, mode)
 
 
 
@@ -134,7 +154,7 @@ if __name__ == "__main__":
     #toc_pages = get_toc_pages()
     #print(toc_pages)
     #save_report_pages('4412')
-    train(n_queries=5)
+    train(n_queries=0, mode=settings.production)
     #automatically_tag()
     # check_tags()
     # train(all=True)

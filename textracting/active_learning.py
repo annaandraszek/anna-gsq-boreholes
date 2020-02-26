@@ -5,8 +5,8 @@ import time
 from IPython import display
 import settings
 from PIL import Image, ImageDraw
-import textloading
-import textracting
+import textracting.textloading
+import textracting.textracting
 import re
 import img2pdf
 from pdf2image import convert_from_path, exceptions
@@ -87,15 +87,24 @@ def display_page(docid, page, line=None):
     if line: print("line: ", line)
 
 
-def active_learning(data, n_queries, y_column, estimator=RandomForestClassifier(), limit_cols=None):
+def active_learning(data, n_queries, y_column, estimator=RandomForestClassifier(), limit_cols=None, mode=settings.dataset_version):
     line = False
     if y_column in ['Marginal', 'Heading']:  # covers marginal_lines, heading_id_toc, heading_id_intext
         line = True  # determines if a line or page is to to be displayed
     classes = pd.unique(data[y_column].values)  #todo: check type
     classes = sorted(filter(lambda v: v==v, classes))
     X_initial, Y_initial, X_pool, y_pool, refs = al_data_prep(data, y_column, limit_cols)
-    X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X_initial, Y_initial,
-                                                                               test_size=0.50)
+    if mode == settings.production:
+        test_percentage = 0
+    else:
+        test_percentage = 0.2
+    if 'lstm' in estimator.named_steps:
+        test_size = int(X_initial.shape[0] * test_percentage)
+        X_train, y_train = X_initial[:-test_size], Y_initial[:-test_size]
+        X_test, y_test = X_initial[-test_size:], Y_initial[-test_size:]
+    else:
+        X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X_initial, Y_initial,
+                                                                               test_size=test_percentage)
     learner = ActiveLearner(estimator=estimator, #ensemble.RandomForestClassifier(),
                             query_strategy=uncertainty_sampling,
                             X_training=X_train, y_training=y_train.astype(int))
@@ -125,15 +134,19 @@ def active_learning(data, n_queries, y_column, estimator=RandomForestClassifier(
     return data, accuracy, learner
 
 
-def passive_learning(data, y_column, estimator=sklearn.ensemble.RandomForestClassifier(), limit_cols=None):
+def passive_learning(data, y_column, estimator=sklearn.ensemble.RandomForestClassifier(), limit_cols=None, mode=settings.dataset_version):
     print("training with all labelled samples")
     data = data.dropna(subset=[y_column])
     default_drop = ['DocID', 'TagMethod']
     if limit_cols:
         default_drop.extend(limit_cols)
     X, Y = mlh.data_prep(data, limit_cols=default_drop, y_column=y_column)
+    if mode == settings.production:
+        X_train, X_test, y_train, y_test = X, X, Y, Y  # no split test set
+    else:
+        test_percentage = 0.2
+        X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size=test_percentage)
     #X, Y = X.astype(int), Y.astype(int)  # pd's Int64 dtype accepts NaN  # but Int64 dtype is "unknown"  # need to change this line to accept with str input, not sure how
-    X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size=0.20)
 
     learner = estimator.fit(X_train, y_train)
     # y_pred = learner.predict(X_test)
@@ -153,17 +166,17 @@ def passive_learning(data, y_column, estimator=sklearn.ensemble.RandomForestClas
     return accuracy, learner
 
 
-def train(data, y_column, n_queries, estimator, datafile, limit_cols=None):
+def train(data, y_column, n_queries, estimator, datafile, limit_cols=None, mode=settings.dataset_version):
     unlabelled = data[y_column].loc[data[y_column].isnull()]
 
     if len(unlabelled) < n_queries:  # if less unlabelled than want to sample, reduce sample size
         n_queries = len(unlabelled)
 
     if n_queries > 0:
-        updated_data, accuracy, learner = active_learning(data, n_queries, y_column, estimator, limit_cols)
+        updated_data, accuracy, learner = active_learning(data, n_queries, y_column, estimator, limit_cols, mode)
         updated_data.to_csv(datafile, index=False)  # save slightly more annotated dataset
     else:
-        accuracy, learner = passive_learning(data, y_column, estimator, limit_cols)
+        accuracy, learner = passive_learning(data, y_column, estimator, limit_cols, mode)
     return accuracy, learner
 
 

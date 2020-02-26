@@ -29,26 +29,7 @@ import heading_id_toc
 name = 'heading_id_intext'
 y_column = 'Heading'
 limit_cols = ['DocID', 'LineNum', 'WordsWidth', 'NormedLineNum', 'Top', 'Heading', 'Centrality', 'MatchesI']
-
-
-def num2cyfra1(string):
-    s = ''
-    prev_c = ''
-    i = 1
-    for c in string:
-        if re.match(r'[0-9]', c):
-            if prev_c != 'num':
-                if c != '0':  # to stop eg. 1.0 being tagged as cyfra1 punkt cyfra2 like a subheading
-                    s += ' cyfra' + str(i) + ' '
-                    i += 1
-                    prev_c = 'num'
-        elif c == '.':
-            s += ' punkt '
-            prev_c = '.'
-        else:
-            s+= c
-            #prev_c = 'char'
-    return s
+include_cols = ['PageNum', 'Text', 'Words2Width', 'Width', 'Height', 'Left', 'ContainsNum', 'WordCount', 'MatchesHeading', 'MatchesType']
 
 
 # technically an estimator.. but an estimator can't have acuracy
@@ -80,7 +61,7 @@ class Num2Cyfra1(TransformerMixin, BaseEstimator):
     def transform(self, data):
         if isinstance(data, np.ndarray):
             data = pd.Series(data)
-        data = data.apply(lambda x: num2cyfra1(x))
+        data = data.apply(lambda x: heading_id_toc.num2cyfra1(x, remove_words=False))
         return data  # check what form this is in
 
 
@@ -228,3 +209,25 @@ if __name__ == '__main__':
         #         print(row.DocID, '\t', row.PageNum, ',', row.LineNum, '\t', row.Text, ' | ', row.Heading, ' | ', preds[i])
         #         x += 1
         # print('Wrong classifications: ', x)
+
+
+
+#
+# def num2cyfra1(string):
+#     s = ''
+#     prev_c = ''
+#     i = 1
+#     for c in string:
+#         if re.match(r'[0-9]', c):
+#             if prev_c != 'num':
+#                 if c != '0':  # to stop eg. 1.0 being tagged as cyfra1 punkt cyfra2 like a subheading
+#                     s += ' cyfra' + str(i) + ' '
+#                     i += 1
+#                     prev_c = 'num'
+#         elif c == '.':
+#             s += ' punkt '
+#             prev_c = '.'
+#         else:
+#             s+= c
+#             #prev_c = 'char'
+#     return s

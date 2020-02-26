@@ -78,17 +78,24 @@ def get_s3_location(file_id, format='pdf'):
 def get_report_name(file_id, local_path=False, file_extension=None):
     file = ''
     if local_path:
-        file = report_local_path + str(file_id) + '/'
+        if isinstance(local_path, str) and 'test' in local_path:
+            file = test_local_path
+        else:
+            file = report_local_path
+        file += str(file_id) + '/'
     file += "cr_" + str(file_id) + "_1"
     if file_extension:
             file += file_extension
     return file
 
 
-def get_file_from_training(folder, file_id, local_path, extension='.json'):
+def get_file_from_training(folder, file_id, local_path, extension='.json', training=True):
     file = ''
     if local_path:
-        file = 'training/' + folder + '/'
+        if training:
+            file = 'training/' + folder + '/'
+        else:
+            file = 'nottraining/' + folder + '/'
     if not 'cr_' in str(file_id):
         if not extension in str(file_id):
             file += get_report_name(file_id)
@@ -108,9 +115,11 @@ def get_bookmarked_file(file_id, test=False, test_i=None):
     return file
 
 
-def get_restructpageinfo_file(file_id, local_path=True):
-    return get_file_from_training('restructpageinfo', file_id, local_path)
-
+def get_restructpageinfo_file(file_id, local_path=True, training=True):
+    if training:
+        return get_file_from_training('restructpageinfo', file_id, local_path)
+    else:
+        return get_file_from_training('restructpageinfo', file_id, local_path, training=training)
 
 def get_kvs_file(file_id, local_path=True):
     return get_file_from_training('kvs', file_id, local_path, extension='.csv')

@@ -23,6 +23,7 @@ months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'augus
 name = 'page_id'
 y_column = 'tag'
 limit_cols = ['transformed']
+include_cols = ['original']
 columns = ['original', 'transformed', y_column]
 
 class NeuralNetwork():
