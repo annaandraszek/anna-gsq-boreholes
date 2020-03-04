@@ -121,6 +121,7 @@ def get_restructpageinfo_file(file_id, local_path=True, training=True):
     else:
         return get_file_from_training('restructpageinfo', file_id, local_path, training=training)
 
+
 def get_kvs_file(file_id, local_path=True):
     return get_file_from_training('kvs', file_id, local_path, extension='.csv')
 

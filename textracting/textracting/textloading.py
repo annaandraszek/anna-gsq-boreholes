@@ -1,4 +1,5 @@
-## @file
+## @package textracting
+#@file
 # Pre-textract functions
 
 import random
@@ -7,10 +8,6 @@ import boto3
 import os
 #from datetime import timedelta
 from textracting import textsettings
-
-
-def list2strs(lst: list):
-    return [str(e) for e in lst]
 
 
 def download_dir(client, resource, dist, reports, local='/tmp', bucket=textsettings.read_bucket):
@@ -28,13 +25,6 @@ def download_dir(client, resource, dist, reports, local='/tmp', bucket=textsetti
                 resource.meta.client.download_file(bucket, file.get('Key'), dest_pathname)
 
 
-def download_reports(reports, local_location='reports/'):
-    reports = list2strs(reports)
-    client = boto3.client('s3', region_name='ap-southeast-2')
-    resource = boto3.resource('s3')
-    download_dir(client, resource, 'QDEX/', reports, local_location, bucket=textsettings.read_bucket)
-
-
 def download_report(fname, dest):
     s3 = boto3.resource('s3')
     s3.Bucket(textsettings.read_bucket).download_file(fname, dest)
@@ -45,11 +35,7 @@ def get_reportid_sample(num=50, submitter=None, rtype_exclude=None, cutoffdate=p
     #reps = edit_reports_xlsx()
     reps = pd.read_excel('../investigations/QDEX_export_v2.xlsx')#_reports_BHP.xlsx')
     reps = reps.loc[reps.RSTATUS.str.contains('C') == False]  # exclude confidential
-    #reps = reps.loc[reps.RTITLE.str.contains('QGMJ') == False]  # exclude mining journals
-    #reps = reps.loc[reps.RTYPE.str.contains('WELCOM') == False]  # exclude well completion reports
     reps.REPNO = reps.REPNO.astype(int)
-    #cutoffdate = pd.Timestamp(1990, 1, 1)
-    #time_mask = reps.REPDATE > cutoffdate
 
     if cutoffdate:
         reps = reps.loc[reps.REPDATE > cutoffdate]
@@ -107,3 +93,15 @@ def get_reportid_sample(num=50, submitter=None, rtype_exclude=None, cutoffdate=p
 #     report_ids = set([r.rsplit('\\')[-1] for r in rfs])
 #     for report in report_ids:
 #         doc2data(report)
+
+
+#
+# def download_reports(reports, local_location='reports/'):
+#     reports = list2strs(reports)
+#     client = boto3.client('s3', region_name='ap-southeast-2')
+#     resource = boto3.resource('s3')
+#     download_dir(client, resource, 'QDEX/', reports, local_location, bucket=textsettings.read_bucket)
+
+#
+# def list2strs(lst: list):
+#     return [str(e) for e in lst]

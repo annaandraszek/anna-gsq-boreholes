@@ -1,4 +1,5 @@
-## @file
+## @package textracting
+#@file
 # Transforming results of textract into other structures/files
 
 import numpy as np
@@ -9,7 +10,8 @@ from PIL import ImageDraw,Image, ImageFont
 from pdf2image import convert_from_path
 import settings
 from textracting import textsettings
-
+import os
+import pandas as pd
 textract = boto3.client('textract')
 comprehend = boto3.client('comprehend')
 
@@ -53,6 +55,8 @@ def display_doc(docid): # doc has to be pageinfo type - made for restructpageinf
         drawn_images.append(image)
 
     save_path = settings.result_path + docid + '_boxed.pdf'
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
     drawn_images[0].save(save_path, save_all=True, append_images=drawn_images[1:])
 
 
@@ -60,6 +64,7 @@ def save_tables(doc, file_id):
     table_csv = get_table_csv(doc)
     with open(settings.get_tables_file(file_id), "w") as fout:
         fout.write(table_csv)
+    #table_csv.to_csv(settings.get_tables_file(file_id))
     #print('CSV OUTPUT FILE: ', settings.get_tables_file(file_id))
 
 
@@ -80,6 +85,8 @@ def clean_and_restruct(docid, save=True):
     restructpageinfo = get_restructpagelines(clean_page)
 
     if save:
+        if not os.path.exists(settings.get_restructpageinfo_file(docid)):
+            os.makedirs(settings.get_restructpageinfo_file(docid))
         o = open(settings.get_restructpageinfo_file(docid), "w")
         json.dump(restructpageinfo, o)
     else:
@@ -142,7 +149,7 @@ def generate_table_csv(table_result, blocks_map, table_index):
     for row_index, cols in rows.items():
 
         for col_index, text in cols.items():
-            csv += '{}'.format(text) + ","
+            csv += '{}'.format(text) + "`"
         csv += '\n'
     csv += '\n\n\n'
     return csv
@@ -430,7 +437,17 @@ def search_value(kvs, search_key):
             return value
 
 
+def save_tables_and_kvs(docid):
+    json_file = settings.get_full_json_file(docid)
+    with open(json_file, 'r') as file:
+        json_doc = json.load(file)
+    json_res = json2res(json_doc)['Blocks']
+    save_tables(json_res, docid)
+    save_kv_pairs(json_res, docid)
+    print('Completed textracting ' + str(docid))
+
+
 if __name__ == "__main__":
-    docid = '26114'
-    clean_and_restruct(docid)
-    display_doc(docid)
+    docids = ['32730', '44448', '37802', '2646', '44603']
+    for docid in docids:
+        save_tables_and_kvs(docid)

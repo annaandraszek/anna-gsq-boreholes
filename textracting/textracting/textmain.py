@@ -1,4 +1,5 @@
-## @file
+## @package textracting
+#@file
 #Main file for managing textract functions
 
 from textracting import textracting
@@ -23,7 +24,7 @@ def textract_many(docids: list, features: list):
 if __name__ == "__main__":
     # Specify whatever DocIDs in docs and will get Textract response and clean it up for you
     pre = 'cr_' # 'smaller_'
-    docs = ['30281']
+    docs = ['32730', '44448', '37802', '2646', '44603']  #['30281']
     for doc_path in docs:
         docid = doc_path # pre +
         #documentName = pre + doc_path + '_1.pdf' #'.pdf'
