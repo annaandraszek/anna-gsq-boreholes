@@ -45,7 +45,11 @@ production = 'production'  # folder of last working models
 
 
 def get_model_path(model, mode=dataset_version, tokeniser=False, classes=False):
-    path = model_path + mode + '/' + model
+    if 'boreholes' in mode:
+        path = ''
+    else:
+        path = '../'
+    path += model_path + mode + '/' + model
     # if type:
     #     path += '_' + type
     path += "_model"
@@ -68,7 +72,10 @@ def get_report_page_path(report_id, page):
 
 
 def get_dataset_path(dataset, training_name=dataset_version):
-    return dataset_path + training_name + '/' + dataset + '_dataset.csv'
+    if 'boreholes' in dataset_version:
+        return dataset_path + training_name + '/' + dataset + '_dataset.csv'
+    else:
+        return '../' + dataset_path + training_name + '/' + dataset + '_dataset.csv'
 
 
 def get_s3_location(file_id, format='pdf'):
@@ -93,7 +100,7 @@ def get_file_from_training(folder, file_id, local_path, extension='.json', train
     file = ''
     if local_path:
         if training:
-            file = 'training/' + folder + '/'
+            file = '../training/' + folder + '/'
         else:
             file = 'nottraining/' + folder + '/'
     if not 'cr_' in str(file_id):

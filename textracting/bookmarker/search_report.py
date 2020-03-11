@@ -19,8 +19,8 @@ from bookmarker.heading_id_intext import Text2CNBPrediction, Num2Cyfra1
 import jsonpickle
 import glob
 
-#mode = settings.production
-mode = settings.dataset_version
+mode = settings.production
+#mode = settings.dataset_version
 
 class Report():
     def __init__(self, docid):
@@ -128,7 +128,10 @@ class Report():
         return pi
 
     def create_toc_dataset(self):
-        docset = np.zeros((len(self.docinfo.items()), len(toc_classification.include_cols)+1))
+        include_cols = toc_classification.include_cols
+        if mode == settings.production:
+            include_cols = include_cols[:-2]
+        docset = np.zeros((len(self.docinfo.items()), len(include_cols)+1))
         for info, lines, j, in zip(self.docinfo.items(), self.doclines.items(), range(len(self.docinfo.items()))):
             toc = 0
             c = 0
@@ -140,9 +143,13 @@ class Report():
                         toc = 1
                 if 'list of' in line.lower():
                     listof = 1
-            docset[j] = np.array([self.docid, info[0], len(lines[1]), toc, c, listof, 0])
+            if mode == settings.production:
+                row = [self.docid, info[0], len(lines[1]), toc, c]
+            else:
+                row = [self.docid, info[0], len(lines[1]), toc, c, listof, 0]
+            docset[j] = np.array(row)
         columns = ['DocID']
-        columns.extend(toc_classification.include_cols)
+        columns.extend(include_cols)
         pgdf = pd.DataFrame(data=docset, columns=columns)
         #pgdf.to_csv(self.toc_dataset_path, index=False)
         return pgdf
@@ -407,7 +414,7 @@ def bookmark_report(report, test=False):
     else:
         report_file = settings.get_report_name(report.docid, local_path=True, file_extension='.pdf')
     output = PdfFileWriter()
-    input = PdfFileReader(open(report_file, 'rb'))
+    input = PdfFileReader(open('../' + report_file, 'rb'))
     ptrs = report.headings_intext
     for page in input.pages:
         output.addPage(page)
@@ -447,7 +454,7 @@ def bookmark_report(report, test=False):
             output.addLink(report.toc_page-1, row.PageNum-1, rect=rectangle, fit='/FitB')  # creates link from toc heading to section page
 
     #outfile = settings.get_report_name(report.docid, local_path=True, file_extension='_bookmarked.pdf')
-    outfile = settings.get_bookmarked_file(report.docid, test=test)
+    outfile = '../' + settings.get_bookmarked_file(report.docid, test=test)
     print(outfile)
     rpath = outfile.rsplit('/', 1)[0]
     if not os.path.exists(rpath):
@@ -465,7 +472,7 @@ def save_report_sections(report):
         for line in section['Content']:
             p.add_run(line + '\n')
         doc.add_page_break()
-    doc.save(settings.get_report_name(report.docid, local_path=True, file_extension='_sections.docx'))
+    doc.save('../' + settings.get_report_name(report.docid, local_path=True, file_extension='_sections.docx'))
 
 
 def report2json(report, test=False):
@@ -473,7 +480,7 @@ def report2json(report, test=False):
         local = 'test'
     else:
         local = True
-    with open(settings.get_report_name(report.docid, local_path=local, file_extension='.json'), "w") as f:
+    with open('../' + settings.get_report_name(report.docid, local_path=local, file_extension='.json'), "w") as f:
         frozen = jsonpickle.encode(report)
         json.dump(frozen, f)
 
@@ -523,23 +530,23 @@ def sanitise_files():
 
 if __name__ == '__main__':
     #sanitise_datasets()
-    sanitise_files()
+    #sanitise_files()
     # transform document pages into dataset of pages for toc classification, classify pages, and isolate toc
     # from toc page, transform content into dataset of headings for heading identification, identify headings, and return headings and subheadings
     # test_reports = ['30320', '42688', '95183', '2984', '57418', '75738', '111200']
     # #reports = test_reports #['30320'] # '30320' #'24352', '24526', '26853', '28066', '28184','28882', '30281', '31681', '23508', ] #,'23732',
-    # reports = ['30320']
-    # test = True
-    # for report in reports:
-    #     start = time.time()
-    #     r = Report(report)
-    #     if test:
-    #         draw_report(r)
-    #     bookmark_report(r, test)
-    #     save_report_sections(r)
-    #     report2json(r, test=test)
-    #     end = time.time()
-    #     print('time:', end - start)
+    reports = ['95183']
+    test = False
+    for report in reports:
+        start = time.time()
+        r = Report(report)
+        if test:
+            draw_report(r)
+        bookmark_report(r, test)
+        save_report_sections(r)
+        report2json(r, test=test)
+        end = time.time()
+        print('time:', end - start)
         #print('TOC Headings: \n')
         #for string in r.doclines[str(r.toc_page)]:
         #    print(string)

@@ -118,33 +118,33 @@ if __name__ == '__main__':
                     print("Report already textracted")
                     textract_time = 0
 
-                # # check if clean and restruct needs to be run or if restructpageinfo alredy exists
-                # if (not os.path.exists(settings.get_restructpageinfo_file(docid)) and (not args.force)):
-                #     texttransforming.clean_and_restruct(docid, save=True)
-                # else: print("Report already cleaned and reconstructed")
-                # # check if search report, bookmark report, needs to be run or if bookmarked pdf already exists
-                # if (not os.path.exists(settings.get_bookmarked_file(docid))) and (not args.force):
-                #     ml_start = time.time()
-                #     try:
-                #         report = search_report.Report(docid)  # need every ml method here to be able to create a dataset with an unseen report
-                #     except ValueError:
-                #         continue
-                # #search_report.draw_report(report)
-                #     search_report.bookmark_report(report)
-                # # check if needs to be run or if sections word doc already exists
-                #     search_report.save_report_sections(report)
-                #     search_report.report2json(report)
-                #
-                #     ml_end = time.time()
-                #     ml_time = ml_end - ml_start
-                #     print("Time to ML, bookmark, export to text: " + "{0:.2f}".format(ml_time) + " seconds")
-                #     print("COMPLETED BOOKMARKING " + docid + ", total time: " + "{0:.2f}".format(
-                #         ml_time + textract_time) + " seconds")
-                #     toc_exists = True if report.toc_page else False
-                #    bookmark_time = datetime.datetime.now()
+                # check if clean and restruct needs to be run or if restructpageinfo alredy exists
+                if (not os.path.exists(settings.get_restructpageinfo_file(docid)) and (not args.force)):
+                    texttransforming.clean_and_restruct(docid, save=True)
+                else: print("Report already cleaned and reconstructed")
+                # check if search report, bookmark report, needs to be run or if bookmarked pdf already exists
+                if (not os.path.exists(settings.get_bookmarked_file(docid))) and (not args.force):
+                    ml_start = time.time()
+                    try:
+                        report = search_report.Report(docid)  # need every ml method here to be able to create a dataset with an unseen report
+                    except ValueError:
+                        continue
+                #search_report.draw_report(report)
+                    search_report.bookmark_report(report)
+                # check if needs to be run or if sections word doc already exists
+                    search_report.save_report_sections(report)
+                    search_report.report2json(report)
+
+                    ml_end = time.time()
+                    ml_time = ml_end - ml_start
+                    print("Time to ML, bookmark, export to text: " + "{0:.2f}".format(ml_time) + " seconds")
+                    print("COMPLETED BOOKMARKING " + docid + ", total time: " + "{0:.2f}".format(
+                        ml_time + textract_time) + " seconds")
+                    toc_exists = True if report.toc_page else False
+                    bookmark_time = datetime.datetime.now()
                     with open(log_file, 'a', newline='') as log:
                         writer = csv.writer(log)
-                        writer.writerow([int(docid), textract_time, None, None, None]) #ml_time, toc_exists, bookmark_time])
+                        writer.writerow([int(docid), textract_time, None, None, bookmark_time]) #ml_time, toc_exists, bookmark_time])
                 #else: print("Report already bookmarked")
 
         cont = input("Run again?")

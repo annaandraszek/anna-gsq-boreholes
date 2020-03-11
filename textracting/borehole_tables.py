@@ -8,12 +8,16 @@ import pandas.errors
 import os
 import re
 import numpy as np
-from bookmarker import active_learning
+from bookmarker import active_learning, machine_learning_helper as mlh
 import pickle
 from sklearn.naive_bayes import ComplementNB
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
+
+name = "tables"
+y_column = 'Class'
+limit_cols = ['DocID', 'TableNum']
 
 # extract tables from a csv
 def get_tables(docid):
@@ -115,25 +119,29 @@ def concat_tables(df):
     #series = serie.apply(lambda x: list2str(x))
 
 
-def train(n_queries=10):
-    datafile = settings.get_dataset_path('tables', 'boreholes')
+def train(n_queries=10, mode='boreholes'):
+    datafile = settings.get_dataset_path(name, mode)
     df = pd.read_csv(datafile)
     df = df.loc[df['Columns'] != '[]']
-    y_column = 'Class'
-    limit_cols = ['DocID', 'TableNum']
+
     clf = Pipeline([
         ('list2str', FunctionTransformer(concat_tables)),
         ('tfidf', TfidfVectorizer(ngram_range=(1, 4))),
         ('cnb', ComplementNB(norm=True))
     ], verbose=True)
     accuracy, learner = active_learning.train(df, y_column, n_queries, clf, datafile, limit_cols=limit_cols,
-                                              mode='boreholes')
-    model_loc = settings.get_model_path('tables', 'boreholes')
+                                              mode=mode)
+    model_loc = settings.get_model_path(name, mode)
 
     with open(model_loc, "wb") as file:
         pickle.dump(learner, file)
 
 
+def get_borehole_tables(df, mode="boreholes_production", masked=False):
+    return mlh.get_classified(df, name, y_column, limit_cols, mode, masked)
+
+
 if __name__ == "__main__":
-    create_dataset()
-    #train(n_queries=2)
+    #create_dataset()
+    train(n_queries=1)
+    #active_learning.automatically_tag('tables', get_borehole_tables, 'Class', mode='boreholes_production')

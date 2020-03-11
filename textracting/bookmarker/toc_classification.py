@@ -119,7 +119,7 @@ def get_toc_pages(df, mode=settings.dataset_version):
     prevpgtoc = False
     res = []
     for i, row in df.iterrows():
-        if prevpgtoc:
+        if prevpgtoc and mode != settings.production:
             row['PrevPageTOC'] = 1
         pred = mlh.get_classified(pd.DataFrame(data=[row], columns=df.columns), name, y_column, limit_cols, mode, masked=False)
         if pred[y_column].iloc[0] == 1:

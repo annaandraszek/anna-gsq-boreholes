@@ -19,6 +19,7 @@ import json
 import sklearn
 from bookmarker import machine_learning_helper as mlh
 import borehole_tables
+import random
 
 
 def get_input(classes):
@@ -87,6 +88,22 @@ def display_page(docid, page, line=None, mode=settings.dataset_version):
     if line: print("line: ", line)
 
 
+def borehole_sample(pool, n_queries):
+    hole_words = ['hole', 'bore', 'well', 'core', 'drill']
+    hole_pool = []
+    for word in hole_words:
+        word_pool = [(x, idx) for x, idx in zip(pool.iloc[:,0], pool.index.values) if word in x]
+        hole_pool.extend(word_pool)
+    hole_pool = set(hole_pool)
+    hole_pool = list(hole_pool)
+    sample = random.sample(hole_pool, n_queries)
+    idx = np.asanyarray([i[1] for i in sample])
+    inst = np.asanyarray([i[0] for i in sample])
+    #idx.shape = (idx.shape[0], 1)
+    inst.shape = (inst.shape[0], 1)
+    return idx, inst
+
+
 def active_learning(data, n_queries, y_column, estimator=RandomForestClassifier(), limit_cols=None, mode=settings.dataset_version):
     line = False
     if y_column in ['Marginal', 'Heading']:  # covers marginal_lines, heading_id_toc, heading_id_intext
@@ -107,25 +124,30 @@ def active_learning(data, n_queries, y_column, estimator=RandomForestClassifier(
                                                                                test_size=test_percentage)
     learner = ActiveLearner(estimator=estimator, #ensemble.RandomForestClassifier(),
                             query_strategy=uncertainty_sampling,
-                            X_training=X_train, y_training=y_train.astype(int))
+                            X_training=X_train.values, y_training=y_train.astype(int))
     accuracy_scores = [learner.score(X_test, y_test.astype(int))]
-    query_idx, query_inst = learner.query(X_pool, n_instances=n_queries)
+    if 'boreholes' not in mode:
+        query_idx, query_inst = learner.query(X_pool, n_instances=n_queries)
+        query_idx = np.asarray([refs['idx'][i] for i in query_idx])
+    else:
+        query_idx, query_inst = borehole_sample(X_pool, n_queries)
     y_new = np.zeros(n_queries, dtype=int)
     time.sleep(5)
     for i in range(n_queries):
         idx = query_idx[i]
         #page=int(query_inst[i][0])
-        if mode != 'boreholes':
-            page = refs['pagenums'].iloc[idx]
+        if 'boreholes' not in mode:
+            page = refs['pagenums'].loc[idx]
         if line:
-            line=refs['linenums'].iloc[idx]
-        if mode == 'boreholes':
-            page = refs['Tables'].iloc[idx]
-        y = al_input_loop(learner, query_inst[i], refs['docids'].iloc[idx], n_queries, classes, page=page, line=line, mode=mode)
+            line=refs['linenums'].loc[idx]
+        if 'boreholes' in mode:
+            page = refs['Tables'].loc[idx]
+        y = al_input_loop(learner, query_inst[i], refs['docids'].loc[idx], n_queries, classes, page=page, line=line, mode=mode)
         y_new[i] = y
-        #print(data.at[refs['idx'][idx], 'Columns'])
-        data.at[refs['idx'][idx], y_column] = y  # save value to copy of data
-        data.at[refs['idx'][idx], 'TagMethod'] = 'manual'
+        #print("index: ", idx)
+        #print("x: ", data.at[idx, 'Columns'])
+        data.at[idx, y_column] = y  # save value to copy of data
+        data.at[idx, 'TagMethod'] = 'manual'
 
     learner.teach(query_inst, y_new)  # reshape 1, -1
     accuracy_scores.append(learner.score(X_test, y_test.astype(int)))
@@ -146,10 +168,11 @@ def passive_learning(data, y_column, estimator=sklearn.ensemble.RandomForestClas
     if limit_cols:
         default_drop.extend(limit_cols)
     X, Y = mlh.data_prep(data, limit_cols=default_drop, y_column=y_column)
-    if mode == settings.production:
+    if settings.production in mode:
         X_train, X_test, y_train, y_test = X, X, Y, Y  # no split test set
     else:
         test_percentage = 0.2
+        print("test set size: ", test_percentage)
         X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, Y, test_size=test_percentage)
     #X, Y = X.astype(int), Y.astype(int)  # pd's Int64 dtype accepts NaN  # but Int64 dtype is "unknown"  # need to change this line to accept with str input, not sure how
 
@@ -166,6 +189,11 @@ def passive_learning(data, y_column, estimator=sklearn.ensemble.RandomForestClas
     y_pred = learner.predict(valid_x)
     accuracy = sklearn.metrics.accuracy_score(valid_y, y_pred)
     conf = sklearn.metrics.confusion_matrix(valid_y, y_pred)
+    print("Test set results: ")
+    pred = learner.predict(X_test)
+    print(sklearn.metrics.accuracy_score(y_test, pred))
+    print(sklearn.metrics.confusion_matrix(y_test, pred))
+    print("For manually annotated:")
     print(accuracy)
     print(conf)
     return accuracy, learner
@@ -175,7 +203,10 @@ def train(data, y_column, n_queries, estimator, datafile, limit_cols=None, mode=
     unlabelled = data[y_column].loc[data[y_column].isnull()]
 
     if len(unlabelled) < n_queries:  # if less unlabelled than want to sample, reduce sample size
-        n_queries = len(unlabelled)
+        if len(unlabelled) == 0:
+            data[y_column].loc[data['TagMethod'] == 'auto'] = np.nan
+        else:
+            n_queries = len(unlabelled)
 
     if n_queries > 0:
         updated_data, accuracy, learner = active_learning(data, n_queries, y_column, estimator, limit_cols, mode)
@@ -185,20 +216,20 @@ def train(data, y_column, n_queries, estimator, datafile, limit_cols=None, mode=
     return accuracy, learner
 
 
-def automatically_tag(type, classification_function, y_column):
-    source = settings.get_dataset_path(type)  # 'toc'
+def automatically_tag(type, classification_function, y_column, mode=settings.dataset_version):
+    source = settings.get_dataset_path(type, mode)  # 'toc'
     df = pd.read_csv(source)
     df = df.reset_index(drop=True)
     new_tags = classification_function(df, masked=False) # can add mode parameter if ever use it on production set
     #idx = df.loc[((df['TagMethod'] != 'legacy') != (df['TOCPage'] == df['TOCPage'])) & (df['TagMethod'] != 'manual')].index.values #= new_tags.loc[(df['TagMethod'] != 'legacy') & (df['TagMethod'] != 'manual')]
     idx = df.loc[((df['TagMethod'] == 'auto') | (df['TagMethod'] != df['TagMethod'])) | (df[y_column] != df[y_column])].index.values  # join of auto and TOCPage==None
-    df.loc[idx, y_column] = new_tags.iloc[idx]
+    df.loc[idx, y_column] = new_tags.loc[idx]
     df.loc[idx, 'TagMethod'] = 'auto'
     print(len(idx), " automatically tagged")
     #df['TagMethod'].loc[(df['TagMethod'] != 'legacy') & (df['TagMethod'] != 'manual')] = 'auto'
     if 'proba' in df.columns:
         df = df.drop(columns=['proba'])
-    df.to_csv(settings.get_dataset_path(type), index=False)
+    df.to_csv(source, index=False)
 
 
 def display_df(docid, table):
@@ -218,6 +249,7 @@ def al_input_loop(learner, inst, docid, n_queries, classes, page=None, line=None
     print("Waiting to display next....")
     display.clear_output(wait=True)
     #print(inst)
+
     pred = learner.predict(inst.reshape(1, -1))
     #preds.append(pred[0])
 
