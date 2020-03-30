@@ -85,8 +85,10 @@ def clean_and_restruct(docid, save=True):
     restructpageinfo = get_restructpagelines(clean_page)
 
     if save:
-        if not os.path.exists(settings.get_restructpageinfo_file(docid)):
-            os.makedirs(settings.get_restructpageinfo_file(docid))
+        fp = settings.get_restructpageinfo_file(docid)
+        p = fp.rsplit('/', 1)[0]
+        if not os.path.exists(p):
+            os.makedirs(p)
         o = open(settings.get_restructpageinfo_file(docid), "w")
         json.dump(restructpageinfo, o)
     else:
