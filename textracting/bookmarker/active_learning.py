@@ -20,6 +20,7 @@ import sklearn
 from bookmarker import machine_learning_helper as mlh
 import borehole_tables
 import random
+import subprocess
 
 
 def get_input(classes):
@@ -89,7 +90,7 @@ def display_page(docid, page, line=None, mode=settings.dataset_version):
 
 
 def borehole_sample(pool, n_queries):
-    hole_words = ['hole', 'bore', 'well', 'core', 'drill']
+    hole_words = ['hole', 'bore', 'well', 'core']#, 'drill']
     hole_pool = []
     for word in hole_words:
         word_pool = [(x, idx) for x, idx in zip(pool.iloc[:,0], pool.index.values) if word in x]
@@ -196,6 +197,15 @@ def passive_learning(data, y_column, estimator=sklearn.ensemble.RandomForestClas
     print("For manually annotated:")
     print(accuracy)
     print(conf)
+
+    # print false negatives
+    # print('False negatives: ')
+    # for i in range(len(valid_y)):
+    #     if valid_y.iloc[i] != y_pred[i]:
+    #         if y_pred[i] == 0:
+    #             print(valid_x.iloc[i])
+
+
     return accuracy, learner
 
 
@@ -259,7 +269,7 @@ def al_input_loop(learner, inst, docid, n_queries, classes, page=None, line=None
         display_df(int(docid), int(page))
         #print(inst)
 
-    #time.sleep(1)  # sometimes the input box doesn't show, i think because it doesn't have the time
+    time.sleep(1)  # sometimes the input box doesn't show, i think because it doesn't have the time
 
     print("queries: ", n_queries)
     #if i == 0:
@@ -306,13 +316,13 @@ def al_data_prep(data, y_column, limit_cols=None, mode=settings.dataset_version)
     return X_initial, Y_initial, X_pool, y_pool, refs
 
 
-def save_report_pages(docid):
-    report_path = settings.get_report_name(docid, local_path=True, file_extension='.pdf')
+def save_report_pages(docid, report_num=1):
+    report_path = settings.get_report_name(docid, local_path=True, file_extension='.pdf', report_num=report_num)
     try:
         images = convert_from_path(report_path)
     except exceptions.PDFPageCountError:
         fname = textracting.find_file(docid)
-        rep_folder = (settings.get_report_name(docid, local_path=True)).split('cr')[0]
+        rep_folder = (settings.get_report_name(docid, local_path=True, report_num=report_num)).split('cr')[0]
         if not os.path.exists(rep_folder):
             os.mkdir(rep_folder)
 
@@ -330,10 +340,21 @@ def save_report_pages(docid):
         images[i].save(pgpath)
 
 
-if __name__ =="__main__":
-    #display_page('70562', 5, 4)
-    import heading_id_toc
-    automatically_tag('proc_heading_id_toc', heading_id_toc.get_toc_headings, 'Heading')
+# if __name__ =="__main__":
+#     #display_page('70562', 5, 4)
+#     import heading_id_toc
+#     automatically_tag('proc_heading_id_toc', heading_id_toc.get_toc_headings, 'Heading')
+
+
+if __name__ == "__main__":
+    sample = textloading.get_reportid_sample(1000, cutoffdate=None)
+    #p = subprocess.Popen([], cwd="C:/Users/andraszeka/OneDrive - ITP (Queensland Government)/gsq-boreholes/")
+    #subprocess.call("cd C:/Users/andraszeka/OneDrive - ITP (Queensland Government)/gsq-boreholes/")
+    for id in sample:
+        print("aws s3 cp s3://gsq-horizon/QDEX/" + id + " 1000sample/" + id + " --recursive")
+        #cmd = "aws s3 cp s3://gsq-horizon/QDEX/" + id + " 1000sample/" + id + "--recursive"
+        #subprocess.call(cmd)
+
 
 
 # def data_prep(data, limit_cols=None, y_column=None):  # y=False,

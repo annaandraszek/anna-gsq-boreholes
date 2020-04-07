@@ -78,7 +78,7 @@ def classify(data, model_name, y_column, limit_cols, mode=settings.dataset_versi
     data = data_prep(data, limit_cols)
     pred = model.predict(data)
     proba = model.predict_proba(data)
-    print(proba)
+    #print(proba)
     return pred, proba
 
 

@@ -78,11 +78,11 @@ def get_dataset_path(dataset, training_name=dataset_version):
         return '../' + dataset_path + training_name + '/' + dataset + '_dataset.csv'
 
 
-def get_s3_location(file_id, format='pdf'):
-    return 'QDEX/' + file_id + '/' + get_report_name(file_id, file_extension=format)
+def get_s3_location(file_id, format='pdf', report_num=1):
+    return 'QDEX/' + file_id + '/' + get_report_name(file_id, file_extension=format, report_num=report_num)
 
 
-def get_report_name(file_id, local_path=False, file_extension=None):
+def get_report_name(file_id, local_path=False, file_extension=None, report_num=1):
     file = ''
     if local_path:
         if isinstance(local_path, str) and 'test' in local_path:
@@ -90,22 +90,22 @@ def get_report_name(file_id, local_path=False, file_extension=None):
         else:
             file = report_local_path
         file += str(file_id) + '/'
-    file += "cr_" + str(file_id) + "_1"
+    file += "cr_" + str(file_id) + "_" + str(report_num)
     if file_extension:
             file += file_extension
     return file
 
 
-def get_file_from_training(folder, file_id, local_path, extension='.json', training=True):
+def get_file_from_training(folder, file_id, local_path, extension='.json', training=True, report_num=1):
     file = ''
     if local_path:
         if training:
             file = '../training/' + folder + '/'
         else:
-            file = 'nottraining/' + folder + '/'
+            file = '../nottraining/' + folder + '/'
     if not 'cr_' in str(file_id):
         if not extension in str(file_id):
-            file += get_report_name(file_id)
+            file += get_report_name(file_id, report_num=report_num)
             return file + "_" + folder + extension
     return file + str(file_id) + "_" + folder + extension
 
@@ -122,21 +122,19 @@ def get_bookmarked_file(file_id, test=False, test_i=None):
     return file
 
 
-def get_restructpageinfo_file(file_id, local_path=True, training=True):
-    if training:
-        return get_file_from_training('restructpageinfo', file_id, local_path)
-    else:
-        return get_file_from_training('restructpageinfo', file_id, local_path, training=training)
+def get_restructpageinfo_file(file_id, local_path=True, training=True, report_num=1):
+    return get_file_from_training('restructpageinfo', file_id, local_path, training=training, report_num=report_num)
 
 
-def get_kvs_file(file_id, local_path=True):
-    return get_file_from_training('kvs', file_id, local_path, extension='.csv')
+def get_kvs_file(file_id, local_path=True, training=True, report_num=1):
+    return get_file_from_training('kvs', file_id, local_path, extension='.csv', training=training, report_num=report_num)
 
 
-def get_tables_file(file_id, local_path=True):
-    return get_file_from_training('tables', file_id, local_path, extension='.csv')
+def get_tables_file(file_id, local_path=True, training=True, report_num=1):
+    return get_file_from_training('tables', file_id, local_path, extension='.csv', training=training, report_num=report_num)
 
 
-def get_full_json_file(file_id, local_path=True):
-    return get_file_from_training('fulljson', file_id, local_path)
+def get_full_json_file(file_id, local_path=True, training=True, report_num=1):
+    return get_file_from_training('fulljson', file_id, local_path, training=training, report_num=report_num)
+
 

@@ -10,6 +10,9 @@ import os
 from textracting import textsettings
 
 
+#sample = get_reportid_sample(1000, cutoffdate=None)
+
+
 def download_dir(client, resource, dist, reports, local='/tmp', bucket=textsettings.read_bucket):
     paginator = client.get_paginator('list_objects')
 
@@ -30,10 +33,10 @@ def download_report(fname, dest):
     s3.Bucket(textsettings.read_bucket).download_file(fname, dest)
 
 
-def get_reportid_sample(num=50, submitter=None, rtype_exclude=None, cutoffdate=pd.Timestamp(1990, 1, 1), rtitle_exclude=None):
+def get_reportid_sample(num=50, submitter=None, rtype_exclude=None, cutoffdate=pd.Timestamp(1990, 1, 1), rtitle_exclude=None, rtype_include=None):
     #random.seed(19)
     #reps = edit_reports_xlsx()
-    reps = pd.read_excel('../investigations/QDEX_export_v2.xlsx')#_reports_BHP.xlsx')
+    reps = pd.read_excel('../../investigations/QDEX_export_v2.xlsx')#_reports_BHP.xlsx')
     reps = reps.loc[reps.RSTATUS.str.contains('C') == False]  # exclude confidential
     reps.REPNO = reps.REPNO.astype(int)
 
@@ -41,7 +44,11 @@ def get_reportid_sample(num=50, submitter=None, rtype_exclude=None, cutoffdate=p
         reps = reps.loc[reps.REPDATE > cutoffdate]
     if submitter:
         reps = reps.loc[reps.SUBMITBY.str.contains(submitter)]
-    if isinstance(rtype_exclude, list):
+
+    if isinstance(rtype_include, list):
+        for type in rtype_include:
+            reps = reps.loc[reps.RTYPE.str.contains(type)]
+    elif isinstance(rtype_exclude, list):
         for type in rtype_exclude:
             reps = reps.loc[not reps.RTYPE.str.contains(type)]
     if isinstance(rtitle_exclude, list):
@@ -49,6 +56,7 @@ def get_reportid_sample(num=50, submitter=None, rtype_exclude=None, cutoffdate=p
             reps = reps.loc[not reps.RTITLE.str.contains(title)]
     rs = random.sample(list(reps.REPNO), num)
     return [str(r) for r in rs]
+
 
 
 # def col2datetime(df, col):  # to stop to_datetime from converting 1900s to 2000s

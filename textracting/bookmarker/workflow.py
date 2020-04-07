@@ -20,7 +20,8 @@ import pickle as pkl
 num_sample = 20
 cutoffdate = None
 rtype_exclude = None #'WELCOM'
-
+bookmark = False
+training = False
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -30,6 +31,7 @@ if __name__ == '__main__':
     parser.add_argument("-d", "--cutoffdate", help="cutoff year for reports to be no older than", type=int)
     parser.add_argument("--extype", help="report types to exclude. must match report type code eg. WELCOM for Well Completion Report", nargs='+') # have a more verbore help that gives all the codes?
     parser.add_argument("--extitle", help="report titles containing these phrases to exclude", nargs='+') # have a more verbore help that gives all the codes?
+    parser.add_argument("--intype", help="report types to include", nargs="+")
     parser.add_argument("-f", "--force", help="force report to be processed even if already has been", action='store_true')
     args = parser.parse_args()
 
@@ -38,6 +40,12 @@ if __name__ == '__main__':
         with open(var_file, "rb") as f:
             num_sample, cutoffdate, rtype_exclude, rtitle_exclude = pkl.load(f)
         print("Loaded vars; num_sample: ", num_sample, ' cutoffdate: ', cutoffdate, ' rtype_exclude: ', rtype_exclude, ' rtitle_exclude: ', rtitle_exclude)
+    else:
+        num_sample = 20
+        cutoffdate = None
+        rtype_exclude = None
+        rtitle_exclude = None
+
 
     not_exit = True
     while not_exit:
@@ -59,15 +67,20 @@ if __name__ == '__main__':
             print("Saved vars; num_sample: ", num_sample, ' cutoffdate: ', cutoffdate, ' rtype_exclude: ',
                   rtype_exclude, ' rtitle_exclude: ', rtitle_exclude)
 
-        if args.sample and mode != 'save':  # case: saving num_sample but not in sample mode
-            mode = 'sample'
-            num_sample = args.sample
-            if args.cutoffdate:
-                cutoffdate = pd.Timestamp(args.cutoffdate, 1, 1)
-            if args.extype:
-                rtype_exclude = args.extype
-            if args.extitle:
-                rtitle_exclude = args.extitle
+        if args.sample:
+            if args.intype:
+                rtype_include = args.intype
+            else:
+                rtype_include = None
+            if mode != "save":  # case: saving num_sample but not in sample mode
+                mode = 'sample'
+                num_sample = args.sample
+                if args.cutoffdate:
+                    cutoffdate = pd.Timestamp(args.cutoffdate, 1, 1)
+                if args.extype:
+                    rtype_exclude = args.extype
+                if args.extitle:
+                    rtitle_exclude = args.extitle
 
         if args.id:
             docids = args.id
@@ -76,10 +89,13 @@ if __name__ == '__main__':
         #mode = "testing"
         if mode == "sample" or mode == "given" or mode == "testing":
             if mode == 'sample':
-                print("Running in sample mode. Num samples: " + str(num_sample) + " Cutoff date: " + str(cutoffdate) +
+                if rtype_include:
+                    print("Running in sample mode. Num samples: " + str(num_sample) + "Including type: " + str(rtype_include))
+                    docids = textloading.get_reportid_sample(num=num_sample, rtype_include=rtype_include)
+                else:
+                    print("Running in sample mode. Num samples: " + str(num_sample) + " Cutoff date: " + str(cutoffdate) +
                       " Excluding: " + str(rtype_exclude) + " " + str(rtitle_exclude))
-
-                docids = textloading.get_reportid_sample(num=num_sample, cutoffdate=cutoffdate, rtype_exclude=rtype_exclude, rtitle_exclude=rtitle_exclude)
+                    docids = textloading.get_reportid_sample(num=num_sample, cutoffdate=cutoffdate, rtype_exclude=rtype_exclude, rtitle_exclude=rtitle_exclude)
 
             elif mode == 'given':
                 print("Running in 'given' mode")
@@ -88,11 +104,11 @@ if __name__ == '__main__':
                 print("Running in testing mode")
                 docids = ['3354', '3769', '21166', '27932', '28822', '29695', '38276', '42688', '51800', '53382', '55454', '64818']
 
-            training_folders = os.walk('training/QDEX/')
-            training_docids = [x[0].split('\\')[-1] for x in training_folders]
+            #training_folders = os.walk('training/QDEX/')
+            #training_docids = [x[0].split('\\')[-1] for x in training_folders]
+
             #docids = ['15042', '41275', '4639', '48670', '593', '3051', '24357', '15568', '68677', '48897', '36490', '5261', '44433'] #'41568', '41982', '10189', '102109', '43758', '105472', '48907'
             print("Report IDs to bookmark: ",  docids)
-
             log_file = 'bookmarker_log.csv'
             # log file cols = report_id, time2textract, time2ml, toc, time_run
             if not os.path.exists(log_file):
@@ -103,10 +119,10 @@ if __name__ == '__main__':
             for docid in docids:
                 # all the below checks also need to check if the --force arg is True, which would overrule their skip
                 # check if textract needs to be run or if fulljson already exists
-                if not (os.path.exists(settings.get_full_json_file(docid))) and (not args.force):
+                if not (os.path.exists(settings.get_full_json_file(docid, training=training))) and (not args.force):
                     textract_start = time.time()
                     try:
-                        textmain.textract(docid, features=['TABLES', 'FORMS'])
+                        textmain.textract(docid, features=['TABLES', 'FORMS'], training=training)
                     except FileNotFoundError:
                         print("Report file", docid, "doesn't exist in S3")
                         continue
@@ -118,29 +134,30 @@ if __name__ == '__main__':
                     textract_time = 0
 
                 # check if clean and restruct needs to be run or if restructpageinfo alredy exists
-                if (not os.path.exists(settings.get_restructpageinfo_file(docid)) and (not args.force)):
-                    texttransforming.clean_and_restruct(docid, save=True)
+                if (not os.path.exists(settings.get_restructpageinfo_file(docid, training=training)) and (not args.force)):
+                    texttransforming.clean_and_restruct(docid, save=True, training=training)
                 else: print("Report already cleaned and reconstructed")
                 # check if search report, bookmark report, needs to be run or if bookmarked pdf already exists
-                if (not os.path.exists(settings.get_bookmarked_file(docid))) and (not args.force):
-                    ml_start = time.time()
-                    try:
-                        report = search_report.Report(docid)  # need every ml method here to be able to create a dataset with an unseen report
-                    except ValueError:
-                        continue
-                    #search_report.draw_report(report)
-                    search_report.bookmark_report(report)
-                    # check if needs to be run or if sections word doc already exists
-                    search_report.save_report_sections(report)
-                    search_report.report2json(report)
+                if bookmark:
+                    if (not os.path.exists(settings.get_bookmarked_file(docid))) and (not args.force):
+                        ml_start = time.time()
+                        try:
+                            report = search_report.Report(docid)  # need every ml method here to be able to create a dataset with an unseen report
+                        except ValueError:
+                            continue
+                        #search_report.draw_report(report)
+                        search_report.bookmark_report(report)
+                        # check if needs to be run or if sections word doc already exists
+                        search_report.save_report_sections(report)
+                        search_report.report2json(report)
 
-                    ml_end = time.time()
-                    ml_time = ml_end - ml_start
-                    print("Time to ML, bookmark, export to text: " + "{0:.2f}".format(ml_time) + " seconds")
-                    print("COMPLETED BOOKMARKING " + docid + ", total time: " + "{0:.2f}".format(
-                        ml_time + textract_time) + " seconds")
-                    toc_exists = True if report.toc_page else False
-                    bookmark_time = datetime.datetime.now()
+                        ml_end = time.time()
+                        ml_time = ml_end - ml_start
+                        print("Time to ML, bookmark, export to text: " + "{0:.2f}".format(ml_time) + " seconds")
+                        print("COMPLETED BOOKMARKING " + docid + ", total time: " + "{0:.2f}".format(
+                            ml_time + textract_time) + " seconds")
+                        toc_exists = True if report.toc_page else False
+                        bookmark_time = datetime.datetime.now()
                 with open(log_file, 'a', newline='') as log:
                     writer = csv.writer(log)
                     writer.writerow([int(docid), textract_time, None, None])#, #bookmark_time]) #ml_time, toc_exists, bookmark_time])

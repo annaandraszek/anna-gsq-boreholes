@@ -6,14 +6,12 @@ import boto3
 #import time
 import json
 #import textmain
-from textracting import texttransforming
+from textracting import texttransforming, textloading, textsettings
 import settings
 import re
-from textracting import textloading
 import img2pdf
 import os
 import time
-from textracting import textsettings
 
 
 def find_file(docid):  # for finding the file type of a report
@@ -82,7 +80,7 @@ def getJobResults(jobId):
 
 
 # takes a report in S3 and runs textract on it, saving the direct results to disk
-def report2textract(fname, write_bucket, features):
+def report2textract(fname, write_bucket, features, training=True):
     if '.pdf' in fname:
         docid = fname.rstrip('.pdf')
     else:
@@ -120,14 +118,14 @@ def report2textract(fname, write_bucket, features):
             raise FileNotFoundError
         else:
             #json_response = {'response': response}
-            with open(settings.get_full_json_file(docid), 'w') as fp:
+            with open(settings.get_full_json_file(docid, training=training), 'w') as fp:
                 time.sleep(3)  # sometimes the json doesn't get dumped fully, try to stop that
                 json.dump(response, fp)
             res_blocks = []
             for i in response:
                 res_blocks.extend(i['Blocks'])
             if 'TABLES' in features:
-                texttransforming.save_tables(res_blocks, docid)
+                texttransforming.save_tables(res_blocks, docid, training=training)
             if 'FORMS' in features:
-                texttransforming.save_kv_pairs(res_blocks, docid)
+                texttransforming.save_kv_pairs(res_blocks, docid, training=training)
             print('Completed textracting ' + docid)

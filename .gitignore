@@ -1,12 +1,14 @@
 **/.idea/
 **/__pycache__/
 **/venv/
+**/1000sample/
+**/nottraining/
 scipy_testing/entity-annotated-corpus/ner.csv 
 textracting/*.json
 textracting/*.csv
 textracting/*.txt
 **/.ipynb_checkpoints/
-textracting/*.ipynb
+#textracting/*.ipynb
 textracting/datasets/not_using
 #investigations/
 textracting/production/

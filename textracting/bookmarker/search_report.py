@@ -414,7 +414,7 @@ def bookmark_report(report, test=False):
     else:
         report_file = settings.get_report_name(report.docid, local_path=True, file_extension='.pdf')
     output = PdfFileWriter()
-    input = PdfFileReader(open('../' + report_file, 'rb'))
+    input = PdfFileReader(open(report_file, 'rb')) #'../' +
     ptrs = report.headings_intext
     for page in input.pages:
         output.addPage(page)
@@ -475,12 +475,12 @@ def save_report_sections(report):
     doc.save('../' + settings.get_report_name(report.docid, local_path=True, file_extension='_sections.docx'))
 
 
-def report2json(report, test=False):
+def report2json(report, test=False, report_num=1):
     if test:
         local = 'test'
     else:
         local = True
-    with open('../' + settings.get_report_name(report.docid, local_path=local, file_extension='.json'), "w") as f:
+    with open('../' + settings.get_report_name(report.docid, local_path=local, file_extension='.json', report_num=report_num), "w") as f:
         frozen = jsonpickle.encode(report)
         json.dump(frozen, f)
 

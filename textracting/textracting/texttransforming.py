@@ -9,9 +9,7 @@ import re
 from PIL import ImageDraw,Image, ImageFont
 from pdf2image import convert_from_path
 import settings
-from textracting import textsettings
 import os
-import pandas as pd
 textract = boto3.client('textract')
 comprehend = boto3.client('comprehend')
 
@@ -60,23 +58,23 @@ def display_doc(docid): # doc has to be pageinfo type - made for restructpageinf
     drawn_images[0].save(save_path, save_all=True, append_images=drawn_images[1:])
 
 
-def save_tables(doc, file_id):
+def save_tables(doc, file_id, training=True):
     table_csv = get_table_csv(doc)
-    with open(settings.get_tables_file(file_id), "w") as fout:
+    with open(settings.get_tables_file(file_id, training=training), "w") as fout:
         fout.write(table_csv)
     #table_csv.to_csv(settings.get_tables_file(file_id))
     #print('CSV OUTPUT FILE: ', settings.get_tables_file(file_id))
 
 
-def save_kv_pairs(result, file_id):
+def save_kv_pairs(result, file_id, training=True):
     kvs = get_kv_pairs(result)
-    o = open(settings.get_kvs_file(file_id), "w")
+    o = open(settings.get_kvs_file(file_id, training=training), "w")
     for key, value in kvs.items():
         o.write(str(key + ',' + value + '\n'))
 
 
-def clean_and_restruct(docid, save=True):
-    json_file = settings.get_full_json_file(docid)
+def clean_and_restruct(docid, save=True, training=True):
+    json_file = settings.get_full_json_file(docid, training=training)
     with open(json_file, 'r') as file:
         json_doc = json.load(file)
     json_res = json2res(json_doc)
@@ -85,11 +83,11 @@ def clean_and_restruct(docid, save=True):
     restructpageinfo = get_restructpagelines(clean_page)
 
     if save:
-        fp = settings.get_restructpageinfo_file(docid)
+        fp = settings.get_restructpageinfo_file(docid, training=training)
         p = fp.rsplit('/', 1)[0]
         if not os.path.exists(p):
             os.makedirs(p)
-        o = open(settings.get_restructpageinfo_file(docid), "w")
+        o = open(settings.get_restructpageinfo_file(docid, training=training), "w")
         json.dump(restructpageinfo, o)
     else:
         return restructpageinfo
