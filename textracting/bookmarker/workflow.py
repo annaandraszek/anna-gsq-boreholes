@@ -3,7 +3,7 @@
 
 import sys
 sys.path.append('../')
-from textracting import textmain, textloading, texttransforming
+from textracting import textmain, textloading, texttransforming, textracting
 from bookmarker import search_report
 #from heading_id_intext import Text2CNBPrediction, Num2Cyfra1, num2cyfra1  # have to load these to load the model
 import os
@@ -22,6 +22,9 @@ cutoffdate = None
 rtype_exclude = None #'WELCOM'
 bookmark = False
 training = False
+all = True
+special_mode = "no" #"testing"
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -45,7 +48,6 @@ if __name__ == '__main__':
         cutoffdate = None
         rtype_exclude = None
         rtitle_exclude = None
-
 
     not_exit = True
     while not_exit:
@@ -86,9 +88,12 @@ if __name__ == '__main__':
             docids = args.id
             mode = 'given'
 
-        #mode = "testing"
-        if mode == "sample" or mode == "given" or mode == "testing":
-            if mode == 'sample':
+        if mode == "sample" or mode == "given" or special_mode == "testing":
+            if special_mode == "testing":
+                print("Running in testing mode")
+                docids = ['6']
+
+            elif mode == 'sample':
                 if rtype_include:
                     print("Running in sample mode. Num samples: " + str(num_sample) + "Including type: " + str(rtype_include))
                     docids = textloading.get_reportid_sample(num=num_sample, rtype_include=rtype_include)
@@ -99,10 +104,6 @@ if __name__ == '__main__':
 
             elif mode == 'given':
                 print("Running in 'given' mode")
-
-            elif mode == "testing":
-                print("Running in testing mode")
-                docids = ['3354', '3769', '21166', '27932', '28822', '29695', '38276', '42688', '51800', '53382', '55454', '64818']
 
             #training_folders = os.walk('training/QDEX/')
             #training_docids = [x[0].split('\\')[-1] for x in training_folders]
@@ -119,25 +120,31 @@ if __name__ == '__main__':
             for docid in docids:
                 # all the below checks also need to check if the --force arg is True, which would overrule their skip
                 # check if textract needs to be run or if fulljson already exists
-                if not (os.path.exists(settings.get_full_json_file(docid, training=training))) and (not args.force):
-                    textract_start = time.time()
-                    try:
-                        textmain.textract(docid, features=['TABLES', 'FORMS'], training=training)
-                    except FileNotFoundError:
-                        print("Report file", docid, "doesn't exist in S3")
-                        continue
-                    textract_end = time.time()
-                    textract_time = textract_end - textract_start
-                    print("Time to textract: " + str(docid) + " " + "{0:.2f}".format(textract_time) + " seconds")
+                if all:
+                    nums = textracting.get_report_nums_from_subdir(docid, textractable=True)
                 else:
-                    print("Report already textracted")
-                    textract_time = 0
+                    nums = [1]
+                print('Nums: ', nums)
+                for num in nums:
+                    if not (os.path.exists(settings.get_full_json_file(docid, training=training, report_num=num))) and (not args.force):
+                        textract_start = time.time()
+                        try:
+                            textmain.textract(docid, features=['TABLES', 'FORMS'], training=training, report_num=num)
+                        except FileNotFoundError:
+                            print("Report file", docid, "_", str(num), "doesn't exist in S3")
+                            continue
+                        textract_end = time.time()
+                        textract_time = textract_end - textract_start
+                        print("Time to textract: " + str(docid) + "_" + str(num) + " " + "{0:.2f}".format(textract_time) + " seconds")
+                    else:
+                        print("Report ", docid, "_", str(num),  " already textracted")
+                        textract_time = 0
 
-                # check if clean and restruct needs to be run or if restructpageinfo alredy exists
-                if (not os.path.exists(settings.get_restructpageinfo_file(docid, training=training)) and (not args.force)):
-                    texttransforming.clean_and_restruct(docid, save=True, training=training)
-                else: print("Report already cleaned and reconstructed")
-                # check if search report, bookmark report, needs to be run or if bookmarked pdf already exists
+                    # check if clean and restruct needs to be run or if restructpageinfo alredy exists
+                    if (not os.path.exists(settings.get_restructpageinfo_file(docid, training=training, report_num=num)) and (not args.force)):
+                        texttransforming.clean_and_restruct(docid, save=True, training=training, report_num=num)
+                    else: print("Report ", docid, "_", str(num), " already cleaned and reconstructed")
+                    # check if search report, bookmark report, needs to be run or if bookmarked pdf already exists
                 if bookmark:
                     if (not os.path.exists(settings.get_bookmarked_file(docid))) and (not args.force):
                         ml_start = time.time()

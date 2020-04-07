@@ -3,8 +3,8 @@
 
 import glob
 
-report_local_path = 'reports/QDEX/'
-test_local_path = 'reports/test/'
+report_local_path = '../reports/QDEX/'
+test_local_path = '../reports/test/'
 model_path = 'models/'
 result_path = 'results/'
 dataset_path = 'datasets/'
@@ -82,6 +82,10 @@ def get_s3_location(file_id, format='pdf', report_num=1):
     return 'QDEX/' + file_id + '/' + get_report_name(file_id, file_extension=format, report_num=report_num)
 
 
+def get_s3_subdir(docid):
+    return 'QDEX/' + docid + '/'
+
+
 def get_report_name(file_id, local_path=False, file_extension=None, report_num=1):
     file = ''
     if local_path:
@@ -102,7 +106,7 @@ def get_file_from_training(folder, file_id, local_path, extension='.json', train
         if training:
             file = '../training/' + folder + '/'
         else:
-            file = '../nottraining/' + folder + '/'
+            file = '../../nottraining/' + folder + '/'
     if not 'cr_' in str(file_id):
         if not extension in str(file_id):
             file += get_report_name(file_id, report_num=report_num)

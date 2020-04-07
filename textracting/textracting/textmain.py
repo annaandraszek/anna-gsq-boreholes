@@ -7,12 +7,12 @@ from textracting import texttransforming
 from textracting import textsettings
 
 
-def textract(docid: str, features: list, training=True):
+def textract(docid: str, features: list, training=True, report_num=1):
     """
     Wrapper function for running Textract on a file in S3 and saving the response
     Features can equal to any subset of ['TABLES', 'FORMS']
     """
-    textracting.report2textract(docid, features=features, write_bucket=textsettings.read_bucket, training=training)
+    textracting.report2textract(docid, features=features, write_bucket=textsettings.read_bucket, training=training, report_num=report_num)
 
 
 def textract_many(docids: list, features: list):

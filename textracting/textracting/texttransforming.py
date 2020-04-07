@@ -58,23 +58,23 @@ def display_doc(docid): # doc has to be pageinfo type - made for restructpageinf
     drawn_images[0].save(save_path, save_all=True, append_images=drawn_images[1:])
 
 
-def save_tables(doc, file_id, training=True):
+def save_tables(doc, file_id, training=True, report_num=1):
     table_csv = get_table_csv(doc)
-    with open(settings.get_tables_file(file_id, training=training), "w") as fout:
+    with open(settings.get_tables_file(file_id, training=training, report_num=report_num), "w") as fout:
         fout.write(table_csv)
     #table_csv.to_csv(settings.get_tables_file(file_id))
     #print('CSV OUTPUT FILE: ', settings.get_tables_file(file_id))
 
 
-def save_kv_pairs(result, file_id, training=True):
+def save_kv_pairs(result, file_id, training=True, report_num=1):
     kvs = get_kv_pairs(result)
-    o = open(settings.get_kvs_file(file_id, training=training), "w")
+    o = open(settings.get_kvs_file(file_id, training=training, report_num=report_num), "w")
     for key, value in kvs.items():
         o.write(str(key + ',' + value + '\n'))
 
 
-def clean_and_restruct(docid, save=True, training=True):
-    json_file = settings.get_full_json_file(docid, training=training)
+def clean_and_restruct(docid, save=True, training=True, report_num=1):
+    json_file = settings.get_full_json_file(docid, training=training, report_num=report_num)
     with open(json_file, 'r') as file:
         json_doc = json.load(file)
     json_res = json2res(json_doc)
@@ -83,11 +83,11 @@ def clean_and_restruct(docid, save=True, training=True):
     restructpageinfo = get_restructpagelines(clean_page)
 
     if save:
-        fp = settings.get_restructpageinfo_file(docid, training=training)
+        fp = settings.get_restructpageinfo_file(docid, training=training, report_num=report_num)
         p = fp.rsplit('/', 1)[0]
         if not os.path.exists(p):
             os.makedirs(p)
-        o = open(settings.get_restructpageinfo_file(docid, training=training), "w")
+        o = open(fp, "w")
         json.dump(restructpageinfo, o)
     else:
         return restructpageinfo
