@@ -2,8 +2,11 @@
 # Main file for bookmarking report from the command line
 
 import sys
+
+import textractor.textloading
+
 sys.path.append('../')
-from textracting import textmain, textloading, texttransforming, textracting
+from textractor import textmain, textloading, texttransforming, textracting
 from bookmarker import search_report
 #from heading_id_intext import Text2CNBPrediction, Num2Cyfra1, num2cyfra1  # have to load these to load the model
 import os
@@ -21,9 +24,9 @@ num_sample = 20
 cutoffdate = None
 rtype_exclude = None #'WELCOM'
 bookmark = False
-training = False
-all = True
-special_mode = "no" #"testing"
+training = True
+all_files = True
+special_mode = "testing"
 
 
 if __name__ == '__main__':
@@ -36,6 +39,7 @@ if __name__ == '__main__':
     parser.add_argument("--extitle", help="report titles containing these phrases to exclude", nargs='+') # have a more verbore help that gives all the codes?
     parser.add_argument("--intype", help="report types to include", nargs="+")
     parser.add_argument("-f", "--force", help="force report to be processed even if already has been", action='store_true')
+    parser.add_argument("-a", "--all", help="run for ALL reports")
     args = parser.parse_args()
 
     var_file = 'bookmarker_vars.pkl'
@@ -88,10 +92,13 @@ if __name__ == '__main__':
             docids = args.id
             mode = 'given'
 
+        if args.all:
+            mode='all'
+
         if mode == "sample" or mode == "given" or special_mode == "testing":
             if special_mode == "testing":
                 print("Running in testing mode")
-                docids = ['6']
+                docids = ['2364']
 
             elif mode == 'sample':
                 if rtype_include:
@@ -104,6 +111,10 @@ if __name__ == '__main__':
 
             elif mode == 'given':
                 print("Running in 'given' mode")
+
+            elif mode == 'all':
+                print("Running for all reports")
+                docids = textloading.get_reportid_sample(all=True)
 
             #training_folders = os.walk('training/QDEX/')
             #training_docids = [x[0].split('\\')[-1] for x in training_folders]
@@ -120,19 +131,19 @@ if __name__ == '__main__':
             for docid in docids:
                 # all the below checks also need to check if the --force arg is True, which would overrule their skip
                 # check if textract needs to be run or if fulljson already exists
-                if all:
-                    nums = textracting.get_report_nums_from_subdir(docid, textractable=True)
+                if all_files:
+                    nums = textracting.textloading.get_report_nums_from_subdir(docid, textractable=True)
                 else:
                     nums = [1]
                 print('Nums: ', nums)
                 for num in nums:
                     if not (os.path.exists(settings.get_full_json_file(docid, training=training, report_num=num))) and (not args.force):
                         textract_start = time.time()
-                        try:
-                            textmain.textract(docid, features=['TABLES', 'FORMS'], training=training, report_num=num)
-                        except FileNotFoundError:
-                            print("Report file", docid, "_", str(num), "doesn't exist in S3")
-                            continue
+                        #try:
+                        textmain.textract(docid, features=['TABLES', 'FORMS'], training=training, report_num=num)
+                        #except FileNotFoundError:
+                        #    print("Report file", docid, "_", str(num), "doesn't exist in S3")
+                        #    continue
                         textract_end = time.time()
                         textract_time = textract_end - textract_start
                         print("Time to textract: " + str(docid) + "_" + str(num) + " " + "{0:.2f}".format(textract_time) + " seconds")

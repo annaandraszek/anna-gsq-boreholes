@@ -134,11 +134,12 @@ def get_kvs_file(file_id, local_path=True, training=True, report_num=1):
     return get_file_from_training('kvs', file_id, local_path, extension='.csv', training=training, report_num=report_num)
 
 
-def get_tables_file(file_id, local_path=True, training=True, report_num=1):
-    return get_file_from_training('tables', file_id, local_path, extension='.csv', training=training, report_num=report_num)
+def get_tables_file(file_id, local_path=True, training=True, report_num=1, bh=False):
+    s = 'tables'
+    if bh:
+        s += '_bh'
+    return get_file_from_training(s, file_id, local_path, extension='.csv', training=training, report_num=report_num)
 
 
 def get_full_json_file(file_id, local_path=True, training=True, report_num=1):
     return get_file_from_training('fulljson', file_id, local_path, training=training, report_num=report_num)
-
-

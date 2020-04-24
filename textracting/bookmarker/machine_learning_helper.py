@@ -30,11 +30,12 @@ def data_prep(data, limit_cols=None, y_column=None):  # y=False,
     return X
 
 
-def assign_y(x, prev, y_column, line=False, page=True):
+def assign_y(x, prev, y_column, line=False, page=True, table=False):
     d = int(x['DocID'])
     dunion = (prev['DocID'] == d)
     punion = True
     lunion = True
+    tunion = True
     if page:
         p = int(x['PageNum'])
         punion = (prev['PageNum'] == p)
@@ -42,8 +43,10 @@ def assign_y(x, prev, y_column, line=False, page=True):
         l = int(x['LineNum']) - 1
         lunion = (prev['LineNum'] == l)
         #y = prev[y_column].loc[(prev['DocID'] == d) & (prev['PageNum'] == p) & (prev['LineNum'] == l)]
-
-    y = prev[y_column].loc[dunion & punion & lunion]  # need to test
+    if table:
+        t = int(x['TableNum'])
+        tunion = (prev['TableNum'] == t)
+    y = prev[y_column].loc[dunion & punion & lunion & tunion]  # need to test
 
     if len(y) == 0:
         return None
@@ -54,10 +57,10 @@ def assign_y(x, prev, y_column, line=False, page=True):
         print(y.values)
 
 
-def add_legacy_y(prev_dataset, df, y_column, line=False, page=True):
+def add_legacy_y(prev_dataset, df, y_column, line=False, page=True, table=False):
     if os.path.exists(prev_dataset):
         prev = pd.read_csv(prev_dataset)  #, dtype=int)
-        df[y_column] = df.apply(lambda x: assign_y(x, prev, y_column, line, page), axis=1)
+        df[y_column] = df.apply(lambda x: assign_y(x, prev, y_column, line, page, table), axis=1)
         if 'Marginal' in y_column:
             df[y_column].loc[df[y_column] == 2] = 1  # removing the [2] class
         df['TagMethod'].loc[df[y_column] == df[y_column]] = "legacy"

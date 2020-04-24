@@ -5,7 +5,9 @@ import time
 from IPython import display
 import settings
 from PIL import Image, ImageDraw
-from textracting import textloading, textracting
+
+import textractor.textloading
+from textractor import textloading, textracting
 import re
 import img2pdf
 from pdf2image import convert_from_path, exceptions
@@ -321,7 +323,7 @@ def save_report_pages(docid, report_num=1):
     try:
         images = convert_from_path(report_path)
     except exceptions.PDFPageCountError:
-        fname = textracting.find_file(docid)
+        fname = textractor.textloading.find_file(docid)
         rep_folder = (settings.get_report_name(docid, local_path=True, report_num=report_num)).split('cr')[0]
         if not os.path.exists(rep_folder):
             os.mkdir(rep_folder)
