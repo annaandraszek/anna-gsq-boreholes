@@ -78,68 +78,75 @@ def get_dataset_path(dataset, training_name=dataset_version):
         return '../' + dataset_path + training_name + '/' + dataset + '_dataset.csv'
 
 
-def get_s3_location(file_id, format='pdf', report_num=1):
-    return 'QDEX/' + file_id + '/' + get_report_name(file_id, file_extension=format, report_num=report_num)
+def get_s3_location(report_id, format='pdf', file_num=1):
+    return 'QDEX/' + report_id + '/' + get_report_name(report_id, file_extension=format, file_num=file_num)
 
 
 def get_s3_subdir(docid):
     return 'QDEX/' + docid + '/'
 
 
-def get_report_name(file_id, local_path=False, file_extension=None, report_num=1):
+def get_report_name(report_id, local_path=False, file_extension=None, file_num=1):
     file = ''
     if local_path:
         if isinstance(local_path, str) and 'test' in local_path:
             file = test_local_path
         else:
             file = report_local_path
-        file += str(file_id) + '/'
-    file += "cr_" + str(file_id) + "_" + str(report_num)
+        file += str(report_id) + '/'
+    file += "cr_" + str(report_id) + "_" + str(file_num)
     if file_extension:
             file += file_extension
     return file
 
 
-def get_file_from_training(folder, file_id, local_path, extension='.json', training=True, report_num=1):
+def get_file_from_training(folder, report_id, local_path, extension='.json', training=True, file_num=1, extrafolder=None):
     file = ''
     if local_path:
+        fullfolder = folder
+        if extrafolder:
+            fullfolder = extrafolder + '/' + folder
         if training:
-            file = '../training/' + folder + '/'
+            file = '../training/' + fullfolder + '/'
         else:
-            file = '../../nottraining/' + folder + '/'
-    if not 'cr_' in str(file_id):
-        if not extension in str(file_id):
-            file += get_report_name(file_id, report_num=report_num)
+            file = 'C:\\Users\\andraszeka\\OneDrive - ITP (Queensland Government)\\textract_result/' + fullfolder + '/'
+    if not 'cr_' in str(report_id):
+        if not extension in str(report_id):
+            file += get_report_name(report_id, file_num=file_num)
             return file + "_" + folder + extension
-    return file + str(file_id) + "_" + folder + extension
+    return file + str(report_id) + "_" + folder + extension
 
 
-def get_bookmarked_file(file_id, test=False, test_i=None):
+def get_bookmarked_file(report_id, test=False, test_i=None):
     path = report_local_path
     if test:
         path = test_local_path
-        files = path + str(file_id) + '/*'
+        files = path + str(report_id) + '/*'
         if not test_i:
             fpaths = glob.glob(files)
             test_i = len(fpaths)
-    file = path + file_id + "/cr_" + file_id + "_1_" + str(test_i) + "_bookmarked.pdf"
+    file = path + report_id + "/cr_" + report_id + "_1_" + str(test_i) + "_bookmarked.pdf"
     return file
 
 
-def get_restructpageinfo_file(file_id, local_path=True, training=True, report_num=1):
-    return get_file_from_training('restructpageinfo', file_id, local_path, training=training, report_num=report_num)
+def get_restructpageinfo_file(report_id, local_path=True, training=True, file_num=1, extrafolder=None):
+    return get_file_from_training('restructpageinfo', report_id, local_path, training=training, file_num=file_num, extrafolder=extrafolder)
 
 
-def get_kvs_file(file_id, local_path=True, training=True, report_num=1):
-    return get_file_from_training('kvs', file_id, local_path, extension='.csv', training=training, report_num=report_num)
+def get_text_file(report_id, local_path=True, training=True, file_num=1, extrafolder=None):
+    return get_file_from_training('text', report_id, local_path, training=training, file_num=file_num, extension='.txt', extrafolder=extrafolder)
 
 
-def get_tables_file(file_id, local_path=True, training=True, report_num=1, bh=False):
+def get_kvs_file(report_id, local_path=True, training=True, file_num=1, extrafolder=None):
+    return get_file_from_training('kvs', report_id, local_path, extension='.csv', training=training, file_num=file_num, extrafolder=extrafolder)
+
+
+def get_tables_file(report_id, local_path=True, training=True, file_num=1, bh=False, extrafolder=None):
     s = 'tables'
     if bh:
         s += '_bh'
-    return get_file_from_training(s, file_id, local_path, extension='.csv', training=training, report_num=report_num)
+    return get_file_from_training(s, report_id, local_path, extension='.csv', training=training, file_num=file_num, extrafolder=extrafolder)
 
 
-def get_full_json_file(file_id, local_path=True, training=True, report_num=1):
-    return get_file_from_training('fulljson', file_id, local_path, training=training, report_num=report_num)
+def get_full_json_file(report_id, local_path=True, training=True, file_num=1, extrafolder=None):
+    return get_file_from_training('fulljson', report_id, local_path, training=training, file_num=file_num, extrafolder=extrafolder)

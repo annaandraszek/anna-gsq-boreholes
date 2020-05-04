@@ -480,7 +480,7 @@ def report2json(report, test=False, report_num=1):
         local = 'test'
     else:
         local = True
-    with open('../' + settings.get_report_name(report.docid, local_path=local, file_extension='.json', report_num=report_num), "w") as f:
+    with open('../' + settings.get_report_name(report.docid, local_path=local, file_extension='.json', file_num=report_num), "w") as f:
         frozen = jsonpickle.encode(report)
         json.dump(frozen, f)
 

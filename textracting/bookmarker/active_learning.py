@@ -319,12 +319,12 @@ def al_data_prep(data, y_column, limit_cols=None, mode=settings.dataset_version)
 
 
 def save_report_pages(docid, report_num=1):
-    report_path = settings.get_report_name(docid, local_path=True, file_extension='.pdf', report_num=report_num)
+    report_path = settings.get_report_name(docid, local_path=True, file_extension='.pdf', file_num=report_num)
     try:
         images = convert_from_path(report_path)
     except exceptions.PDFPageCountError:
         fname = textractor.textloading.find_file(docid)
-        rep_folder = (settings.get_report_name(docid, local_path=True, report_num=report_num)).split('cr')[0]
+        rep_folder = (settings.get_report_name(docid, local_path=True, file_num=report_num)).split('cr')[0]
         if not os.path.exists(rep_folder):
             os.mkdir(rep_folder)
 

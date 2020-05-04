@@ -24,9 +24,10 @@ limit_cols = ['DocID', 'TableNum']
 
 
 # extract tables from a csv
-def get_tables(docid, bh=False, report_num=1):
-    tablefile = settings.get_tables_file(docid, bh=bh, report_num=report_num)
-    tablefile = tablefile.split('../')[1]
+def get_tables(docid, bh=False, report_num=1, training=True):
+    tablefile = settings.get_tables_file(docid, bh=bh, file_num=report_num, training=training)
+    if training:
+        tablefile = tablefile.split('../')[1]
     if os.path.exists(tablefile):
         with open(tablefile, "r") as f:
             raw_tables = f.read()

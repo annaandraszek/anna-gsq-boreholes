@@ -13,6 +13,7 @@ import img2pdf
 import os
 import time
 from textractor.textloading import find_file
+#from PIL.Image import DecompressionBombError
 
 
 def startJob(s3BucketName, objectName, features=None):
@@ -91,7 +92,11 @@ def report2textract(fname, write_bucket, features, training=True, report_num=1):
             os.makedirs(new_dir)
         textloading.download_report(fname, report_in)
         with open(report_path, "wb") as f:
+            # try:
             f.write(img2pdf.convert(open(report_in, "rb")))
+            # except DecompressionBombError as e:
+            #     print(e, "\n", report_in)
+            #     return 0, 'too large to convert'
         s3 = boto3.resource('s3')
         write_bucket = textsettings.write_bucket
         s3.meta.client.upload_file(report_path, write_bucket, fname_out)
@@ -102,9 +107,9 @@ def report2textract(fname, write_bucket, features, training=True, report_num=1):
             os.makedirs(new_dir)
         textloading.download_report(fname, report_in)
         # check if report is already text-readable and thus doesn't need textract
-        readable = pdf_data.is_doc_text_readable(report_in)
-        if readable:
-            raise TextBasedFileException("Report ", docid, "_", report_num,  " is already text-based, doesn't need textract")
+        #readable = pdf_data.is_doc_text_readable(report_in)
+        #if readable:
+        #    raise TextBasedFileException("Report ", docid, "_", report_num,  " is already text-based, doesn't need textract")
 
     jobId = startJob(write_bucket, fname, features=features)
     print("Started job with id: {}".format(jobId))
@@ -115,7 +120,7 @@ def report2textract(fname, write_bucket, features, training=True, report_num=1):
             raise FileNotFoundError
         else:
             #json_response = {'response': response}
-            with open(settings.get_full_json_file(docid, training=training, report_num=report_num), 'w') as fp:
+            with open(settings.get_full_json_file(docid, training=training, file_num=report_num), 'w') as fp:
                 time.sleep(3)  # sometimes the json doesn't get dumped fully, try to stop that
                 json.dump(response, fp)
             res_blocks = []

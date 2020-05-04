@@ -45,7 +45,7 @@ def get_reportid_sample(num=50, submitter=None, rtype_exclude=None, cutoffdate=p
 
 
 def find_file(docid, report_num=1):  # for finding the file type of a report
-    file_pre = settings.get_s3_location(docid, format=None, report_num=report_num)
+    file_pre = settings.get_s3_location(docid, format=None, file_num=report_num)
     client = boto3.client('s3')
     #my_bucket = s3.Bucket('gsq-staging/QDEX')
     files = client.list_objects_v2(Bucket=textsettings.read_bucket, Prefix=file_pre)

@@ -7,6 +7,7 @@ import textractor.textloading
 
 sys.path.append('../')
 from textractor import textmain, textloading, texttransforming, textracting
+#from textractor.textracting import TextBasedFileException
 from bookmarker import search_report
 #from heading_id_intext import Text2CNBPrediction, Num2Cyfra1, num2cyfra1  # have to load these to load the model
 import os
@@ -19,14 +20,18 @@ import argparse
 #import numpy as np
 import warnings
 import pickle as pkl
+from shutil import copyfile
+from PIL.Image import DecompressionBombError
+
 
 num_sample = 20
 cutoffdate = None
 rtype_exclude = None #'WELCOM'
 bookmark = False
-training = True
+training = False
 all_files = True
-special_mode = "testing"
+special_mode = "welcom"
+extrafolder = None
 
 
 if __name__ == '__main__':
@@ -95,10 +100,18 @@ if __name__ == '__main__':
         if args.all:
             mode='all'
 
-        if mode == "sample" or mode == "given" or special_mode == "testing":
+        if mode == "sample" or mode == "given" or special_mode == "testing" or special_mode == 'welcom':
             if special_mode == "testing":
                 print("Running in testing mode")
-                docids = ['2364']
+                docids = ['106092', '99356', '92099', '84329', '77290', '72095', '69365', '99419']
+
+            elif special_mode == 'welcom':
+                print('running for welcom sample')
+                refile = 'ReportID_for_Textract_processing.xlsx'
+                ref = pd.read_excel(refile)
+                docids = ref['ReportID'].values
+                docids = [str(d) for d in docids]
+                extrafolder = 'qutsample'
 
             elif mode == 'sample':
                 if rtype_include:
@@ -120,13 +133,13 @@ if __name__ == '__main__':
             #training_docids = [x[0].split('\\')[-1] for x in training_folders]
 
             #docids = ['15042', '41275', '4639', '48670', '593', '3051', '24357', '15568', '68677', '48897', '36490', '5261', '44433'] #'41568', '41982', '10189', '102109', '43758', '105472', '48907'
-            print("Report IDs to bookmark: ",  docids)
-            log_file = 'bookmarker_log.csv'
-            # log file cols = report_id, time2textract, time2ml, toc, time_run
-            if not os.path.exists(log_file):
-                with open(log_file, "w", newline='') as log:
-                    writer = csv.writer(log)
-                    writer.writerow(['report_id', 'time2textract', 'time2ml', 'toc', 'time_run'])
+            print("Report IDs: ",  docids)
+            # log_file = 'bookmarker_log.csv'
+            # # log file cols = report_id, time2textract, time2ml, toc, time_run
+            # if not os.path.exists(log_file):
+            #     with open(log_file, "w", newline='') as log:
+            #         writer = csv.writer(log)
+            #         writer.writerow(['report_id', 'time2textract', 'time2ml', 'toc', 'time_run'])
 
             for docid in docids:
                 # all the below checks also need to check if the --force arg is True, which would overrule their skip
@@ -137,13 +150,16 @@ if __name__ == '__main__':
                     nums = [1]
                 print('Nums: ', nums)
                 for num in nums:
-                    if not (os.path.exists(settings.get_full_json_file(docid, training=training, report_num=num))) and (not args.force):
+                    if not (os.path.exists(settings.get_full_json_file(docid, training=training, file_num=num))) and (not args.force):
                         textract_start = time.time()
-                        #try:
-                        textmain.textract(docid, features=['TABLES', 'FORMS'], training=training, report_num=num)
-                        #except FileNotFoundError:
-                        #    print("Report file", docid, "_", str(num), "doesn't exist in S3")
-                        #    continue
+                        try:
+                            textmain.textract(docid, features=['TABLES'], training=training, report_num=num)
+                        except FileNotFoundError:
+                            #print("Report file", docid, "_", str(num), "doesn't exist in S3")
+                            continue
+                        except DecompressionBombError as e:
+                            print(e)
+                            continue
                         textract_end = time.time()
                         textract_time = textract_end - textract_start
                         print("Time to textract: " + str(docid) + "_" + str(num) + " " + "{0:.2f}".format(textract_time) + " seconds")
@@ -151,10 +167,42 @@ if __name__ == '__main__':
                         print("Report ", docid, "_", str(num),  " already textracted")
                         textract_time = 0
 
+
                     # check if clean and restruct needs to be run or if restructpageinfo alredy exists
-                    if (not os.path.exists(settings.get_restructpageinfo_file(docid, training=training, report_num=num)) and (not args.force)):
+                    if (not os.path.exists(settings.get_restructpageinfo_file(docid, training=training, file_num=num)) and (not args.force)):
                         texttransforming.clean_and_restruct(docid, save=True, training=training, report_num=num)
                     else: print("Report ", docid, "_", str(num), " already cleaned and reconstructed")
+
+                    if special_mode == 'welcom':
+                        # copy json, tables, kvpairs, to extrafolder
+                        jsonsrc = settings.get_full_json_file(docid, training=training, file_num=num)
+                        jsondest = settings.get_full_json_file(docid, training=training, file_num=num, extrafolder=extrafolder)
+                        try:
+                            copyfile(jsonsrc, jsondest)
+                        except FileNotFoundError as e:
+                            print(e)
+
+                        tablessrc = settings.get_tables_file(docid, training=training, file_num=num)
+                        tablesdest = settings.get_tables_file(docid, training=training, file_num=num, extrafolder=extrafolder)
+                        try:
+                            copyfile(tablessrc, tablesdest)
+                        except FileNotFoundError as e:
+                            print(e)
+
+                        kvssrc = settings.get_kvs_file(docid, training=training, file_num=num)
+                        kvsdest = settings.get_kvs_file(docid, training=training, file_num=num, extrafolder=extrafolder)
+                        try:
+                            copyfile(kvssrc, kvsdest)
+                        except FileNotFoundError as e:
+                            print(e)
+
+                        ressrc = settings.get_restructpageinfo_file(docid, training=training, file_num=num)
+                        resdest = settings.get_restructpageinfo_file(docid, training=training, file_num=num, extrafolder=extrafolder)
+                        try:
+                            copyfile(ressrc, resdest)
+                        except FileNotFoundError as e:
+                            print(e)
+
                     # check if search report, bookmark report, needs to be run or if bookmarked pdf already exists
                 if bookmark:
                     if (not os.path.exists(settings.get_bookmarked_file(docid))) and (not args.force):
@@ -176,9 +224,9 @@ if __name__ == '__main__':
                             ml_time + textract_time) + " seconds")
                         toc_exists = True if report.toc_page else False
                         bookmark_time = datetime.datetime.now()
-                with open(log_file, 'a', newline='') as log:
-                    writer = csv.writer(log)
-                    writer.writerow([int(docid), textract_time, None, None])#, #bookmark_time]) #ml_time, toc_exists, bookmark_time])
+                # with open(log_file, 'a', newline='') as log:
+                #     writer = csv.writer(log)
+                #     writer.writerow([int(docid), textract_time, None, None])#, #bookmark_time]) #ml_time, toc_exists, bookmark_time])
                 #else: print("Report already bookmarked")
 
         cont = input("Run again?")

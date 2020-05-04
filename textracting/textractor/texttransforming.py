@@ -13,6 +13,49 @@ import os
 textract = boto3.client('textract')
 comprehend = boto3.client('comprehend')
 
+#
+# def save_doc_text(docid, file_num=1):
+#     file = settings.get_restructpageinfo_file(docid, report_num=file_num) #'training/pagelineinfo/cr_67792_1_pagelineinfo.json'
+#     f = open(file, "rb")
+#     info = json.load(f)
+#     pages = []
+#     for page in info.items():
+#         prev_y = None
+#         lines = []
+#         ln = ''
+#         for line in page[1]:
+#             text = line['Text']
+#             y = line[0]['BoundingBox']['Top']
+#             if len(ln) == 0:
+#                 ln = text
+#             elif prev_y - 0.001 <= y <= prev_y + 0.001:
+#                 ln += " " + text
+#             elif len(ln) != 0:
+#                 lines.append(ln)
+#                 ln = text
+#             else:
+#                 lines.append(text)
+#             #prev_y = y
+#         pages.append(lines)
+#     textfile = settings.get_text_file(docid, report_num=file_num)
+#     with open(textfile, "w") as f:
+#         f.write(pages)
+#     return pages
+
+
+def save_lines(report_id, file_num=1):
+    docfile = settings.get_full_json_file(report_id, file_num=file_num)
+    doc = json.load(open(docfile, 'r'))
+    blocks = []
+    for i in range(len(doc)):
+        blocks.extend(doc[i]['Blocks'])
+    with open(settings.get_text_file(report_id, file_num=file_num), "w") as o:
+        for block in blocks:
+            if block['BlockType'] == "LINE":
+                o.write(block['Text'] + '\n')
+            elif block['BlockType'] == "PAGE":
+                o.write('\n')
+
 
 def print_doc_lines(doc):
     # Print text
@@ -60,7 +103,7 @@ def display_doc(docid): # doc has to be pageinfo type - made for restructpageinf
 
 def save_tables(doc, file_id, training=True, report_num=1):
     table_csv = get_table_csv(doc)
-    with open(settings.get_tables_file(file_id, training=training, report_num=report_num), "w") as fout:
+    with open(settings.get_tables_file(file_id, training=training, file_num=report_num), "w") as fout:
         fout.write(table_csv)
     #table_csv.to_csv(settings.get_tables_file(file_id))
     #print('CSV OUTPUT FILE: ', settings.get_tables_file(file_id))
@@ -68,13 +111,13 @@ def save_tables(doc, file_id, training=True, report_num=1):
 
 def save_kv_pairs(result, file_id, training=True, report_num=1):
     kvs = get_kv_pairs(result)
-    o = open(settings.get_kvs_file(file_id, training=training, report_num=report_num), "w")
+    o = open(settings.get_kvs_file(file_id, training=training, file_num=report_num), "w")
     for key, value in kvs.items():
         o.write(str(key + ',' + value + '\n'))
 
 
 def clean_and_restruct(docid, save=True, training=True, report_num=1):
-    json_file = settings.get_full_json_file(docid, training=training, report_num=report_num)
+    json_file = settings.get_full_json_file(docid, training=training, file_num=report_num)
     with open(json_file, 'r') as file:
         json_doc = json.load(file)
     json_res = json2res(json_doc)
@@ -83,7 +126,7 @@ def clean_and_restruct(docid, save=True, training=True, report_num=1):
     restructpageinfo = get_restructpagelines(clean_page)
 
     if save:
-        fp = settings.get_restructpageinfo_file(docid, training=training, report_num=report_num)
+        fp = settings.get_restructpageinfo_file(docid, training=training, file_num=report_num)
         p = fp.rsplit('/', 1)[0]
         if not os.path.exists(p):
             os.makedirs(p)
@@ -448,6 +491,20 @@ def save_tables_and_kvs(docid):
 
 
 if __name__ == "__main__":
-    docids = ['32730', '44448', '37802', '2646', '44603']
-    for docid in docids:
-        save_tables_and_kvs(docid)
+    #docids = ['32730', '44448', '37802', '2646', '44603']
+    #for docid in docids:
+    #    save_tables_and_kvs(docid)
+
+
+    docids = '2646 3050 25335 32730 33720 34372 35132 35152 35454 35500 36675 40923 41674 41720 41932 44638 47465 48384 ' \
+             '48406 48777 49264 50481 55076 55636 64268 64479 65455 68354 76875 81735 85174 90461 99356 100291 106092 ' \
+             '28193 29120 30320 30408 30774 31931 44448 44603 46522 47468 48798 50115 51141 51316 51979 55535 81257 ' \
+             '81616 81763 83042 89489 94124 95348 97152 99683 167 339 504 801 909 1664 1799 3063 3354 3769 5992 14142 ' \
+             '21166 23455 27932 28822 29695 30479 31511 33931 37802 38276 40303 42688 46519 51800 53382 55454 63981 64818'
+
+    docids = docids.split(' ')
+    for id in docids:
+        try:
+            save_lines(id)
+        except FileNotFoundError:
+            print('file not found for ', id)

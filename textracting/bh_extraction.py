@@ -5,7 +5,6 @@ from csv import writer
 import os
 import glob
 import numpy as np
-import re
 
 
 table_data_cols = ['BH', 'grid_loc_1', 'grid_loc_2', 'geo_loc_1', 'geo_loc_2',
@@ -22,17 +21,20 @@ bhcsv = 'bh_refs.csv'
 
 
 def init():
-    bh_col_str = 'Hole ID, borehole nu, drillhole, no. hole, hole no., Hole No. (Site No.), bore, hole, well, drill hole, hole #, bore or well reference number, bore or well reference nu, borehole, uphole, holeid, bh_id, well name, viell, bore no'
-    bh_key_str = ' hole number, drill hole, well name and, well no, borehole no, well number, Identifying name of the petroleum well, well name and number, well, well name, hole name'
+    bh_col_str = 'Hole ID, borehole nu, drillhole, no. hole, hole no., Hole No. (Site No.), bore, hole, well, drill hole, ' \
+                 'hole #, bore or well reference number, bore or well reference nu, borehole, uphole, holeid, bh_id, well name, viell, bore no, borehole number'
+    bh_key_str = 'hole number, drill hole, well name and, well no, borehole no, well number, ' \
+                 'Identifying name of the petroleum well, well name and number, well, well name, hole name'
 
-#    bh_loc_col_str = ''
     bh_geo_col_str = ''
-    bh_grid_col_str = 'Survey ea, survey no, surveyed ea, surveyed no, collar (local easting, coordinates grid) northing, northing, easting, Easting AMG (Local), Northing AMG (Local), Co-ords, collar, Local E & N, Co-Ordinates North/East, collar east, collar north, AMG east, AMG north, East AGD66 Zone 54, North AGD66 Zone 54, AMGEASTIN, AMGNORTH, east, north, Easting (m), Northing (m) '
+    bh_grid_col_str = 'Survey ea, survey no, surveyed ea, surveyed no, collar (local easting, coordinates grid) northing, ' \
+                      'northing, easting, Easting AMG (Local), Northing AMG (Local), Co-ords, collar, Local E & N, ' \
+                      'Co-Ordinates North/East, collar east, collar north, AMG east, AMG north, East AGD66 Zone 54, ' \
+                      'North AGD66 Zone 54, AMGEASTIN, AMGNORTH, east, north, Easting (m), Northing (m), ' \
+                      'surveyed easting, surveyed northing, Easting AGD84 Zone 54, Northing AGD84 Zone 54 '
 
-#    bh_loc_key_str = ''
     bh_geo_key_str = 'Latitude, longitude, lat, long'
     bh_grid_key_str = 'northing, easting, grid (amg), grid location, surveyed location, location, field location'
-
 
     strs = [bh_col_str, bh_key_str, bh_geo_col_str, bh_grid_col_str, bh_geo_key_str, bh_grid_key_str]
     arrays = []
@@ -75,33 +77,44 @@ def preprocess_str(s):
     return s
 
 
-def find_loc_from_key(table, loc_source_i):
-    try:
-        loc = table.iloc[loc_source_i[0], loc_source_i[1]+1]  # first look in the cell to the right
-    except IndexError:
-        loc = ''
-    valid_loc = verify_loc(loc)
-    if 'invalid' in valid_loc:
-        loc_down = search_down(table, [loc_source_i[0] + 1, loc_source_i[1]])
-        loc_right = search_right(table, [loc_source_i[0], loc_source_i[1] + 1])
-        print('loc down: ', loc_down, 'loc right: ', loc_right)
-        if loc_down:
-            loc = loc_down
-        if loc_right:
-            loc = loc_right
-    return loc
+def find_val_from_key(table, source_i, type='loc'):
+    val = None
+    val_down = search(table, [source_i[0] + 1, source_i[1]], dir='down', type=type)
+    val_right = search(table, [source_i[0], source_i[1] + 1], dir='right', type=type)
+    print('val down: ', val_down, 'val right: ', val_right)
+    if val_down:
+        val = val_down
+    if val_right:
+        val = val_right
+
+    return val
 
 
-def verify_loc(loc):
+def hasNumbers(inputString):
+    return any(char.isdigit() for char in inputString)
+
+
+def validate_bh(bh):
+    p_bh = str(bh).lower()
+    has_nums = hasNumbers(p_bh)
+    if not has_nums:
+        return 'invalid_no_num'
+    if 'unnamed' in p_bh:
+        return 'invalid_nan'
+    if p_bh == 'nan':
+        return 'invalid_nan'
+    return 'valid'
+
+
+def validate_loc(loc):
     p_loc = str(loc).lower()
     contains_letters = p_loc.islower()
 
     if contains_letters:
         p_loc = p_loc.strip()  # remove leading and trailing whitespace
         l_loc = p_loc.replace('amg', '')
-
-        #l_loc = p_loc[:-1].lower()
         l_loc = l_loc.replace('s', '').replace('n', '').replace('e','').replace('w','').replace('m', '')
+        l_loc = l_loc.replace('deg', '').replace('min', '').replace('sec', '')
         contains_letters = l_loc.islower()
 
         if contains_letters:
@@ -115,35 +128,39 @@ def verify_loc(loc):
     return 'valid'
 
 
-def search_down(table, loc_source_i):
+def search(table, source_i, dir='right', type='loc'):
     try:
-        loc = table.iloc[loc_source_i[0], loc_source_i[1]]
+        val = table.iloc[source_i[0], source_i[1]]
     except IndexError:
         return False
-    valid_loc = verify_loc(loc)
-    if 'invalid' in valid_loc:
-        if 'nan' in valid_loc:
-            return search_down(table, [loc_source_i[0] + 1, loc_source_i[1]])  # can run into index error
+    if type == 'loc':
+        valid_val = validate_loc(val)
+    elif type == 'bh':
+        valid_val = validate_bh(val)
+    elif type =='num':
+        p_val = str(val).lower()
+        valid_val = not p_val.islower()  # inverse of: contains_letters
+        if not valid_val:
+            valid_val = 'invalid'
+        else:
+            valid_val = 'valid'
+
+    if 'invalid' in valid_val:
+        if 'nan' in valid_val:
+            if dir == 'right':
+                 source_i[1] += 1
+            elif dir == 'down':
+                source_i[0] += 1
+            return search(table, [source_i[0], source_i[1]], dir=dir, type=type)  # can run into index error
+        if 'no_num' in valid_val:  # case: bh and num are in separate cells
+            num = search(table, [source_i[0], source_i[1] + 1], dir='right', type='num')
+            if num:
+                val = val + ' ' + str(num)
+                return val
         return False
     else:
-        print('search down for ', loc, ' successful')
-        return loc
-
-
-def search_right(table, loc_source_i):
-    try:
-        loc = table.iloc[loc_source_i[0], loc_source_i[1]]
-    except IndexError:
-        return False
-
-    valid_loc = verify_loc(loc)
-    if 'invalid' in valid_loc:
-        if 'nan' in valid_loc:
-            return search_right(table, [loc_source_i[0], loc_source_i[1]+1])  # can run into index error
-        return False
-    else:
-        print('search right for ', loc, ' successful')
-        return loc
+        #print('search ', dir, ' for ', val, ', type: ', type, ' successful')
+        return val
 
 
 def extract_from_keys(table):
@@ -169,23 +186,16 @@ def extract_from_keys(table):
                 grid_source.append(cell)
                 grid_source_i.append([i,j])
     if bh_source:
-        try:
-            bh = alltable.iloc[bh_source_i[0], bh_source_i[1]+1] # assuming BH name will be to the right, but need to write something as for loc
-        except IndexError:
-            print('bh index error, trying search down')
-            try:
-                bh = alltable.iloc[bh_source_i[0]+1, bh_source_i[1]]
-            except IndexError:
-                print("can't look right or down for bh")
-                return None
-        grid_loc = []
-        geo_loc = []
-        for i in range(len(grid_source)):
-            grid_loc.append([find_loc_from_key(alltable, grid_source_i[i])])
-        for i in range(len(geo_source)):
-            geo_loc.append([find_loc_from_key(alltable, geo_source_i[i])])
+        bh = find_val_from_key(alltable, bh_source_i, type='bh')
+        if bh:
+            grid_loc = []
+            geo_loc = []
+            for i in range(len(grid_source)):
+                grid_loc.append([find_val_from_key(alltable, grid_source_i[i], type='loc')])
+            for i in range(len(geo_source)):
+                geo_loc.append([find_val_from_key(alltable, geo_source_i[i], type='loc')])
 
-        return extracted_to_df(bh, grid_loc, geo_loc, bh_source, grid_source, geo_source)
+            return extracted_to_df(bh, grid_loc, geo_loc, bh_source, grid_source, geo_source)
     return None
 
 
@@ -208,12 +218,9 @@ def extracted_to_df(bhs, grid_loc, geo_loc, bh_source, grid_source, geo_source):
     for i in range(len(add_to_df)):
         if add_to_df[i] is None:
             add_to_df[i] = [None for e in range(rows)]
-        #try:
         elif len(add_to_df[i]) < rows:
             if len(add_to_df[i]) == 1:
                 add_to_df[i] = [add_to_df[i][0] for e in range(rows)]
-        #except TypeError:
-        #    print(add_to_df[i])
 
     dfdata = [pd.Series(a) for a in add_to_df]
 
@@ -234,29 +241,41 @@ def extract_from_columns(table):
             bh_source = name
         elif proc_name in bh_geo_col:
             print('bh loc name: ', name)
-            #k = len(geo_source)
             geo_source.append(name)
         elif proc_name in bh_grid_col:
-            #k  = len(grid_source)
             grid_source.append(name)
 
     if bh_source:
         bhs = table[bh_source].values
+        bad_indices = []
+        for j in range(len(bhs)):
+            valid_val = validate_bh(bhs[j])
+            if 'invalid' in valid_val:
+                bad_indices.append(j)
+        valid_bhs = np.delete(bhs, bad_indices)
+
         grid_loc = []
         geo_loc = []
         for i in range(len(grid_source)):
-            grid_loc.append(table[grid_source[i]].values)
+            locs = table[grid_source[i]].values
+            valid_locs = np.delete(locs, bad_indices)
+            grid_loc.append(valid_locs)
         for i in range(len(geo_source)):
-            geo_loc.append(table[geo_source[i]].values)
+            locs = table[geo_source[i]].values
+            valid_locs = np.delete(locs, bad_indices)
+            geo_loc.append(valid_locs)
 
-        return extracted_to_df(bhs, grid_loc, geo_loc, bh_source, grid_source, geo_source)
+        return extracted_to_df(valid_bhs, grid_loc, geo_loc, bh_source, grid_source, geo_source)
     return None
 
 
-def extract_bh(docid, bh=True):
+def extract_bh(docid, bh=True, training=True):
     fs = []
     if '_' not in docid:
-        files = glob.glob('training/tables/cr_' + docid + '*.csv')
+        if not training:
+            files = glob.glob('C:\\Users\\andraszeka\\OneDrive - ITP (Queensland Government)\\textract_result\\tables/cr_' + docid + '*.csv')
+        else:
+            files = glob.glob('training/tables/cr_' + docid + '*.csv')
         for file in files:
             f = file.split('\\')[-1].replace('_tables.csv', '').replace('cr_' + docid + '_', '')
             fs.append(f)
@@ -266,7 +285,7 @@ def extract_bh(docid, bh=True):
 
     for file in fs:
         try:
-            bhtables = get_tables(docid, bh=bh, report_num=file)
+            bhtables = get_tables(docid, bh=bh, report_num=file, training=training)
         except FileNotFoundError:
             print('No file for ', str(docid), '_', file, ' bh: ', str(bh))
             return
@@ -295,14 +314,17 @@ def extract_bh(docid, bh=True):
         save_rows(fname, bh_data)
 
 
-def get_table_docids(bh=False):
+def get_table_docids(bh=False, training=True):
     docids = []
     if not bh:
         folder = 'tables'
     else:
         folder = 'bh_tables'
+    if training:
+        lines_docs = glob.glob('training/' + folder + '/*.csv')
+    else:
+        lines_docs = glob.glob('C:\\Users\\andraszeka\\OneDrive - ITP (Queensland Government)\\textract_result/' + folder + '/*.csv')
 
-    lines_docs = glob.glob('training/' + folder + '/*.csv')
     for lines_doc in lines_docs:
         docid = lines_doc.split('\\')[-1].replace('_tables.csv', '').strip('cr_')
         docids.append(docid)
@@ -315,11 +337,11 @@ def manage_data(fname):
     df.to_csv(fname, index=False)
 
 
-def extract_for_all_docids():
+def extract_for_all_docids(training=True):
     init()
-    docids = get_table_docids()
+    docids = get_table_docids(training=training)
     for id in docids:
-        extract_bh(id, bh=False)
+        extract_bh(id, bh=False, training=training)
         #extract_bh(id, bh=True)
     #manage_data(bhcsv)
     manage_data(bhcsv_all)
@@ -332,8 +354,11 @@ def extract_for_docid(docid):
 
 
 if __name__ == "__main__":
-    extract_for_all_docids()
+    #extract_for_all_docids(training=False)
     #manage_data(bhcsv)
     #manage_data(bhcsv_all)
+    #docids = ['106092', '99356', '92099', '84329', '77290', '72095', '69365', '99419']
+    #for id in docids:
+    #    extract_for_docid(id)
 
-    #extract_for_docid('60237')
+    extract_for_docid('44603')
