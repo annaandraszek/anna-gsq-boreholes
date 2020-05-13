@@ -23,8 +23,9 @@ mode = settings.production
 #mode = settings.dataset_version
 
 class Report():
-    def __init__(self, docid):
+    def __init__(self, docid, filenum):
         self.docid = docid
+        self.filenum = filenum
         #self.toc_dataset_path = settings.production_path + docid + '_toc_dataset.csv'
         self.docinfo = self.get_doc_info()
         if len(self.docinfo.keys()) == 0:
@@ -123,7 +124,7 @@ class Report():
         return pagelines
 
     def get_doc_info(self):
-        pageinfo = settings.get_restructpageinfo_file(self.docid)
+        pageinfo = settings.get_restructpageinfo_file(self.docid, file_num=self.filenum)
         pi = json.load(open(pageinfo, "r"))
         return pi
 
@@ -310,7 +311,7 @@ def print_sections(report):
 
 
 def draw_report(report):
-    report_path = settings.get_report_name(report.docid, local_path=True, file_extension='.pdf')
+    report_path = settings.get_report_name(report.docid, local_path=True, file_extension='.pdf', file_num=report.filenum)
     images = convert_from_path(report_path)
 
     doc = report.docinfo
@@ -400,7 +401,7 @@ def draw_report(report):
                                outline='green')
 
         drawn_images.append(image)
-    outfile = settings.get_report_name(report.docid, local_path=True, file_extension='_boxed.pdf')
+    outfile = settings.get_report_name(report.docid, local_path=True, file_extension='_boxed.pdf', file_num=report.filenum)
     drawn_images[0].save(outfile, save_all=True, append_images=drawn_images[1:])
 
 
@@ -410,9 +411,9 @@ def bookmark_report(report, test=False):
     if len(report.docinfo.keys()) == 0:
         return
     if test:
-        report_file = settings.get_report_name(report.docid, local_path=True, file_extension='_boxed.pdf')
+        report_file = settings.get_report_name(report.docid, local_path=True, file_extension='_boxed.pdf', file_num=report.filenum)
     else:
-        report_file = settings.get_report_name(report.docid, local_path=True, file_extension='.pdf')
+        report_file = settings.get_report_name(report.docid, local_path=True, file_extension='.pdf', file_num=report.filenum)
     output = PdfFileWriter()
     input = PdfFileReader(open(report_file, 'rb')) #'../' +
     ptrs = report.headings_intext
@@ -454,7 +455,7 @@ def bookmark_report(report, test=False):
             output.addLink(report.toc_page-1, row.PageNum-1, rect=rectangle, fit='/FitB')  # creates link from toc heading to section page
 
     #outfile = settings.get_report_name(report.docid, local_path=True, file_extension='_bookmarked.pdf')
-    outfile = '../' + settings.get_bookmarked_file(report.docid, test=test)
+    outfile = settings.get_bookmarked_file(report.docid, test=test, filenum=report.filenum)
     print(outfile)
     rpath = outfile.rsplit('/', 1)[0]
     if not os.path.exists(rpath):
@@ -472,15 +473,15 @@ def save_report_sections(report):
         for line in section['Content']:
             p.add_run(line + '\n')
         doc.add_page_break()
-    doc.save('../' + settings.get_report_name(report.docid, local_path=True, file_extension='_sections.docx'))
+    doc.save(settings.get_report_name(report.docid, local_path=True, file_extension='_sections.docx', file_num=report.filenum))
 
 
-def report2json(report, test=False, report_num=1):
+def report2json(report, test=False):
     if test:
         local = 'test'
     else:
         local = True
-    with open('../' + settings.get_report_name(report.docid, local_path=local, file_extension='.json', file_num=report_num), "w") as f:
+    with open(settings.get_report_name(report.docid, local_path=local, file_extension='.json', file_num=report.filenum), "w") as f:
         frozen = jsonpickle.encode(report)
         json.dump(frozen, f)
 
@@ -520,12 +521,13 @@ def sanitise_files():
     removed = []
     lines_docs = glob.glob('training/restructpageinfo/*.json')
     for lines_doc in lines_docs:
-        docid = int(lines_doc.split('\\')[-1].replace('_1_restructpageinfo.json', '').strip('cr_'))
+        ids = lines_doc.split('\\')[-1].replace('_restructpageinfo.json', '').strip('cr_')
+        docid, filenum = ids.split('_')
         if docid in bad_docids:
             if not os.path.exists('nottraining/restructpageinfo/'):
                 os.makedirs('nottraining/restructpageinfo/')
-            os.rename(lines_doc, settings.get_restructpageinfo_file(docid, local_path=True, training=False))
-            removed.append(docid)
+            os.rename(lines_doc, settings.get_restructpageinfo_file(docid, local_path=True, training=False, file_num=filenum))
+            removed.append([docid, filenum])
     print("Removed: ", len(removed), ", ", removed)
 
 if __name__ == '__main__':
@@ -535,11 +537,13 @@ if __name__ == '__main__':
     # from toc page, transform content into dataset of headings for heading identification, identify headings, and return headings and subheadings
     # test_reports = ['30320', '42688', '95183', '2984', '57418', '75738', '111200']
     # #reports = test_reports #['30320'] # '30320' #'24352', '24526', '26853', '28066', '28184','28882', '30281', '31681', '23508', ] #,'23732',
-    reports = ['95183']
+    reports = [['92099', '1']]
     test = False
     for report in reports:
+        docid = report[0]
+        filenum=report[1]
         start = time.time()
-        r = Report(report)
+        r = Report(docid, filenum)
         if test:
             draw_report(r)
         bookmark_report(r, test)

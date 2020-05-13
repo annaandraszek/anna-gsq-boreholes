@@ -117,7 +117,7 @@ def get_file_from_training(folder, report_id, local_path, extension='.json', tra
     return file + str(report_id) + "_" + folder + extension
 
 
-def get_bookmarked_file(report_id, test=False, test_i=None):
+def get_bookmarked_file(report_id, test=False, test_i='', filenum=1):
     path = report_local_path
     if test:
         path = test_local_path
@@ -125,7 +125,7 @@ def get_bookmarked_file(report_id, test=False, test_i=None):
         if not test_i:
             fpaths = glob.glob(files)
             test_i = len(fpaths)
-    file = path + report_id + "/cr_" + report_id + "_1_" + str(test_i) + "_bookmarked.pdf"
+    file = path + report_id + "/cr_" + report_id + "_" + filenum + "_" + str(test_i) + "_bookmarked.pdf"
     return file
 
 
@@ -150,3 +150,18 @@ def get_tables_file(report_id, local_path=True, training=True, file_num=1, bh=Fa
 
 def get_full_json_file(report_id, local_path=True, training=True, file_num=1, extrafolder=None):
     return get_file_from_training('fulljson', report_id, local_path, training=training, file_num=file_num, extrafolder=extrafolder)
+
+
+def pad_num(num):
+    if len(str(num)) == 2:
+        num = '0' + str(num)
+    elif len(str(num)) == 1:
+        num = '00' + str(num)
+    return num
+
+
+def get_word_file(docid, file_num, service):
+    base_path = path = 'C:\\Users\\andraszeka\OneDrive - ITP (Queensland Government)\\textract_result\\qutsample'
+    id_path = base_path + '/' + service + '/texts/' + str(docid) +'/'
+    fname = str(docid) + '_' + str(pad_num(file_num)) + '.docx'
+    return id_path + fname

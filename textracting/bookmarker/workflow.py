@@ -27,10 +27,10 @@ from PIL.Image import DecompressionBombError
 num_sample = 20
 cutoffdate = None
 rtype_exclude = None #'WELCOM'
-bookmark = False
-training = False
+bookmark = True # False
+training = True #False
 all_files = True
-special_mode = "welcom"
+special_mode = 'testing' #"welcom"
 extrafolder = None
 
 
@@ -103,7 +103,7 @@ if __name__ == '__main__':
         if mode == "sample" or mode == "given" or special_mode == "testing" or special_mode == 'welcom':
             if special_mode == "testing":
                 print("Running in testing mode")
-                docids = ['106092', '99356', '92099', '84329', '77290', '72095', '69365', '99419']
+                docids = ['51800']
 
             elif special_mode == 'welcom':
                 print('running for welcom sample')
@@ -145,9 +145,10 @@ if __name__ == '__main__':
                 # all the below checks also need to check if the --force arg is True, which would overrule their skip
                 # check if textract needs to be run or if fulljson already exists
                 if all_files:
-                    nums = textracting.textloading.get_report_nums_from_subdir(docid, textractable=True)
+                    #nums = textracting.textloading.get_report_nums_from_subdir(docid, textractable=True)  # lost permissions to this?
+                    nums = ['1','2']  # specific to 51800
                 else:
-                    nums = [1]
+                    nums = ['1']
                 print('Nums: ', nums)
                 for num in nums:
                     if not (os.path.exists(settings.get_full_json_file(docid, training=training, file_num=num))) and (not args.force):
@@ -204,26 +205,26 @@ if __name__ == '__main__':
                             print(e)
 
                     # check if search report, bookmark report, needs to be run or if bookmarked pdf already exists
-                if bookmark:
-                    if (not os.path.exists(settings.get_bookmarked_file(docid))) and (not args.force):
-                        ml_start = time.time()
-                        try:
-                            report = search_report.Report(docid)  # need every ml method here to be able to create a dataset with an unseen report
-                        except ValueError:
-                            continue
-                        #search_report.draw_report(report)
-                        search_report.bookmark_report(report)
-                        # check if needs to be run or if sections word doc already exists
-                        search_report.save_report_sections(report)
-                        search_report.report2json(report)
+                    if bookmark:
+                        if (not os.path.exists(settings.get_bookmarked_file(docid, filenum=num))) and (not args.force):
+                            ml_start = time.time()
+                            try:
+                                report = search_report.Report(docid, num)  # need every ml method here to be able to create a dataset with an unseen report
+                            except ValueError:
+                                continue
+                            #search_report.draw_report(report)
+                            search_report.bookmark_report(report)
+                            # check if needs to be run or if sections word doc already exists
+                            search_report.save_report_sections(report)
+                            search_report.report2json(report)
 
-                        ml_end = time.time()
-                        ml_time = ml_end - ml_start
-                        print("Time to ML, bookmark, export to text: " + "{0:.2f}".format(ml_time) + " seconds")
-                        print("COMPLETED BOOKMARKING " + docid + ", total time: " + "{0:.2f}".format(
-                            ml_time + textract_time) + " seconds")
-                        toc_exists = True if report.toc_page else False
-                        bookmark_time = datetime.datetime.now()
+                            ml_end = time.time()
+                            ml_time = ml_end - ml_start
+                            print("Time to ML, bookmark, export to text: " + "{0:.2f}".format(ml_time) + " seconds")
+                            print("COMPLETED BOOKMARKING " + docid + ", total time: " + "{0:.2f}".format(
+                                ml_time + textract_time) + " seconds")
+                            toc_exists = True if report.toc_page else False
+                            bookmark_time = datetime.datetime.now()
                 # with open(log_file, 'a', newline='') as log:
                 #     writer = csv.writer(log)
                 #     writer.writerow([int(docid), textract_time, None, None])#, #bookmark_time]) #ml_time, toc_exists, bookmark_time])
