@@ -1,3 +1,6 @@
+## @file
+# Functions to do with getting out table and classifying them as containing boreholes
+
 import pandas as pd
 import settings
 from io import StringIO
@@ -16,22 +19,23 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-
+from pandas.io.parsers import EmptyDataError
 
 name = "tables"
 y_column = 'Class'
 limit_cols = ['DocID', 'TableNum']
 
 
-# extract tables from a csv
-def get_tables(docid, bh=False, report_num=1, training=True):
-    tablefile = settings.get_tables_file(docid, bh=bh, file_num=report_num, training=training)
+## Extract tables from a csv and return them
+def get_tables(docid, bh=False, report_num=1, training=True, extrafolder=None, sep='`'):
+    tablefile = settings.get_tables_file(docid, bh=bh, file_num=report_num, training=training, extrafolder=extrafolder)
     if training:
         tablefile = tablefile.split('../')[1]
     if os.path.exists(tablefile):
-        with open(tablefile, "r") as f:
+        with open(tablefile, "r", encoding='utf-8') as f:
             raw_tables = f.read()
     else:
+        print(tablefile)
         raise FileNotFoundError
 
     tables = []
@@ -59,11 +63,13 @@ def get_tables(docid, bh=False, report_num=1, training=True):
         data = StringIO(table)
         if not bh:
             try:
-                df = pd.read_csv(data, sep='`')
+                df = pd.read_csv(data, sep=sep)
             except pandas.errors.ParserError:
                 continue
+            except EmptyDataError:
+                continue
         else:
-            df = pd.read_csv(data)
+            df = pd.read_csv(data, sep=sep)
         df.dropna(axis=1, how="all", inplace=True)
         df.dropna(axis=0, how='all', inplace=True)
         #df = pd.DataFrame(table)
@@ -72,6 +78,7 @@ def get_tables(docid, bh=False, report_num=1, training=True):
     return dfs
 
 
+## Create dataset of table content for table classification
 def create_dataset(docids=False, save=True):
     if docids:
         save = False
@@ -151,6 +158,7 @@ def concat_tables(df):
     #series = series.apply(lambda x: list2str(x))
 
 
+## Defines and trains table classification model
 def train(n_queries=10, mode='boreholes'):
     datafile = settings.get_dataset_path(name, mode).split('../')[1]
     df = pd.read_csv(datafile)
@@ -159,7 +167,7 @@ def train(n_queries=10, mode='boreholes'):
     clf = Pipeline([
         ('list2str', FunctionTransformer(concat_tables)),
         #('vect', CountVectorizer(ngram_range=(1, 2), min_df=0.01)),
-        ('tfidf', TfidfVectorizer(ngram_range=(1, 2), min_df=0.0025)),
+        ('tfidf', TfidfVectorizer(ngram_range=(1, 2), min_df=0.0025)),  # min_df discourages overfitting
         ('cnb', ComplementNB(alpha=0.2))
     ], verbose=True)
     accuracy, learner = active_learning.train(df, y_column, n_queries, clf, datafile, limit_cols=limit_cols,
@@ -171,16 +179,19 @@ def train(n_queries=10, mode='boreholes'):
     return learner
 
 
+## Gets borehole tables from a df of unclassified tables
 def get_borehole_tables(df, mode="boreholes", masked=False):
     if df['Content'].dtype == object:
         df['Content'] = df['Content'].astype(str)
     return mlh.get_classified(df, name, y_column, limit_cols, mode, masked)
 
 
+## Error raised for when a file has no tables
 class NoNaturalTablesError(Exception):
     pass
 
 
+## Gets borehole tables for a report ID
 def get_bh_tables_from_docid(docids):
     if not isinstance(docids, list):  # in case only one docid is given
         docids = [docids]
@@ -205,6 +216,7 @@ def get_bh_tables_from_docid(docids):
     return bh_tables
 
 
+## Saves found borehole tables to csv
 def bh_tables_to_csv(docid):
     try:
         bh_tables = get_bh_tables_from_docid([docid])
@@ -215,20 +227,27 @@ def bh_tables_to_csv(docid):
     file = file.strip(r'../')
     if os.path.exists(file):
         os.remove(file)  # because we will be using append, don't want a file to already exists
-    i = 0
-    for df in bh_tables:
-        i += 1
-        with open(file, 'a') as f:
-            startval = 'Table: Table ' + str(i)
-            startseries = pd.Series([startval])
-            startseries.to_csv(f, index=False, header=False)
-            df.to_csv(f, index=False)
-            blnk_ln = pd.Series('')
-            blnk_ln.to_csv(f, index=False, header=False)
+    save_tables(bh_tables, file)
     print('Saved ', docid, ' bh tables to file')
+
     return
 
 
+## Saves tables to csv
+def save_tables(tables, file, encoding='utf-8', header=True):
+    i = 0
+    for df in tables:
+        i += 1
+        with open(file, 'a', encoding=encoding) as f:
+            startval = 'Table: Table ' + str(i)
+            startseries = pd.Series([startval])
+            startseries.to_csv(f, index=False, header=False)
+            df.to_csv(f, index=False, encoding=encoding, header=header)
+            blnk_ln = pd.Series('')
+            blnk_ln.to_csv(f, index=False, header=False)
+
+
+## Processes all tables to classify them as containing boreholes or not and saves the results
 def save_all_bh_tables():
     docids = []
     lines_docs = glob.glob('training/tables/*.csv')
@@ -260,6 +279,8 @@ def save_all_bh_tables():
 #                 # get row similarity in char textdistance, and average difference in char length differences
 
 
+## UNFINISHED Finding similarity inside rows and columns of tables to determine if the they're column-based or not
+# Did not put into practical use, just looked at results which in debugger mode.
 def table_similarity(docid):
     bhtables = get_tables(docid, bh=True)
     for table in bhtables:
