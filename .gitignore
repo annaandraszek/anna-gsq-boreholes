@@ -10,8 +10,9 @@ textracting/*.txt
 **/.ipynb_checkpoints/
 #textracting/*.ipynb
 textracting/datasets/not_using
-#investigations/
+investigations/
+results/
 textracting/production/
-textracting/reports/
-textracting/training/
+textracting/downloadedReports/
+textracting/trainingFiles/
 textracting/html/

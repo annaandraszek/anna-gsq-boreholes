@@ -7,7 +7,7 @@ import boto3
 import json
 #import textmain
 from textractor import texttransforming, textloading, textsettings, pdf_data
-import settings
+import paths
 import re
 import img2pdf
 import os
@@ -120,7 +120,7 @@ def report2textract(fname, write_bucket, features, training=True, report_num=1):
             raise FileNotFoundError
         else:
             #json_response = {'response': response}
-            with open(settings.get_full_json_file(docid, training=training, file_num=report_num), 'w') as fp:
+            with open(paths.get_full_json_file(docid, training=training, file_num=report_num), 'w') as fp:
                 time.sleep(3)  # sometimes the json doesn't get dumped fully, try to stop that
                 json.dump(response, fp)
             res_blocks = []

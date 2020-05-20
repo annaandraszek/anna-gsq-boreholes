@@ -8,7 +8,7 @@ import json
 import re
 from PIL import ImageDraw,Image, ImageFont
 from pdf2image import convert_from_path
-import settings
+import paths
 import os
 textract = boto3.client('textract')
 comprehend = boto3.client('comprehend')
@@ -44,12 +44,12 @@ comprehend = boto3.client('comprehend')
 
 
 def save_lines(report_id, file_num=1):
-    docfile = settings.get_full_json_file(report_id, file_num=file_num)
+    docfile = paths.get_full_json_file(report_id, file_num=file_num)
     doc = json.load(open(docfile, 'r'))
     blocks = []
     for i in range(len(doc)):
         blocks.extend(doc[i]['Blocks'])
-    with open(settings.get_text_file(report_id, file_num=file_num), "w") as o:
+    with open(paths.get_text_file(report_id, file_num=file_num), "w") as o:
         for block in blocks:
             if block['BlockType'] == "LINE":
                 o.write(block['Text'] + '\n')
@@ -71,10 +71,10 @@ def print_doc_lines(doc):
 # Saves pdf version of report with boxed boundaries of text
 # Edit this function, or write new version, which will show the bbs of marginals, sections, page numbers, toc, fig page
 def display_doc(docid): # doc has to be pageinfo type - made for restructpageinfo
-    report_path = settings.get_report_name(docid, local_path=True, file_extension=True)
+    report_path = paths.get_report_name(docid, local_path=True, file_extension=True)
     images = convert_from_path(report_path)
 
-    docfile = open(settings.get_restructpageinfo_file(docid), "r")
+    docfile = open(paths.get_restructpageinfo_file(docid), "r")
     doc = json.load(docfile)
     drawn_images = []
 
@@ -95,7 +95,7 @@ def display_doc(docid): # doc has to be pageinfo type - made for restructpageinf
         #image.save(docid + '_' + page[0] + ".jpeg", "JPEG")
         drawn_images.append(image)
 
-    save_path = settings.result_path + docid + '_boxed.pdf'
+    save_path = paths.result_path + docid + '_boxed.pdf'
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     drawn_images[0].save(save_path, save_all=True, append_images=drawn_images[1:])
@@ -103,7 +103,7 @@ def display_doc(docid): # doc has to be pageinfo type - made for restructpageinf
 
 def save_tables(doc, file_id, training=True, report_num=1):
     table_csv = get_table_csv(doc)
-    with open(settings.get_tables_file(file_id, training=training, file_num=report_num), "w") as fout:
+    with open(paths.get_tables_file(file_id, training=training, file_num=report_num), "w") as fout:
         fout.write(table_csv)
     #table_csv.to_csv(settings.get_tables_file(file_id))
     #print('CSV OUTPUT FILE: ', settings.get_tables_file(file_id))
@@ -111,13 +111,13 @@ def save_tables(doc, file_id, training=True, report_num=1):
 
 def save_kv_pairs(result, file_id, training=True, report_num=1):
     kvs = get_kv_pairs(result)
-    o = open(settings.get_kvs_file(file_id, training=training, file_num=report_num), "w")
+    o = open(paths.get_kvs_file(file_id, training=training, file_num=report_num), "w")
     for key, value in kvs.items():
         o.write(str(key + ',' + value + '\n'))
 
 
 def clean_and_restruct(docid, save=True, training=True, report_num=1):
-    json_file = settings.get_full_json_file(docid, training=training, file_num=report_num)
+    json_file = paths.get_full_json_file(docid, training=training, file_num=report_num)
     with open(json_file, 'r') as file:
         json_doc = json.load(file)
     json_res = json2res(json_doc)
@@ -126,7 +126,7 @@ def clean_and_restruct(docid, save=True, training=True, report_num=1):
     restructpageinfo = get_restructpagelines(clean_page)
 
     if save:
-        fp = settings.get_restructpageinfo_file(docid, training=training, file_num=report_num)
+        fp = paths.get_restructpageinfo_file(docid, training=training, file_num=report_num)
         p = fp.rsplit('/', 1)[0]
         if not os.path.exists(p):
             os.makedirs(p)
@@ -481,7 +481,7 @@ def search_value(kvs, search_key):
 
 
 def save_tables_and_kvs(docid):
-    json_file = settings.get_full_json_file(docid)
+    json_file = paths.get_full_json_file(docid)
     with open(json_file, 'r') as file:
         json_doc = json.load(file)
     json_res = json2res(json_doc)['Blocks']

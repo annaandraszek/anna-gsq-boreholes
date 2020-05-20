@@ -9,7 +9,7 @@ import argparse
 import warnings
 import os
 import csv
-import settings
+import paths
 
 def textract(docid: str, features: list, training=True, report_num=1):
     """
@@ -76,7 +76,7 @@ if __name__ == '__main__':
                 nums = [1]
             print('Nums: ', nums)
             for num in nums:
-                if not (os.path.exists(settings.get_full_json_file(docid, file_num=num))) and (not args.force):
+                if not (os.path.exists(paths.get_full_json_file(docid, file_num=num))) and (not args.force):
                     textract_start = time.time()
                     try:
                         textract(docid, features=['TABLES'], report_num=num)
@@ -93,7 +93,7 @@ if __name__ == '__main__':
                     print("Report ", docid, "_", str(num),  " already textracted")
 
                 # check if clean and restruct needs to be run or if restructpageinfo alredy exists
-                if (not os.path.exists(settings.get_restructpageinfo_file(docid, file_num=num)) and (not args.force)):
+                if (not os.path.exists(paths.get_restructpageinfo_file(docid, file_num=num)) and (not args.force)):
                     texttransforming.clean_and_restruct(docid, save=True, report_num=num)
                 else: print("Report ", docid, "_", str(num), " already cleaned and reconstructed")
 
