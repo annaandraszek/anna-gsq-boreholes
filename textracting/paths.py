@@ -3,6 +3,7 @@
 
 import glob
 import inspect
+import os
 
 report_folder = 'downloadedReports'
 training_file_folder = 'trainingFiles'
@@ -37,10 +38,12 @@ def get_model_path(model, mode=dataset_version, tokeniser=False, classes=False):
     path = ''
     if run_from_inside():
         path = '../'
-    path += model_path + mode + '/' + model
+    path += model_path + mode + '/'
+    if not os.path.exists(path):
+        os.makedirs(path)
     # if type:
     #     path += '_' + type
-    path += "_model"
+    path += model + "_model"
     #if ('heading_id_toc' or 'page') in model and not tokeniser:
         #path += ".h5"
     if tokeniser:
@@ -68,12 +71,12 @@ def run_from_inside():
 
 def get_dataset_path(dataset, mode=dataset_version):
     path = ''
-    if 'boreholes' in dataset_version:
-        path = dataset_path + mode + '/' + dataset + '_dataset.csv'
-    else:
-        if run_from_inside():
-            path = '../'
-        path += dataset_path + mode + '/' + dataset + '_dataset.csv'
+    if run_from_inside():
+        path = '../'
+    path += dataset_path + mode + '/'
+    if not os.path.exists(path):
+        os.makedirs(path)
+    path += dataset + '_dataset.csv'
     return path
 
 def get_s3_location(report_id, format='pdf', file_num=1):
@@ -94,6 +97,8 @@ def get_report_name(report_id, local_path=False, file_extension=None, file_num=1
                 file += '../'
             file += report_local_path
         file += str(report_id) + '/'
+        if not os.path.exists(file):
+            os.makedirs(file)
     file += "cr_" + str(report_id) + "_" + str(file_num)
     if file_extension:
             file += file_extension
@@ -112,6 +117,8 @@ def get_file_from_training(folder, report_id, local_path, extension='.json', tra
             file += training_file_folder + '/' + fullfolder + '/'
         else:
             file = 'C:\\Users\\andraszeka\\OneDrive - ITP (Queensland Government)\\textract_result/' + fullfolder + '/'
+        if not os.path.exists(file):
+            os.makedirs(file)
     if not 'cr_' in str(report_id):
         if not extension in str(report_id):
             file += get_report_name(report_id, file_num=file_num)
@@ -130,7 +137,10 @@ def get_bookmarked_file(report_id, test=False, test_i='', filenum=1):
         if not test_i:
             fpaths = glob.glob(files)
             test_i = len(fpaths)
-    file = path + str(report_id) + "/cr_" + str(report_id) + "_" + str(filenum) + "_" + str(test_i) + "_bookmarked.pdf"
+    file = path + str(report_id) + "/"
+    if not os.path.exists(file):
+        os.makedirs(file)
+    file += "cr_" + str(report_id) + "_" + str(filenum) + "_" + str(test_i) + "_bookmarked.pdf"
     return file
 
 

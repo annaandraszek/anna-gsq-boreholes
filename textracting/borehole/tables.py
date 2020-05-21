@@ -29,8 +29,8 @@ limit_cols = ['DocID', 'TableNum']
 ## Extract tables from a csv and return them
 def get_tables(docid, bh=False, report_num=1, training=True, extrafolder=None, sep='`'):
     tablefile = paths.get_tables_file(docid, bh=bh, file_num=report_num, training=training, extrafolder=extrafolder)
-    if training:
-        tablefile = tablefile.split('../')[1]
+    #if training:
+    #    tablefile = tablefile.split('../')[1]
     if os.path.exists(tablefile):
         with open(tablefile, "r", encoding='utf-8') as f:
             raw_tables = f.read()
