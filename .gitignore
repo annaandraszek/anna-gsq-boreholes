@@ -10,7 +10,7 @@ textracting/*.txt
 textracting/bh_refs_all_tables.xlsx
 **/.ipynb_checkpoints/
 #textracting/*.ipynb
-textracting/datasets/not_using
+textracting/report/datasets/not_using/
 investigations/
 results/
 textracting/production/
