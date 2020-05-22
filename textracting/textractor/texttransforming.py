@@ -165,7 +165,7 @@ def get_clean_page(doc, file_id):
 
     return cleaned
 
-
+## Get table rows out of response
 def get_rows_columns_map(table_result, blocks_map):
     rows = {}
     for relationship in table_result['Relationships']:
@@ -184,10 +184,11 @@ def get_rows_columns_map(table_result, blocks_map):
     return rows
 
 
+## Get csv respresentation of tables in response
 def generate_table_csv(table_result, blocks_map, table_index):
     rows = get_rows_columns_map(table_result, blocks_map)
     table_id = 'Table_' + str(table_index)
-    # get cells.
+    # get cells
     csv = 'Table: {0}\n\n'.format(table_id)
     for row_index, cols in rows.items():
 

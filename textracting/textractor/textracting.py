@@ -16,9 +16,10 @@ from textractor.textloading import find_file
 #from PIL.Image import DecompressionBombError
 
 
+## Start document analysis
 def startJob(s3BucketName, objectName, features=None):
     response = None
-    client = boto3.client('textract', region_name=textsettings.region)
+    client = boto3.client('textract')#, region_name=textsettings.region) #don't need to specify region if in config
     response = client.start_document_analysis(
         DocumentLocation={
             'S3Object': {
@@ -31,6 +32,7 @@ def startJob(s3BucketName, objectName, features=None):
     return response["JobId"]
 
 
+## Checks if document analysis is complete
 def isJobComplete(jobId):
     time.sleep(5)
     client = boto3.client('textract')
@@ -45,7 +47,7 @@ def isJobComplete(jobId):
         print("Job status: {}".format(status))
     return status
 
-
+## Gets results from document analysis
 def getJobResults(jobId):
     pages = []
     time.sleep(5)
@@ -69,11 +71,12 @@ def getJobResults(jobId):
     return pages
 
 
+## Exception for when we don't need to do document analysis on the file because it already has readable text
 class TextBasedFileException(Exception):
     pass
 
 
-# takes a report in S3 and runs textract on it, saving the direct results to disk
+## takes a report in S3 and runs textract on it, saving the direct results to disk
 def report2textract(fname, write_bucket, features, training=True, report_num=1):
     if '.pdf' in fname:
         docid = fname.rstrip('.pdf')

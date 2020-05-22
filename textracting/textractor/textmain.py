@@ -80,8 +80,9 @@ if __name__ == '__main__':
                     textract_start = time.time()
                     try:
                         textract(docid, features=['TABLES'], report_num=num)
-                    except FileNotFoundError:
-                        print("Report file", docid, "_", str(num), "doesn't exist in S3")
+                    except FileNotFoundError as e:
+                        #print("Report file", docid, "_", str(num), "doesn't exist in S3")
+                        print(e)
                         continue
                     except TextBasedFileException as e:
                          print(e)

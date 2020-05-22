@@ -66,16 +66,8 @@ class Text2Seq(TransformerMixin, BaseEstimator):
             print(x.shape, x[0])
 
         if isinstance(x, pd.DataFrame):  # may be df or ndarray
-            # try:
-            #badchars = ['!', "\"", '\'', '#', '$', '%', '&', '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<', '=',
-            #            '>', '?', '@', '[', '\\', ']', '^', '_', '`', '{', '|', '}', '~', '\t', '\n']
-            #x = x['ProcessedText'].replace(badchars, '')
             x = x['ProcessedText']
-
             # except KeyError:  # accounts for how it was in the old version
-            #     # DATASET NEEDS PROCESSING
-            #     x = pre_process_id_dataset(x)
-            #     x = x['ProcessedText']
             #     #x = x['LineText']
         self.tok.fit_on_texts(x)  # have to specify the column to give it a series
 
@@ -91,9 +83,6 @@ class Text2Seq(TransformerMixin, BaseEstimator):
             # try:
             x = x['ProcessedText']
             # except KeyError:
-            #     # DATASET NEEDS PROCESSING
-            #     x = pre_process_id_dataset(x)
-            #     x = x['ProcessedText']
             #     #x = x['LineText']
         if isinstance(x, list):  # when the AL does predict proba, gives a single sample inside a 1-element list
             if len(x) != 1:
@@ -217,7 +206,7 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
         model = Sequential()
         model.add(Embedding(self.max_words, output_dim=256))#self.max_len))
         model.add(LSTM(128))
-        model.add(Dropout(0.3))
+        model.add(Dropout(0.5))
         model.add(Dense(3, activation='softmax'))
         model.compile(loss='categorical_crossentropy',
                       optimizer='rmsprop',

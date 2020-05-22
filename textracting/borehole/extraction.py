@@ -331,8 +331,8 @@ def extract_bh(docid, filenum=None, bh=False, training=True, extrafolder='', fna
 
         bh_data['DocID'] = docid
         bh_data['File'] = file
-        #if not bh:
-        #    fname = bhcsv_all
+        if not bh:
+           fname = bhcsv_all
         if bh:
             fname = bhcsv
         save_rows(fname, bh_data)

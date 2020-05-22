@@ -48,7 +48,7 @@ training = True #False
 # if all files in a report should be processed, or just the _1
 all_files = True
 # use if want to set report ids manually in this files instead of running from cmd
-special_mode = 'testing' #"welcom"
+special_mode = '' #'testing' #"welcom"
 # further adds to file location
 extrafolder = None
 
@@ -164,11 +164,11 @@ if __name__ == '__main__':
                 # all the below checks also need to check if the --force arg is True, which would overrule their skip
                 # check if textract needs to be run or if fulljson already exists
                 if all_files:
-                    if textract:
-                        nums = textracting.textloading.get_report_nums_from_subdir(docid, textractable=True)  # lost permissions to this?
-                    else:
-                        print("Don't know all file numbers, using just _1. Set textract=True for intended behaviour")
-                        nums = ['1']#,'2']  # specific to 51800
+                    #if textract:
+                    nums = textracting.textloading.get_report_nums_from_subdir(docid, textractable=True)  # lost permissions to this?
+                    #else:
+                    #    print("Don't know all file numbers, using just _1. Set textract=True for intended behaviour")
+                    #    nums = ['1']#,'2']  # specific to 51800
                 else:
                     nums = ['1']
                 print('Nums: ', nums)
