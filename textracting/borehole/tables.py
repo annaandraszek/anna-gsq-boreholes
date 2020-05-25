@@ -1,5 +1,6 @@
 ## @file
 # Functions to do with getting out table and classifying them as containing boreholes
+# by Anna Andraszek
 
 import pandas as pd
 import paths

@@ -54,7 +54,7 @@ extrafolder = None
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Pipeline which will do the following for files in S3 bucket: extract text and tables with Textract, segment report section, and save a bookmarked pdf and word files of text of that report.")
     parser.add_argument("-i", "--id", help="report IDs to bookmark", nargs='+')  # list type
     parser.add_argument("-s", "--sample", help='number of reports to sample', nargs='?', default=num_sample, type=int) # can store just sample mode, or sample num
     parser.add_argument("--save", help="use to save sample arguments as default", action='store_true')

@@ -1,5 +1,6 @@
 ## @file
 # Borehole extraction from tables
+# by Anna Andraszek
 
 import pandas as pd
 from borehole.tables import get_tables
