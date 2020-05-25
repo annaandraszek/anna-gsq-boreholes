@@ -6,7 +6,7 @@
 scipy_testing/entity-annotated-corpus/ner.csv 
 textracting/*.json
 textracting/*.csv
-textracting/*.txt
+#textracting/*.txt
 textracting/bh_refs_all_tables.xlsx
 **/.ipynb_checkpoints/
 #textracting/*.ipynb
