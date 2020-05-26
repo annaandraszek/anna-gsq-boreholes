@@ -62,10 +62,19 @@ def get_report_page_path(report_id, page):
     return page_file
 
 
+## Want to tell where this function is being run from, to correctly get relative filename path
 def run_from_inside():
-    frame = inspect.stack()[2]  # 0: this, 1: get_full_x_file, 2: file of origin
-    if 'report/' in frame.filename: # if this isn't run by workflow, but a file inside report/
-        return True
+    i = 2
+    for x in range(i):
+        if 'get_file_from_training' == inspect.stack()[i][3]:
+            break
+        i -= 1
+    j = i + 2 # +1 for get_x_file, +1 for file of origin
+    frame = inspect.stack()[j]  # 0: this, 1: get_full_x_file, 2: file of origin
+    inside_dirs = ['\\report\\', '\\borehole\\', '\\textractor\\']
+    for dir in inside_dirs:
+        if dir in frame.filename: # if this isn't run by workflow, but a file inside report/
+            return True
     return False
 
 

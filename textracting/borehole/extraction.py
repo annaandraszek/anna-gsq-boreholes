@@ -10,6 +10,8 @@ import os
 import glob
 import numpy as np
 import paths
+import textdistance
+import time
 
 
 table_data_cols = ['BH', 'grid_loc_1', 'grid_loc_2', 'geo_loc_1', 'geo_loc_2',
@@ -28,16 +30,17 @@ bhcsv = 'bh_refs.csv'
 def init():
     bh_col_str = 'Hole ID, borehole nu, drillhole, no. hole, hole no., Hole No. (Site No.), bore, hole, well, drill hole, ' \
                  'hole #, bore or well reference number, bore or well reference nu, borehole, uphole, holeid, bh_id, ' \
-                 'well name, viell, bore no, borehole number, hole name, hole, bore site, hole number'
+                 'well name, bore no, borehole number, hole name, bore site, hole number'
     bh_key_str = 'hole number, drill hole, well name and, well no, borehole no, well number, ' \
                  'Identifying name of the petroleum well, well name and number, well, well name, hole name'
 
-    bh_geo_col_str = ''
+    bh_geo_col_str = 'latitude, longitude'
     bh_grid_col_str = 'Survey ea, survey no, surveyed ea, surveyed no, collar (local easting, coordinates grid) northing, ' \
                       'northing, easting, Easting AMG (Local), Northing AMG (Local), Co-ords, collar, Local E & N, ' \
                       'Co-Ordinates North/East, collar east, collar north, AMG east, AMG north, East AGD66 Zone 54, ' \
                       'North AGD66 Zone 54, AMGEASTIN, AMGNORTH, east, north, Easting (m), Northing (m), ' \
-                      'surveyed easting, surveyed northing, Easting AGD84 Zone 54, Northing AGD84 Zone 54, e m mga n m mga'
+                      'surveyed easting, surveyed northing, Easting AGD84 Zone 54, Northing AGD84 Zone 54, e m mga n m mga,' \
+                      'amg coordinates'
 
     bh_geo_key_str = 'Latitude, longitude, lat, long'
     bh_grid_key_str = 'northing, easting, grid (amg), grid location, surveyed location, location, field location'
@@ -45,6 +48,7 @@ def init():
     strs = [bh_col_str, bh_key_str, bh_geo_col_str, bh_grid_col_str, bh_geo_key_str, bh_grid_key_str]
     arrays = []
 
+    # create lists from comma separated terms in strs
     for s in strs:
         a = s.split(',')
         a = [preprocess_str(w) for w in a]
@@ -62,6 +66,56 @@ def init():
     bh_geo_key = arrays[4]
     global bh_grid_key
     bh_grid_key = arrays[5]
+
+    ## merging key and col terms
+    bh_col.extend(bh_key)
+    bh_key = bh_col
+    bh_geo_col.extend(bh_geo_key)
+    bh_geo_key = bh_geo_col
+    bh_grid_col.extend(bh_grid_key)
+    bh_grid_key = bh_grid_col
+
+    # # also create bags of words of bh, grid, and geo terms
+    # global bh_bow
+    # bh_bow = list2bow(bh_col, bh_key)
+    # global grid_bow
+    # grid_bow = list2bow(bh_grid_col, bh_grid_key)
+    # global geo_bow
+    # geo_bow = list2bow(bh_geo_col, bh_geo_key)
+
+
+# ## takes lists of terms and returns a bag of words of those terms (split into words, no duplicates)
+# def list2bow(col_terms, key_terms):
+#     terms = col_terms
+#     terms.extend(key_terms)
+#     words = [words.split() for words in terms]
+#     bow = []  # bag of words
+#     for words in words:
+#         bow.extend(words)
+#     bow = list(dict.fromkeys(bow)) # remove duplicate terms
+#     return bow
+
+
+## Try to match a term using jaccard textdistance instead of exactly
+def fuzzy_match(term, term_list):
+    best_match = 0
+    if term == 'nan':
+        return False
+    if 'unnamed' in term:
+        return False
+    for t in term_list:
+        match = textdistance.jaccard(term, t)
+        if match > best_match:
+            best_match = match
+            if best_match == 1:
+                print("Found match for: ", term, " with score of: ", best_match)
+                return True  # don't need to keep searching once find exact match
+    if best_match >= 0.8: # if best match is above a threhold for similarity - can modify this number
+        print("Found match for: ", term, " with score of: ", best_match)
+        return True
+    if best_match >= 0.6:
+        print("Didn't find match for: ", term, " with score of: ", best_match)
+    return False
 
 
 ## Save rows to csv
@@ -170,7 +224,7 @@ def search(table, source_i, dir='right', type='loc'):
         if 'no_num' in valid_val:  # case: bh and num are in separate cells
             num = search(table, [source_i[0], source_i[1] + 1], dir='right', type='num')
             if num:
-                val = val + ' ' + str(num)
+                val = str(val) + ' ' + str(num)
                 return val
         return False
     else:
@@ -192,13 +246,14 @@ def extract_from_keys(table):
     for i, row in alltable.iterrows():
         for j, cell in zip(range(len(row)), row):
             cvalue = preprocess_str(cell)
-            if cvalue in bh_key:
+            #if cvalue in bh_key:
+            if fuzzy_match(cvalue, bh_key):
                 bh_source = cell
                 bh_source_i = [i,j]  # +1, bc assuming value of the key will be next cell accross
-            elif cvalue in bh_geo_key:
+            elif fuzzy_match(cvalue, bh_geo_key):
                 geo_source.append(cell)
                 geo_source_i.append([i,j])
-            elif cvalue in bh_grid_key:
+            elif fuzzy_match(cvalue, bh_grid_key):
                 grid_source.append(cell)
                 grid_source_i.append([i,j])
     if bh_source:
@@ -254,13 +309,13 @@ def extract_from_columns(table):
     geo_source = []
     for name in table.columns:
         proc_name = preprocess_str(name)
-        if proc_name in bh_col:
+        if fuzzy_match(proc_name, bh_col):
             #print('bh name: ', name)
             bh_source = name
-        elif proc_name in bh_geo_col:
+        elif fuzzy_match(proc_name,bh_geo_col):
             #print('bh loc name: ', name)
             geo_source.append(name)
-        elif proc_name in bh_grid_col:
+        elif fuzzy_match(proc_name, bh_grid_col):
             grid_source.append(name)
 
     if bh_source:
@@ -298,7 +353,7 @@ def extract_bh(docid, filenum=None, bh=False, training=True, extrafolder='', fna
             if not training:
                 files = glob.glob('C:\\Users\\andraszeka\\OneDrive - ITP (Queensland Government)\\textract_result\\' + extrafolder + '/tables/cr_' + docid + '*.csv')
             else:
-                files = glob.glob(paths.training_file_folder + '/tables/cr_' + docid + '*.csv')
+                files = glob.glob('../' + paths.training_file_folder + '/tables/cr_' + docid + '*.csv')
             for file in files:
                 f = file.split('\\')[-1].replace('_tables.csv', '').replace('cr_' + docid + '_', '')
                 fs.append(f)
@@ -332,10 +387,10 @@ def extract_bh(docid, filenum=None, bh=False, training=True, extrafolder='', fna
 
         bh_data['DocID'] = docid
         bh_data['File'] = file
-        if not bh:
-           fname = bhcsv_all
-        if bh:
-            fname = bhcsv
+        #if not bh:
+        #   fname = bhcsv_all
+        #if bh:
+        #   fname = bhcsv
         save_rows(fname, bh_data)
     print('Borehole extraction for ', str(docid), ' saved to ', str(fname))
 
@@ -363,8 +418,9 @@ def get_table_docids(bh=False, training=True, extrafolder=None):
 
 ## Removes duplicates from csv
 def manage_data(fname):
-    df = pd.read_csv(fname, engine='python')
+    df = pd.read_csv(fname, engine='python', dtype=str)
     df = df.drop_duplicates()
+    df = df.dropna(subset=['BH'])
     df.to_csv(fname, index=False)
 
 
@@ -419,12 +475,19 @@ if __name__ == "__main__":
     #for i in coals:  # may not have all of these textracted
     #    extract_for_docid(i, fname='missing_coal_sample.csv')
 
-    result_fname = 'example_result.csv'
+    init()
+    result_fname = 'example_result_3_bh.csv'
     reports_str = '25335 34372 35500 36675 40923 41674 41720 41932 44638 48384 48406'
     reportIDs = reports_str.split()
+    st = time.time()
     for e in reportIDs:
-        extract_bh(e, fname=result_fname)
-
+        s = time.time()
+        extract_bh(e, fname=result_fname, training=False)
+        n = time.time()
+        print('Seconds to run for ', e, ': ', str(n-s))
+    et = time.time()
+    print('Seconds taken to run for all IDs: ', str(et-st))
+    manage_data(result_fname)
 
 
     #manage_data(bhcsv)

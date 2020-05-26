@@ -148,7 +148,7 @@ def compare_lines2headings(lines, headings):
             hd, _ = heading_id_toc.split_pagenum(hd)
             hd_words = hd.split()
             # compare words
-            similarity = textdistance.jaccard(ln_words, hd_words)  # intersection / union
+            similarity = textdistance.jaccard(ln_words, hd_words)  # similarity defined by: intersection/union. see "jaccard index"
             ln_similarities.append([similarity, heading.Heading, i])
         max = np.array(ln_similarities)[:, 0].argmax()
         bestsim = ln_similarities[max]
