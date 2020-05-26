@@ -189,3 +189,29 @@ def get_word_file(docid, file_num, service):
     id_path = base_path + '/' + service + '/texts/' + str(docid) +'/'
     fname = str(docid) + '_' + str(pad_num(file_num)) + '.docx'
     return id_path + fname
+
+extensions = {'tables': 'csv', 'tables_bh': 'csv', 'kvs': 'csv',
+              'fulljson': 'json', 'restructpageinfo': 'json'}
+
+
+## Get files or docid, filenum pairs from a location
+def get_files_from_path(type, get_docids=True, full_path=False, extension=None):#, get_file_num=True):
+    if full_path:
+        files = glob.glob(full_path)
+    else:
+        path = ''
+        if run_from_inside():
+            path += '../'
+        path += training_file_folder  # don't have a training=False option for this, bc nottraining location isn't configured
+        # can altenatively have option to search downloadedReports instead of trainingFiles
+        path += '/' + type + '/'
+        if not extension:
+            extension = extensions.get(type)  # get file extension associated with type
+        path += '*.' + extension
+        files = glob.glob(path)
+
+    if get_docids:
+        flines = [f.split('\\')[-1].replace('_' + type + '.' + extension, '').strip('cr_') for f in files]
+        ids = [[fline.split('_')] for fline in flines]
+        return ids
+    return files
