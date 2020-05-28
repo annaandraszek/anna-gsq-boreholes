@@ -5,7 +5,6 @@
 import pandas as pd
 import paths
 from io import StringIO
-import glob
 from textractor import texttransforming
 import json
 import pandas.errors
@@ -80,7 +79,7 @@ def get_tables(docid, bh=False, file_num=1, training=True, extrafolder=None, sep
 
 
 ## Create dataset of table content for table classification
-def create_dataset(ids=False, save=True):
+def create_dataset(ids=False, save=True, docids_only=False):
     if ids:
         save = False
     if save:
@@ -88,13 +87,14 @@ def create_dataset(ids=False, save=True):
         dataset = dataset.split('../')[1]
     #docids = ['32730', '44448', '37802', '2646', '44603']
         ids = paths.get_files_from_path(type='tables')
-        # docids = []
-        # lines_docs = glob.glob('training/fulljson/*.json')
-        # for lines_doc in lines_docs:
-        #     docid = int(lines_doc.split('\\')[-1].replace('_1_fulljson.json', '').strip('cr_'))
-        #     docids.append(docid)
     cols = ['DocID', 'TableNum', 'Content', 'FullTable']
     all_columns = pd.DataFrame(columns=cols)
+    if docids_only:
+        new_ids = []
+        for id in ids:
+            i = paths.get_files_from_path('tables', one_docid=id)
+            new_ids.extend(i)
+        ids = new_ids
     for id in ids:
         # try:
         #     texttransforming.save_tables_and_kvs(id)
@@ -120,7 +120,7 @@ def create_dataset(ids=False, save=True):
                 tables_values[i] = [v for v in tables_values[i] if 'Unnamed:' not in str(v)]
                 tables_values[i] = [v for v in tables_values[i] if str(v) != 'nan']
         tables_values = pd.Series(tables_values)
-        docids = pd.Series([id for x in range(len(tables_values))])
+        docids = pd.Series([docid for x in range(len(tables_values))])
         tablenums = pd.Series([x + 1 for x in range(len(tables_values))])
         fulls = pd.Series(full_tables)
         series = [docids, tablenums, tables_values, fulls]
@@ -163,9 +163,9 @@ def concat_tables(df):
 
 ## Defines and trains table classification model
 def train(n_queries=10, mode='boreholes'):
-    datafile = paths.get_dataset_path(name, mode).split('../')[1]
+    datafile = paths.get_dataset_path(name, mode)
     df = pd.read_csv(datafile)
-    df = df.loc[df['Columns'] != '[]']
+    df = df.loc[df['Content'] != '[]']
 
     clf = Pipeline([
         ('list2str', FunctionTransformer(concat_tables)),
@@ -200,39 +200,42 @@ def get_bh_tables_from_docid(docid, file_num=1):
     #     docids = [docids]
     # for id in docids:
 
-    print("Getting borehole tables for ", id)
+    print("Getting borehole tables for ", docid, '_', file_num)
     df = create_dataset([[docid, file_num]], save=False)
     df = df.loc[df['Content'].str.len() > 0]
     num_tables = df.shape[0]
     if num_tables == 0:
-        raise NoNaturalTablesError('DocID has no natural tables')
+        raise NoNaturalTablesError('File has no natural tables')
     res = get_borehole_tables(df, masked=True)
     num_bh_tables = res.shape[0]
-    print('Num of all tables: ', num_tables, ', num of borehole tables: ', num_bh_tables)
-    tables = get_tables(id)
+    #print('Num of all tables: ', num_tables, ', num of borehole tables: ', num_bh_tables)
+    tables = get_tables(docid, file_num=file_num)
     bh_tables = []
-    print("Borehole tables: ")
-    for i in range(len(tables)):
-        if i+1 in res['TableNum'].values:
-            print(tables[i])
-            bh_tables.append(tables[i])
+    # print("Borehole tables: ")
+    # for i in range(len(tables)):
+    #     if i+1 in res['TableNum'].values:
+    #         print(tables[i])
+    #         bh_tables.append(tables[i])
 
     return bh_tables
 
 
 ## Saves found borehole tables to csv
-def bh_tables_to_csv(docid, file_num=1):
-    try:
-        bh_tables = get_bh_tables_from_docid(docid, file_num=file_num)
-    except NoNaturalTablesError as e:
-        print(e)
-        return
+def bh_tables_to_csv(docid, file_num=1, skip_for_existing=True):
     file = paths.get_tables_file(docid, file_num=file_num, bh=True)
     #file = file.strip(r'../')
     if os.path.exists(file):
-        os.remove(file)  # because we will be using append, don't want a file to already exists
+        if skip_for_existing:
+            return
+        else:
+            os.remove(file)  # because we will be using append, don't want a file to already exists
+    try:
+        bh_tables = get_bh_tables_from_docid(docid, file_num=file_num)
+    except NoNaturalTablesError as e:
+       print(e)
+       return
     save_tables(bh_tables, file)
-    print('Saved ', docid, ' bh tables to file')
+    print('Saved ', docid, '_',  file_num, ' bh tables to file')
     return
 
 
@@ -251,17 +254,12 @@ def save_tables(tables, file, encoding='utf-8', header=True):
 
 
 ## Processes all tables to classify them as containing boreholes or not and saves the results
-def save_all_bh_tables():
-    # docids = []
-    # lines_docs = glob.glob('training/tables/*.csv')
-    # for lines_doc in lines_docs:
-    #     report = int(lines_doc.split('\\')[-1].replace('_tables.csv', '').strip('cr_'))
-    #     docid, filenum = report.split('_')
-    #     docids.append(docid)
+# skip_for_existing=False if you want to overwrite bh_table files
+def save_all_bh_tables(skip_for_existing=True):
     ids = paths.get_files_from_path('tables')
     for id in ids:
         docid, file_num = id[0], id[1]
-        bh_tables_to_csv(docid, file_num=file_num)
+        bh_tables_to_csv(docid, file_num=file_num, skip_for_existing=skip_for_existing)
     print('Saved all bh tables')
 
 
@@ -319,10 +317,6 @@ def table_similarity(docid):
             colsims.append(colsim)
         print('all rows')
 
-#def extract_bh(df):
-    # extract bh references from a table
-
-
 
 if __name__ == "__main__":
     #create_dataset()
@@ -337,16 +331,16 @@ if __name__ == "__main__":
     #train(n_queries=1)
     #active_learning.automatically_tag('tables', get_borehole_tables, 'Class', mode='boreholes_production')
 
-    #train(n_queries=0)
+    train(n_queries=1)
 
     # df = create_dataset(['44448'], save=False)
     # df = df.loc[df['Columns'].str.len() > 0]
     # res = get_borehole_tables(df, masked=True)
     # print(res)
-    reports_str = '25335 34372 35500 36675 40923 41674 41720 41932 44638 48384 48406'
+    #reports_str = '25335 34372 35500 36675 40923 41674 41720 41932 44638 48384 48406'
 
     #get_bh_tables_from_docid(['2646', '44448', '32730', '37802', '44603'])
     #bh_tables_to_csv('35454')
-    save_all_bh_tables()
+    #save_all_bh_tables()
     #bhtables = get_tables('35454', bh=True)
     #table_similarity('35454')

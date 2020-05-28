@@ -20,10 +20,15 @@ from sklearn.preprocessing import FunctionTransformer
 os.environ['KMP_WARNINGS'] = '0'
 months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october',
           'november', 'december']
+## model name
 name = 'page_id'
+## name of column containing y values
 y_column = 'tag'
+## column names to exclude from training
 limit_cols = ['transformed']
+## column names to include in training
 include_cols = ['original']
+## column names in dataset
 columns = ['original', 'transformed', y_column]
 
 class NeuralNetwork():

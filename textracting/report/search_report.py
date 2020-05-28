@@ -544,15 +544,15 @@ def sanitise_datasets():
 def sanitise_files():
     rtitle = 'QGMJ'
     rtype = 'WELCOM'
-    ref = pd.read_excel('C:/Users/andraszeka/Documents/gsq-boreholes/investigations/QDEX_metada_export.xlsx',
+    ref = pd.read_excel('C:/Users/andraszeka/OneDrive - ITP (Queensland Government)/gsq-boreholes/investigations/QDEX_metada_export.xlsx',
                         dtype={'REPNO': int})
     bad = ref.loc[ref.RTITLE.str.contains(rtitle) | ref.RTYPE.str.contains(rtype)]
     bad_docids = bad.REPNO.values
     removed = []
-    lines_docs = glob.glob('training/restructpageinfo/*.json')
-    for lines_doc in lines_docs:
-        ids = lines_doc.split('\\')[-1].replace('_restructpageinfo.json', '').strip('cr_')
-        docid, filenum = ids.split('_')
+    ids = paths.get_files_from_path('restructpageinfo')
+    lines_docs = paths.get_files_from_path('restructpageinfo', get_file_paths=True)
+    for id, lines_doc in zip(ids, lines_docs):
+        docid, filenum = id[0], id[1]
         if docid in bad_docids:
             if not os.path.exists('nottraining/restructpageinfo/'):
                 os.makedirs('nottraining/restructpageinfo/')
@@ -562,25 +562,27 @@ def sanitise_files():
 
 if __name__ == '__main__':
     #sanitise_datasets()
-    #sanitise_files()
+    sanitise_files()
     # transform document pages into dataset of pages for toc classification, classify pages, and isolate toc
     # from toc page, transform content into dataset of headings for heading identification, identify headings, and return headings and subheadings
     # test_reports = ['30320', '42688', '95183', '2984', '57418', '75738', '111200']
     # #reports = test_reports #['30320'] # '30320' #'24352', '24526', '26853', '28066', '28184','28882', '30281', '31681', '23508', ] #,'23732',
-    reports = [['92099', '1']]
-    test = False
-    for report in reports:
-        docid = report[0]
-        filenum=report[1]
-        start = time.time()
-        r = Report(docid, filenum)
-        if test:
-            draw_report(r)
-        bookmark_report(r, test)
-        save_report_sections(r)
-        report2json(r, test=test)
-        end = time.time()
-        print('time:', end - start)
+
+    # reports = [['92099', '1']]
+    # test = False
+    # for report in reports:
+    #     docid = report[0]
+    #     filenum=report[1]
+    #     start = time.time()
+    #     r = Report(docid, filenum)
+    #     if test:
+    #         draw_report(r)
+    #     bookmark_report(r, test)
+    #     save_report_sections(r)
+    #     report2json(r, test=test)
+    #     end = time.time()
+    #     print('time:', end - start)
+
         #print('TOC Headings: \n')
         #for string in r.doclines[str(r.toc_page)]:
         #    print(string)

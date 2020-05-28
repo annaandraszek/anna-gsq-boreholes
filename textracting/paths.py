@@ -7,6 +7,7 @@ import os
 
 report_folder = 'downloadedReports'
 training_file_folder = 'trainingFiles'
+not_training_file_foder = 'C:\\Users\\andraszeka\\OneDrive - ITP (Queensland Government)\\textract_result'
 report_package_folder = 'report'
 report_local_path = report_folder + '/QDEX/'
 test_local_path = '../' + report_folder + '/test/'
@@ -68,13 +69,24 @@ def run_from_inside():
     for x in range(i):
         if 'get_file_from_training' == inspect.stack()[i][3]:
             break
+        if 'classify' == inspect.stack()[i][3]:
+            break
         i -= 1
     j = i + 2 # +1 for get_x_file, +1 for file of origin
     frame = inspect.stack()[j]  # 0: this, 1: get_full_x_file, 2: file of origin
-    inside_dirs = ['\\report\\', '\\borehole\\', '\\textractor\\']
-    for dir in inside_dirs:
-        if dir in frame.filename: # if this isn't run by workflow, but a file inside report/
-            return True
+    #print(frame.filename)
+    #frame = inspect.stack()[-6]
+    inside_dirs = ['report', 'borehole', 'textractor']
+    try:
+        f_dir = frame.filename.split('/')[-2]
+    except IndexError:
+        try:
+            f_dir = frame.filename.split('\\')[-2]
+        except IndexError as e:
+            print(e)
+            exit()
+    if f_dir in inside_dirs:  # if this isn't run by workflow, but a file inside a dir that needs to be gotten out of with a '../'
+        return True
     return False
 
 
@@ -123,9 +135,10 @@ def get_file_from_training(folder, report_id, local_path, extension='.json', tra
         if training:
             if run_from_inside():
                 file = '../'
-            file += training_file_folder + '/' + fullfolder + '/'
+            file += training_file_folder
         else:
-            file = 'C:\\Users\\andraszeka\\OneDrive - ITP (Queensland Government)\\textract_result/' + fullfolder + '/'
+            file += not_training_file_foder
+        file += '/' + fullfolder + '/'
         if not os.path.exists(file):
             os.makedirs(file)
     if not 'cr_' in str(report_id):
@@ -185,7 +198,7 @@ def pad_num(num):
 
 
 def get_word_file(docid, file_num, service):
-    base_path = 'C:\\Users\\andraszeka\OneDrive - ITP (Queensland Government)\\textract_result\\qutsample'
+    base_path = not_training_file_foder + '/' + 'qutsample'
     id_path = base_path + '/' + service + '/texts/' + str(docid) +'/'
     fname = str(docid) + '_' + str(pad_num(file_num)) + '.docx'
     return id_path + fname
@@ -195,23 +208,43 @@ extensions = {'tables': 'csv', 'tables_bh': 'csv', 'kvs': 'csv',
 
 
 ## Get files or docid, filenum pairs from a location
-def get_files_from_path(type, get_docids=True, full_path=False, extension=None):#, get_file_num=True):
+def get_files_from_path(type, get_file_paths=False, full_path=False, extension=None, extrafolders=None, training=True,
+                        docid_only=False, one_docid=None, file_num_only=False):#, get_file_num=True):
     if full_path:
-        files = glob.glob(full_path)
+        files = glob.glob(type)
     else:
         path = ''
         if run_from_inside():
             path += '../'
-        path += training_file_folder  # don't have a training=False option for this, bc nottraining location isn't configured
+        if training:
+            path += training_file_folder  # don't have a training=False option for this, bc nottraining location isn't configured
+        else:
+            path += not_training_file_foder
         # can altenatively have option to search downloadedReports instead of trainingFiles
+        if extrafolders:
+            path += '/' + extrafolders
         path += '/' + type + '/'
         if not extension:
             extension = extensions.get(type)  # get file extension associated with type
+        if 'json' in extension:  # files in json type folders will also have subdirs for docids
+            if one_docid:
+                path += one_docid
+            else:
+                path += '*'
+            path += '/'
+        if one_docid:
+            path += 'cr_' + one_docid
         path += '*.' + extension
+        #print(path)
         files = glob.glob(path)
 
-    if get_docids:
-        flines = [f.split('\\')[-1].replace('_' + type + '.' + extension, '').strip('cr_') for f in files]
-        ids = [[fline.split('_')] for fline in flines]
-        return ids
-    return files
+    if get_file_paths:
+        return files
+
+    flines = [f.split('\\')[-1].replace('_' + type + '.' + extension, '').strip('cr_') for f in files]
+    ids = [fline.split('_') for fline in flines]
+    if file_num_only:
+        return [id[1] for id in ids]
+    if docid_only:
+        return [id[0] for id in ids]
+    return ids

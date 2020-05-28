@@ -348,15 +348,8 @@ def extract_bh(docid, filenum=None, bh=False, training=True, extrafolder='', fna
     if 'wondershare' in extrafolder:
         sep = ','
     if not filenum:
-        fs = []
         if '_' not in docid:
-            if not training:
-                files = glob.glob('C:\\Users\\andraszeka\\OneDrive - ITP (Queensland Government)\\textract_result\\' + extrafolder + '/tables/cr_' + docid + '*.csv')
-            else:
-                files = glob.glob('../' + paths.training_file_folder + '/tables/cr_' + docid + '*.csv')
-            for file in files:
-                f = file.split('\\')[-1].replace('_tables.csv', '').replace('cr_' + docid + '_', '')
-                fs.append(f)
+            fs = paths.get_files_from_path('tables', extrafolders=extrafolder, training=training, file_num_only=True, one_docid=docid)
         else:
             docid, file = docid.split('_')
             fs = [file]
@@ -365,7 +358,7 @@ def extract_bh(docid, filenum=None, bh=False, training=True, extrafolder='', fna
 
     for file in fs:
         try:
-            bhtables = get_tables(docid, bh=bh, report_num=file, training=training, extrafolder=extrafolder, sep=sep)
+            bhtables = get_tables(docid, bh=bh, file_num=file, training=training, extrafolder=extrafolder, sep=sep)
         except FileNotFoundError:
             print('No file for ', str(docid), '_', file, ' bh: ', str(bh))
             return
@@ -402,18 +395,8 @@ def get_table_docids(bh=False, training=True, extrafolder=None):
         folder = 'tables'
     else:
         folder = 'bh_tables'
-
-    if extrafolder:
-        folder = extrafolder + '/' + folder
-    if training:
-        lines_docs = glob.glob(paths.training_file_folder + '/' + folder + '/*.csv')
-    else:
-        lines_docs = glob.glob('C:\\Users\\andraszeka\\OneDrive - ITP (Queensland Government)\\textract_result/' + folder + '/*.csv')
-
-    for lines_doc in lines_docs:
-        docid = lines_doc.split('\\')[-1].replace('_tables.csv', '').strip('cr_')
-        docids.append(docid)
-    return docids
+    ids = paths.get_files_from_path(folder, extrafolders=extrafolder, training=training)
+    return ids
 
 
 ## Removes duplicates from csv
@@ -425,14 +408,13 @@ def manage_data(fname):
 
 
 ## Extracts boreholes for all report IDs (which have table files)
-def extract_for_all_docids(training=True, extrafolder=None, fname=bhcsv_all):
+def extract_for_all_docids(training=True, extrafolder=None, fname=bhcsv_all, bh=False):
     init()
-    docids = get_table_docids(training=training, extrafolder=extrafolder)
-    for id in docids:
-        extract_bh(id, bh=False, training=training, fname=fname)
-        #extract_bh(id, bh=True)
-    #manage_data(bhcsv)
-    manage_data(bhcsv_all)
+    ids = get_table_docids(training=training, extrafolder=extrafolder)
+    for id in ids:
+        docid, filenum = id[0], id[1]
+        extract_bh(docid, filenum=filenum, bh=bh, training=training, fname=fname)
+    manage_data(fname)
 
 
 ##Borehole extraction for a certain report (with init and data cleaning)
@@ -476,8 +458,8 @@ if __name__ == "__main__":
     #    extract_for_docid(i, fname='missing_coal_sample.csv')
 
     init()
-    result_fname = 'example_result_3_bh.csv'
-    reports_str = '25335 34372 35500 36675 40923 41674 41720 41932 44638 48384 48406'
+    result_fname = 'example_result.csv'
+    reports_str = '48406' #'25335 34372 35500 36675 40923 41674 41720 41932 44638 48384 48406'
     reportIDs = reports_str.split()
     st = time.time()
     for e in reportIDs:

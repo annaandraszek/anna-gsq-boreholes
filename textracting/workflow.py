@@ -33,7 +33,7 @@ from shutil import copyfile
 from PIL.Image import DecompressionBombError
 
 
-# default nummber of report IDs to sample
+# default number of report IDs to sample
 num_sample = 20
 # earliest date a report can be published, for sampling
 cutoffdate = None
