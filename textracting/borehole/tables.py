@@ -69,7 +69,10 @@ def get_tables(docid, bh=False, file_num=1, training=True, extrafolder=None, sep
             except EmptyDataError:
                 continue
         else:
-            df = pd.read_csv(data, sep=sep)
+        #    try:
+            df = pd.read_csv(data, sep=',')
+           # except pandas.errors.ParserError as e:
+           #     print()
         df.dropna(axis=1, how="all", inplace=True)
         df.dropna(axis=0, how='all', inplace=True)
         #df = pd.DataFrame(table)
@@ -79,20 +82,20 @@ def get_tables(docid, bh=False, file_num=1, training=True, extrafolder=None, sep
 
 
 ## Create dataset of table content for table classification
-def create_dataset(ids=False, save=True, docids_only=False):
+def create_dataset(ids=False, save=True, docids_only=False, training=True):
     if ids:
         save = False
     if save:
         dataset = paths.get_dataset_path('tables', 'boreholes')
         dataset = dataset.split('../')[1]
     #docids = ['32730', '44448', '37802', '2646', '44603']
-        ids = paths.get_files_from_path(type='tables')
+        ids = paths.get_files_from_path(type='tables', training=training)
     cols = ['DocID', 'TableNum', 'Content', 'FullTable']
     all_columns = pd.DataFrame(columns=cols)
     if docids_only:
         new_ids = []
         for id in ids:
-            i = paths.get_files_from_path('tables', one_docid=id)
+            i = paths.get_files_from_path('tables', one_docid=id, training=training)
             new_ids.extend(i)
         ids = new_ids
     for id in ids:
@@ -102,7 +105,7 @@ def create_dataset(ids=False, save=True, docids_only=False):
         #     print(id)
         #     continue
         docid, file_num = id[0], id[1]
-        tables = get_tables(docid, file_num=file_num)
+        tables = get_tables(docid, file_num=file_num, training=training)
         #columns = pd.Series([table.columns.values for table in tables])
         full_tables = []
         for table in tables:
@@ -195,13 +198,13 @@ class NoNaturalTablesError(Exception):
 
 
 ## Gets borehole tables for a report ID
-def get_bh_tables_from_docid(docid, file_num=1):
+def get_bh_tables_from_docid(docid, file_num=1, training=True):
     # if not isinstance(docids, list):  # in case only one docid is given
     #     docids = [docids]
     # for id in docids:
 
     print("Getting borehole tables for ", docid, '_', file_num)
-    df = create_dataset([[docid, file_num]], save=False)
+    df = create_dataset([[docid, file_num]], training=training)
     df = df.loc[df['Content'].str.len() > 0]
     num_tables = df.shape[0]
     if num_tables == 0:
@@ -209,20 +212,20 @@ def get_bh_tables_from_docid(docid, file_num=1):
     res = get_borehole_tables(df, masked=True)
     num_bh_tables = res.shape[0]
     #print('Num of all tables: ', num_tables, ', num of borehole tables: ', num_bh_tables)
-    tables = get_tables(docid, file_num=file_num)
+    tables = get_tables(docid, file_num=file_num, training=training)
     bh_tables = []
-    # print("Borehole tables: ")
-    # for i in range(len(tables)):
-    #     if i+1 in res['TableNum'].values:
-    #         print(tables[i])
-    #         bh_tables.append(tables[i])
+    #print("Borehole tables: ")
+    for i in range(len(tables)):
+        if i+1 in res['TableNum'].values:
+            #print(tables[i])
+            bh_tables.append(tables[i])
 
     return bh_tables
 
 
 ## Saves found borehole tables to csv
-def bh_tables_to_csv(docid, file_num=1, skip_for_existing=True):
-    file = paths.get_tables_file(docid, file_num=file_num, bh=True)
+def bh_tables_to_csv(docid, file_num=1, skip_for_existing=True, training=True):
+    file = paths.get_tables_file(docid, file_num=file_num, bh=True, training=training)
     #file = file.strip(r'../')
     if os.path.exists(file):
         if skip_for_existing:
@@ -230,7 +233,7 @@ def bh_tables_to_csv(docid, file_num=1, skip_for_existing=True):
         else:
             os.remove(file)  # because we will be using append, don't want a file to already exists
     try:
-        bh_tables = get_bh_tables_from_docid(docid, file_num=file_num)
+        bh_tables = get_bh_tables_from_docid(docid, file_num=file_num, training=training)
     except NoNaturalTablesError as e:
        print(e)
        return
@@ -242,6 +245,11 @@ def bh_tables_to_csv(docid, file_num=1, skip_for_existing=True):
 ## Saves tables to csv
 def save_tables(tables, file, encoding='utf-8', header=True):
     i = 0
+    if len(tables) == 0:
+        with open(file, 'a', encoding=encoding) as f:
+            startval = '[NO TABLES]'
+            startseries = pd.Series([startval])
+            startseries.to_csv(f, index=False, header=False)
     for df in tables:
         i += 1
         with open(file, 'a', encoding=encoding) as f:
@@ -255,11 +263,11 @@ def save_tables(tables, file, encoding='utf-8', header=True):
 
 ## Processes all tables to classify them as containing boreholes or not and saves the results
 # skip_for_existing=False if you want to overwrite bh_table files
-def save_all_bh_tables(skip_for_existing=True):
-    ids = paths.get_files_from_path('tables')
+def save_all_bh_tables(skip_for_existing=True, training=True):
+    ids = paths.get_files_from_path('tables', training=training)
     for id in ids:
         docid, file_num = id[0], id[1]
-        bh_tables_to_csv(docid, file_num=file_num, skip_for_existing=skip_for_existing)
+        bh_tables_to_csv(docid, file_num=file_num, skip_for_existing=skip_for_existing, training=training)
     print('Saved all bh tables')
 
 
@@ -331,16 +339,23 @@ if __name__ == "__main__":
     #train(n_queries=1)
     #active_learning.automatically_tag('tables', get_borehole_tables, 'Class', mode='boreholes_production')
 
-    train(n_queries=1)
+    #train(n_queries=1)
 
     # df = create_dataset(['44448'], save=False)
     # df = df.loc[df['Columns'].str.len() > 0]
     # res = get_borehole_tables(df, masked=True)
     # print(res)
     #reports_str = '25335 34372 35500 36675 40923 41674 41720 41932 44638 48384 48406'
-
+    ids = ['25335', '34372', '35500', '36675', '40923', '41674', '41720', '41932', '44638', '48384', '48406']
+    for id in ids:
+        file_nums = paths.get_files_from_path('tables', one_docid=id, training=False, file_num_only=True)
+        for num in file_nums:
+            try:
+                bh_tables_to_csv(id, num, training=False)
+            except NoNaturalTablesError:
+                pass
     #get_bh_tables_from_docid(['2646', '44448', '32730', '37802', '44603'])
     #bh_tables_to_csv('35454')
-    #save_all_bh_tables()
+    #save_all_bh_tables(training=False)
     #bhtables = get_tables('35454', bh=True)
     #table_similarity('35454')

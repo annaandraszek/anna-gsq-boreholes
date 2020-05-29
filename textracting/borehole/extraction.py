@@ -105,6 +105,7 @@ def fuzzy_match(term, term_list):
         return False
     for t in term_list:
         match = textdistance.jaccard(term, t)
+        #match = textdistance.damerau_levenshtein.normalized_similarity(term, t)
         if match > best_match:
             best_match = match
             if best_match == 1:
@@ -458,13 +459,13 @@ if __name__ == "__main__":
     #    extract_for_docid(i, fname='missing_coal_sample.csv')
 
     init()
-    result_fname = 'example_result.csv'
-    reports_str = '48406' #'25335 34372 35500 36675 40923 41674 41720 41932 44638 48384 48406'
+    result_fname = 'example_result_bh_all.csv'
+    reports_str = '25335 34372 35500 36675 40923 41674 41720 41932 44638 48384 48406'
     reportIDs = reports_str.split()
     st = time.time()
     for e in reportIDs:
         s = time.time()
-        extract_bh(e, fname=result_fname, training=False)
+        extract_bh(e, fname=result_fname, training=False, bh=True)
         n = time.time()
         print('Seconds to run for ', e, ': ', str(n-s))
     et = time.time()
