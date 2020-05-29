@@ -100,7 +100,7 @@ def classify(data, model_name, y_column, limit_cols, mode=paths.dataset_version)
     if not os.path.exists(model_path):
         frame = inspect.stack()[2]  # 0: this, 1: mlh.get_classified, 2: model file
         module = inspect.getmodule(frame[0])  # inspect.getmodule(frame[0])  # gets the module that this function was called from to call the correct training function
-        module.train(n_queries=0, mode=mode)#datafile=settings.get_dataset_path(model_name, mode), model_file=model_path)
+        module.train(n_queries=0, mode=mode, spec_name=model_name) #datafile=settings.get_dataset_path(model_name, mode), model_file=model_path)
     with open(model_path, "rb") as file:
         model = joblib.load(file)
     if isinstance(data, pd.DataFrame) and y_column in data.columns:

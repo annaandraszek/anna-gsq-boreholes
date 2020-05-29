@@ -181,7 +181,7 @@ class Report():
             toc_pages = toc_pages.reset_index()
             tc = toc_pages.iloc[toc_pages['proba'].idxmax()]  # getting most probable toc page
             toc = int(tc['PageNum']) # how do you account for multiple toc pages?
-        except IndexError:
+        except (IndexError, ValueError):
             print("TOC page doesn't exist")
             toc = None
         return toc

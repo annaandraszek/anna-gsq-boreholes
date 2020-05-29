@@ -65,23 +65,26 @@ def get_report_page_path(report_id, page):
 
 ## Want to tell where this function is being run from, to correctly get relative filename path
 def run_from_inside():
-    i = 2
-    for x in range(i):
-        if 'get_file_from_training' == inspect.stack()[i][3]:
-            break
-        if 'classify' == inspect.stack()[i][3]:
-            break
-        i -= 1
-    j = i + 2 # +1 for get_x_file, +1 for file of origin
-    frame = inspect.stack()[j]  # 0: this, 1: get_full_x_file, 2: file of origin
+    # i = 2
+    # for x in range(i):
+    #     if 'get_file_from_training' == inspect.stack()[i][3]:
+    #         break
+    #     if 'classify' == inspect.stack()[i][3]:
+    #         break
+    #     i -= 1
+    # j = i + 2 # +1 for get_x_file, +1 for file of origin
+    # frame = inspect.stack()[j]  # 0: this, 1: get_full_x_file, 2: file of origin
     #print(frame.filename)
     #frame = inspect.stack()[-6]
+    cwd = os.getcwd()
     inside_dirs = ['report', 'borehole', 'textractor']
     try:
-        f_dir = frame.filename.split('/')[-2]
+        #f_dir = frame.filename.split('/')[-2]
+        f_dir = cwd.split('/')[-1]
     except IndexError:
         try:
-            f_dir = frame.filename.split('\\')[-2]
+            #f_dir = frame.filename.split('\\')[-2]
+            f_dir = cwd.split('\\')[-1]
         except IndexError as e:
             print(e)
             exit()
@@ -214,7 +217,7 @@ def get_files_from_path(type, get_file_paths=False, full_path=False, extension=N
         files = glob.glob(type)
     else:
         path = ''
-        if run_from_inside():
+        if run_from_inside() and training:  # training=False uses an absolute path instead of relative
             path += '../'
         if training:
             path += training_file_folder  # don't have a training=False option for this, bc nottraining location isn't configured

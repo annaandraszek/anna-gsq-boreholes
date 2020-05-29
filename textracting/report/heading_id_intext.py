@@ -159,9 +159,9 @@ def compare_lines2headings(lines, headings):
     return max_similarities[:, 0], max_similarities[:, 1], max_similarities[:,2]  # return similarity,type matched, and i of heading matched
 
 
-def train(n_queries=10, mode=paths.dataset_version):  #datafile=settings.get_dataset_path('heading_id_intext'), model_file=settings.get_model_path('heading_id_intext'),
+def train(n_queries=10, mode=paths.dataset_version, spec_name=name):  #datafile=settings.get_dataset_path('heading_id_intext'), model_file=settings.get_model_path('heading_id_intext'),
     datafile = paths.get_dataset_path(name, mode)
-    model_file = paths.get_model_path(name, mode)
+    model_file = paths.get_model_path(spec_name, mode)
     data = pd.read_csv(datafile)
     if 'no_toc' in model_file:
         limit_cols.extend(['MatchesHeading', 'MatchesType'])

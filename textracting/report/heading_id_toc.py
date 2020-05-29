@@ -61,9 +61,9 @@ class Text2Seq(TransformerMixin, BaseEstimator):
                 print("x is longer than one sample, ", x)  # check in case it gives multiple samples and this code is wrong??
             x = x[0]
         if isinstance(x, np.ndarray):
-            print(x.shape, x[0])
+            #print(x.shape, x[0])
             x = pd.Series(data=x) #.T[0]) transpose doesn't work with new headingidtoc pipeline
-            print(x.shape, x[0])
+            #print(x.shape, x[0])
 
         if isinstance(x, pd.DataFrame):  # may be df or ndarray
             x = x['ProcessedText']
@@ -78,7 +78,7 @@ class Text2Seq(TransformerMixin, BaseEstimator):
 
     def transform(self, x, y=None):
 
-        print(x)
+        #print(x)
         if isinstance(x, pd.DataFrame):  # may be df or ndarray
             # try:
             x = x['ProcessedText']
@@ -91,15 +91,15 @@ class Text2Seq(TransformerMixin, BaseEstimator):
         if isinstance(x, np.ndarray):
             x = pd.Series(data=x)#.T[0])  # make array 1D before it can be a series
         sequences = self.tok.texts_to_sequences(x)
-        print(len(sequences))
+        #print(len(sequences))
         #if self.pad_len is not None:
         #    sequences_matrix = sequence.pad_sequences(sequences, maxlen=self.pad_len)
         #else:
         sequences_matrix = sequence.pad_sequences(sequences)
-        print(sequences_matrix.shape)
+        #print(sequences_matrix.shape)
 
         if y:
-            print(y)
+            #print(y)
             y_binary = label_binarize(y, classes=[0, 1, 2])#self.classes)
             #y_binary = self.labelbin.transform(y)
             return sequences_matrix, y_binary
@@ -150,7 +150,7 @@ class NeuralNetwork(): #give this arguments like: model type, train/test file
         self.model_loc = paths.get_model_path(name, mode) #self.model_path + self.model_name + '.h5'
         self.mode = mode
         #self.tok_loc = settings.get_model_path('heading_id_toc', tokeniser=True)#self.model_path + self.model_name + 'tokeniser.joblib'
-        print()
+        #print()
 
     def train(self, n_queries=10):  #settings.dataset_path + 'processed_heading_id_dataset_cyfra1.csv'):
         datafile = paths.get_dataset_path(name, self.mode)
